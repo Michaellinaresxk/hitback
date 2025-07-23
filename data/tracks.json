@@ -1,0 +1,202 @@
+[
+  {
+    "id": "001",
+    "qrCode": "HITBACK_001",
+    "title": "Despacito",
+    "artist": "Luis Fonsi ft. Daddy Yankee",
+    "year": 2017,
+    "decade": "2010s",
+    "genre": "Reggaeton",
+    "previewUrl": "https://p.scdn.co/mp3-preview/6b00e0d6d87bb548726e2b99e73d75b9a5c4b0db?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "duration": 30,
+    "lyrics": "Sí, sabes que ya llevo un rato mirándote...",
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Despacito",
+        "points": 1
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "Luis Fonsi ft. Daddy Yankee",
+        "points": 2
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "2010s",
+        "points": 3
+      },
+      "lyrics": {
+        "question": "Completa: 'Sí, sabes que ya llevo un rato...'",
+        "answer": "mirándote",
+        "points": 3
+      },
+      "challenge": {
+        "question": "Baila los primeros 10 segundos",
+        "answer": "Completar baile",
+        "points": 5,
+        "challengeType": "dance"
+      }
+    }
+  },
+  {
+    "id": "002",
+    "qrCode": "HITBACK_002",
+    "title": "Bohemian Rhapsody",
+    "artist": "Queen",
+    "year": 1975,
+    "decade": "1970s",
+    "genre": "Rock",
+    "previewUrl": "https://p.scdn.co/mp3-preview/8b1eb53a49e1388e3d8518d9c2c9ac5de7bb7ac8?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "duration": 30,
+    "lyrics": "Is this the real life, is this just fantasy...",
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Bohemian Rhapsody",
+        "points": 1
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "Queen",
+        "points": 2
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "1970s",
+        "points": 3
+      },
+      "lyrics": {
+        "question": "Completa: 'Is this the real life...'",
+        "answer": "is this just fantasy",
+        "points": 3
+      },
+      "challenge": {
+        "question": "Imita a Freddie Mercury cantando",
+        "answer": "Completar imitación",
+        "points": 5,
+        "challengeType": "imitate"
+      }
+    }
+  },
+  {
+    "id": "003",
+    "qrCode": "HITBACK_003",
+    "title": "Shape of You",
+    "artist": "Ed Sheeran",
+    "year": 2017,
+    "decade": "2010s",
+    "genre": "Pop",
+    "previewUrl": "https://p.scdn.co/mp3-preview/f9b8c673c37df7ff5b0b2e8d09bd8e7c8e9f5a8b?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "duration": 30,
+    "lyrics": "The club isn't the best place to find a lover...",
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Shape of You",
+        "points": 1
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "Ed Sheeran",
+        "points": 2
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "2010s",
+        "points": 3
+      },
+      "lyrics": {
+        "question": "Completa: 'The club isn't the best place...'",
+        "answer": "to find a lover",
+        "points": 3
+      },
+      "challenge": {
+        "question": "Canta los siguientes 10 segundos",
+        "answer": "Completar canto",
+        "points": 5,
+        "challengeType": "sing"
+      }
+    }
+  },
+  {
+    "id": "004",
+    "qrCode": "HITBACK_004",
+    "title": "Blinding Lights",
+    "artist": "The Weeknd",
+    "year": 2019,
+    "decade": "2010s",
+    "genre": "Synthpop",
+    "previewUrl": "https://p.scdn.co/mp3-preview/beed487079b9e26d49cedc5e3a7e46dba9e9c5b1?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "duration": 30,
+    "lyrics": "I've been tryna call, I've been on my own for long enough...",
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Blinding Lights",
+        "points": 1
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "The Weeknd",
+        "points": 2
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "2010s",
+        "points": 3
+      },
+      "lyrics": {
+        "question": "Completa: 'I've been tryna call...'",
+        "answer": "I've been on my own for long enough",
+        "points": 3
+      },
+      "challenge": {
+        "question": "Baila como en el video musical",
+        "answer": "Completar baile retro",
+        "points": 5,
+        "challengeType": "dance"
+      }
+    }
+  },
+  {
+    "id": "005",
+    "qrCode": "HITBACK_005",
+    "title": "Watermelon Sugar",
+    "artist": "Harry Styles",
+    "year": 2020,
+    "decade": "2020s",
+    "genre": "Pop Rock",
+    "previewUrl": "https://p.scdn.co/mp3-preview/d944c6c9f1c3c4f4e8f4c9c4c9c4c9c4c9c4c9c4?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "duration": 30,
+    "lyrics": "Tastes like strawberries on a summer evenin'...",
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Watermelon Sugar",
+        "points": 1
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "Harry Styles",
+        "points": 2
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "2020s",
+        "points": 3
+      },
+      "lyrics": {
+        "question": "Completa: 'Tastes like strawberries...'",
+        "answer": "on a summer evenin'",
+        "points": 3
+      },
+      "challenge": {
+        "question": "Imita el estilo vocal de Harry Styles",
+        "answer": "Completar imitación vocal",
+        "points": 5,
+        "challengeType": "sing"
+      }
+    }
+  }
+]
