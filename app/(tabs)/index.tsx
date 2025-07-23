@@ -1,4 +1,4 @@
-// app/(tabs)/index.tsx - REEMPLAZAR TODO
+// app/(tabs)/index.tsx - VERSIÓN CORREGIDA
 import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
@@ -19,7 +19,7 @@ export default function HomeScreen() {
       <View style={styles.menu}>
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => router.push('/game')}
+          onPress={() => router.push('/setup-game')}
         >
           <IconSymbol name='plus.circle.fill' size={24} color='#007AFF' />
           <ThemedText style={styles.buttonText}>Nueva Partida</ThemedText>
