@@ -35,9 +35,17 @@
         }
       ],
       [
+        "expo-asset",
+        {
+          "useStaticAssets": true
+        }
+      ],
+      [
         "expo-camera",
         {
-          "cameraPermission": "Permite usar la cámara para escanear cartas QR."
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
         }
       ]
     ],

@@ -6,38 +6,38 @@ class AudioService {
   private isPlaying = false;
   private currentUrl: string | null = null;
   private playbackTimer: NodeJS.Timeout | null = null;
-  private onPlaybackUpdate?: (status: AudioPlayback) => void;
 
   async initializeAudio() {
     try {
+      // Configuración mínima y segura
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
-        staysActiveInBackground: false,
       });
-      console.log('Audio service initialized successfully');
+      console.log('✅ Audio service initialized successfully');
     } catch (error) {
-      console.error('Failed to initialize audio service:', error);
+      console.error('❌ Failed to initialize audio service:', error);
+      // No lanzar error, continuar sin audio si es necesario
     }
   }
 
-  // Play track preview for specified duration (default 5 seconds)
+  // Play track preview for 5 seconds
   async playTrackPreview(
     url: string,
     duration: number = 5000,
     onComplete?: () => void
   ): Promise<void> {
     try {
-      // Stop any currently playing audio
       await this.stopAudio();
 
       if (!url) {
         throw new Error('URL de audio no proporcionada');
       }
 
-      // Create and load sound
+      console.log(`🎵 Playing track preview: ${url}`);
+
+      // Crear y cargar sonido
       const { sound } = await Audio.Sound.createAsync(
         { uri: url },
         {
@@ -51,32 +51,22 @@ class AudioService {
       this.currentUrl = url;
       this.isPlaying = true;
 
-      // Set up playback status updates
-      this.sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.isLoaded && this.onPlaybackUpdate) {
-          this.onPlaybackUpdate({
-            isPlaying: status.isPlaying || false,
-            currentTime: status.positionMillis || 0,
-            duration: status.durationMillis || duration,
-            url: this.currentUrl,
-          });
-        }
-      });
-
-      // Auto-stop after specified duration
+      // Auto-stop después del tiempo especificado
       this.playbackTimer = setTimeout(async () => {
         await this.stopAudio();
         onComplete?.();
       }, duration);
     } catch (error) {
-      console.error('Error playing audio preview:', error);
+      console.error('❌ Error playing audio:', error);
       this.isPlaying = false;
-      this.currentUrl = null;
-      throw new Error('No se pudo reproducir el audio');
+      // No lanzar error, mostrar mensaje en UI
+      throw new Error(
+        'No se pudo reproducir el audio. Verifica tu conexión a internet.'
+      );
     }
   }
 
-  // Stop current audio playback
+  // Stop audio immediately
   async stopAudio(): Promise<void> {
     try {
       if (this.playbackTimer) {
@@ -92,26 +82,17 @@ class AudioService {
 
       this.isPlaying = false;
       this.currentUrl = null;
-
-      // Notify listeners
-      if (this.onPlaybackUpdate) {
-        this.onPlaybackUpdate({
-          isPlaying: false,
-          currentTime: 0,
-          duration: 0,
-          url: null,
-        });
-      }
+      console.log('🔇 Audio stopped');
     } catch (error) {
-      console.error('Error stopping audio:', error);
-      // Reset state even if stop fails
+      console.error('❌ Error stopping audio:', error);
+      // Reset state even if there's an error
+      this.sound = null;
       this.isPlaying = false;
       this.currentUrl = null;
-      this.sound = null;
     }
   }
 
-  // Pause/Resume audio
+  // Pause/Resume functionality
   async pauseAudio(): Promise<void> {
     try {
       if (this.sound && this.isPlaying) {
@@ -134,7 +115,7 @@ class AudioService {
     }
   }
 
-  // Set volume (0.0 to 1.0)
+  // Set volume
   async setVolume(volume: number): Promise<void> {
     try {
       if (this.sound) {
@@ -146,79 +127,37 @@ class AudioService {
   }
 
   // Get current playback status
-  getPlaybackStatus(): AudioPlayback {
+  getCurrentStatus(): { isPlaying: boolean; currentUrl: string | null } {
     return {
       isPlaying: this.isPlaying,
-      currentTime: 0, // Would need to track this from status updates
-      duration: 5000, // Default preview duration
-      url: this.currentUrl,
+      currentUrl: this.currentUrl,
     };
   }
 
-  // Set callback for playback updates
-  setOnPlaybackUpdate(callback: (status: AudioPlayback) => void) {
-    this.onPlaybackUpdate = callback;
+  // Play sound effect for UI interactions (disabled until files are available)
+  async playSoundEffect(
+    type: 'success' | 'error' | 'scan' | 'combo'
+  ): Promise<void> {
+    // TODO: Implementar cuando tengamos los archivos de audio
+    console.log(`🔊 Sound effect: ${type} (disabled - files not available)`);
   }
 
   // Clean up resources
   async cleanup(): Promise<void> {
     await this.stopAudio();
-    this.onPlaybackUpdate = undefined;
   }
 
-  // Play multiple previews in sequence (for speed round)
-  async playSequentialPreviews(
-    urls: string[],
-    durationPerTrack: number = 6000,
-    onTrackChange?: (index: number) => void,
-    onComplete?: () => void
-  ): Promise<void> {
+  // Test audio functionality with a sample URL
+  async testAudio(): Promise<boolean> {
     try {
-      for (let i = 0; i < urls.length; i++) {
-        onTrackChange?.(i);
-
-        await new Promise<void>((resolve) => {
-          this.playTrackPreview(urls[i], durationPerTrack, resolve);
-        });
-
-        // Small gap between tracks
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-
-      onComplete?.();
-    } catch (error) {
-      console.error('Error playing sequential previews:', error);
-      throw error;
-    }
-  }
-
-  // Test audio playback with a sample track
-  async testAudioPlayback(): Promise<boolean> {
-    try {
-      // Use a test tone or sample audio
       const testUrl =
         'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
-      await this.playTrackPreview(testUrl, 1000);
+      await this.playTrackPreview(testUrl, 2000);
       return true;
     } catch (error) {
       console.error('Audio test failed:', error);
       return false;
     }
-  }
-
-  // Handle different audio formats
-  private isValidAudioUrl(url: string): boolean {
-    const validExtensions = ['.mp3', '.wav', '.m4a', '.ogg'];
-    return validExtensions.some((ext) => url.toLowerCase().includes(ext));
-  }
-
-  // Get audio format from URL
-  private getAudioFormat(url: string): string {
-    if (url.includes('.mp3')) return 'mp3';
-    if (url.includes('.wav')) return 'wav';
-    if (url.includes('.m4a')) return 'm4a';
-    if (url.includes('.ogg')) return 'ogg';
-    return 'unknown';
   }
 }
 
