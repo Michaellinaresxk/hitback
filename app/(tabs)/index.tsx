@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 80 : 40,
     paddingHorizontal: 24,
     paddingBottom: 30,
     zIndex: 1,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   quickAccessSection: {
-    marginTop: 'auto',
+    marginTop: 90,
     paddingBottom: 20,
   },
   sectionTitle: {

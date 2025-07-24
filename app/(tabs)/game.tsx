@@ -157,21 +157,6 @@ export default function GameScreen() {
     </View>
   );
 
-  const renderBettingOption = (amount: number) => (
-    <TouchableOpacity
-      key={amount}
-      style={styles.betButton}
-      onPress={() => handlePlaceBet(selectedPlayer, amount)}
-    >
-      <Text style={styles.betButtonText}>
-        {amount} Token{amount > 1 ? 's' : ''}
-      </Text>
-      <Text style={styles.betMultiplier}>
-        {getBettingMultiplier(amount)}x puntos
-      </Text>
-    </TouchableOpacity>
-  );
-
   if (!isActive) {
     return (
       <View style={styles.setupContainer}>
@@ -215,6 +200,7 @@ export default function GameScreen() {
       )}
 
       {/* Players List */}
+
       <FlatList
         data={sortedPlayers}
         keyExtractor={(item) => item.id}
@@ -567,9 +553,11 @@ const styles = StyleSheet.create({
   },
   playersList: {
     maxHeight: 120,
+    marginBottom: 50,
   },
   playersListContent: {
     paddingHorizontal: 15,
+    paddingVertical: 10,
   },
   playerCard: {
     backgroundColor: '#FFFFFF',
