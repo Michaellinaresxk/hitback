@@ -8,15 +8,14 @@ import {
   Alert,
   FlatList,
   Dimensions,
+  StatusBar,
+  ScrollView,
 } from 'react-native';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
-import QRScanner from '@/components/game/QRScanner';
-import { audioService } from '@/services/audioService';
+import RealQRScanner from '@/components/game/QRScanner';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function GameScreen() {
   const {
@@ -25,44 +24,35 @@ export default function GameScreen() {
     isActive,
     gameMode,
     timeLeft,
-    isScanning,
+    gamePot,
+    viralMomentActive,
     scanCard,
-    playCardAudio,
-    stopAudio,
     awardPoints,
-    nextTurn,
-    setScanning,
+    placeBet,
+    usePowerCard,
     startBattleMode,
     startSpeedRound,
     startViralMoment,
+    error,
+    setError,
   } = useGameStore();
 
   const [showScanner, setShowScanner] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showBettingModal, setShowBettingModal] = useState(false);
+  const [showPowerCardsModal, setShowPowerCardsModal] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<string>('');
   const [audioPlaying, setAudioPlaying] = useState(false);
-  const [timer, setTimer] = useState(0);
 
-  // Initialize audio service
+  const currentPlayer = players.find((p) => p.isCurrentTurn);
+  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
+
   useEffect(() => {
-    audioService.initializeAudio();
-  }, []);
-
-  // Game timer
-  useEffect(() => {
-    if (!isActive || timeLeft <= 0) return;
-
-    const interval = setInterval(() => {
-      setTimer((prev) => {
-        if (prev >= timeLeft) {
-          // Time's up - end game
-          return 0;
-        }
-        return prev + 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+    if (error) {
+      Alert.alert('Error', error);
+      setError(null);
+    }
+  }, [error]);
 
   const handleScanCard = async (qrData: string) => {
     try {
@@ -71,7 +61,6 @@ export default function GameScreen() {
       setAudioPlaying(true);
       setShowPointsModal(true);
 
-      // Auto-stop audio after 5 seconds
       setTimeout(() => {
         setAudioPlaying(false);
       }, 5000);
@@ -83,17 +72,29 @@ export default function GameScreen() {
   const handleAwardPoints = (playerId: string) => {
     if (!currentCard) return;
 
-    awardPoints(playerId, currentCard.points);
+    const startTime = Date.now();
+    awardPoints(playerId, currentCard.points, Date.now() - startTime);
     setShowPointsModal(false);
 
-    // Show success feedback
     const player = players.find((p) => p.id === playerId);
     Alert.alert(
       '¡Punto!',
       `${player?.name} gana ${currentCard.points} punto${
         currentCard.points > 1 ? 's' : ''
       }`,
-      [{ text: 'Continuar', onPress: nextTurn }]
+      [{ text: 'Continuar' }]
+    );
+  };
+
+  const handlePlaceBet = (playerId: string, amount: number) => {
+    placeBet(playerId, amount);
+    setShowBettingModal(false);
+    Alert.alert(
+      '¡Apuesta realizada!',
+      `${players.find((p) => p.id === playerId)?.name} apostó ${amount} token${
+        amount > 1 ? 's' : ''
+      }`,
+      [{ text: 'OK' }]
     );
   };
 
@@ -103,461 +104,632 @@ export default function GameScreen() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getCurrentPlayer = () => {
-    return players.find((p) => p.isCurrentTurn);
-  };
+  const renderPlayer = ({ item: player }: { item: any }) => (
+    <View
+      style={[
+        styles.playerCard,
+        player.isCurrentTurn && styles.activePlayerCard,
+        player.isImmune && styles.immunePlayerCard,
+      ]}
+    >
+      <View style={styles.playerHeader}>
+        <Text style={styles.playerName}>{player.name}</Text>
+        <View style={styles.playerStats}>
+          <Text style={styles.playerScore}>{player.score} pts</Text>
+          <View style={styles.tokenContainer}>
+            <IconSymbol
+              name='bitcoinsign.circle.fill'
+              size={16}
+              color='#FFD700'
+            />
+            <Text style={styles.tokenCount}>{player.tokens}</Text>
+          </View>
+        </View>
+      </View>
 
-  const getLeaderboard = () => {
-    return [...players].sort((a, b) => b.score - a.score);
-  };
+      {/* Player status indicators */}
+      <View style={styles.playerStatus}>
+        {player.isImmune && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusEmoji}>🛡️</Text>
+            <Text style={styles.statusText}>Inmune</Text>
+          </View>
+        )}
+        {player.boostActive && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusEmoji}>⚡</Text>
+            <Text style={styles.statusText}>Boost</Text>
+          </View>
+        )}
+        {player.currentBet > 0 && (
+          <View style={styles.statusBadge}>
+            <Text style={styles.statusEmoji}>🎰</Text>
+            <Text style={styles.statusText}>{player.currentBet}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Power cards count */}
+      <View style={styles.powerCardsIndicator}>
+        <IconSymbol name='sparkles' size={14} color='#4ECDC4' />
+        <Text style={styles.powerCardsCount}>{player.powerCards.length}</Text>
+      </View>
+    </View>
+  );
+
+  const renderBettingOption = (amount: number) => (
+    <TouchableOpacity
+      key={amount}
+      style={styles.betButton}
+      onPress={() => handlePlaceBet(selectedPlayer, amount)}
+    >
+      <Text style={styles.betButtonText}>
+        {amount} Token{amount > 1 ? 's' : ''}
+      </Text>
+      <Text style={styles.betMultiplier}>
+        {getBettingMultiplier(amount)}x puntos
+      </Text>
+    </TouchableOpacity>
+  );
 
   if (!isActive) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>🎮 Game Master</Text>
-          <ThemedText style={styles.subtitle}>No hay partida activa</ThemedText>
-        </View>
-
-        <View style={styles.centerContent}>
-          <ThemedText style={styles.message}>
-            Inicia una nueva partida desde la pantalla principal
-          </ThemedText>
-        </View>
-      </ThemedView>
+      <View style={styles.setupContainer}>
+        <Text style={styles.setupText}>Configura el juego para empezar</Text>
+      </View>
     );
   }
 
   return (
-    <ThemedView style={styles.container}>
-      {/* Header with timer and current player */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>🎵 HITBACK</Text>
-          <View style={styles.timerContainer}>
-            <IconSymbol name='clock.fill' size={16} color='#007AFF' />
-            <Text style={styles.timer}>{formatTime(timeLeft - timer)}</Text>
-          </View>
-        </View>
+    <View style={styles.container}>
+      <StatusBar barStyle='dark-content' backgroundColor='#F8F9FA' />
 
-        <View style={styles.currentTurn}>
-          <ThemedText style={styles.turnLabel}>Turno de:</ThemedText>
-          <Text style={styles.currentPlayer}>
-            {getCurrentPlayer()?.name || 'Ninguno'}
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.gameInfo}>
+          <Text style={styles.gameTitle}>🎵 HITBACK</Text>
+          <Text style={styles.gameModeText}>
+            {gameMode.toUpperCase()}
+            {viralMomentActive && ' - ¡VIRAL!'}
           </Text>
         </View>
+        <View style={styles.timerContainer}>
+          <IconSymbol name='clock' size={16} color='#666666' />
+          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+        </View>
       </View>
 
-      {/* Scoreboard */}
-      <View style={styles.scoreboard}>
-        <ThemedText style={styles.scoreTitle}>Puntuación</ThemedText>
-        <FlatList
-          data={getLeaderboard()}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item, index }) => (
-            <View
-              style={[
-                styles.playerScore,
-                item.isCurrentTurn && styles.currentPlayerScore,
-              ]}
-            >
-              <Text style={styles.playerPosition}>#{index + 1}</Text>
-              <Text style={styles.playerScoreName}>{item.name}</Text>
-              <Text style={styles.playerScorePoints}>{item.score} pts</Text>
-            </View>
-          )}
-        />
-      </View>
-
-      {/* Current card display */}
-      {currentCard && (
-        <View style={styles.cardDisplay}>
-          <View style={[styles.cardInfo, getCardTypeStyle(currentCard.type)]}>
-            <Text style={styles.cardType}>
-              {getCardTypeEmoji(currentCard.type)}{' '}
-              {getCardTypeName(currentCard.type)}
-            </Text>
-            <Text style={styles.cardPoints}>{currentCard.points} puntos</Text>
+      {/* Game Pot */}
+      {gamePot.tokens > 0 && (
+        <View style={styles.potContainer}>
+          <Text style={styles.potLabel}>🏆 BOTE ACUMULADO</Text>
+          <View style={styles.potTokens}>
+            {Array.from({ length: gamePot.tokens }).map((_, i) => (
+              <Text key={i} style={styles.potToken}>
+                🪙
+              </Text>
+            ))}
+            <Text style={styles.potCount}>({gamePot.tokens})</Text>
           </View>
-
-          <View style={styles.trackInfo}>
-            <Text style={styles.trackTitle}>{currentCard.track.title}</Text>
-            <Text style={styles.trackArtist}>{currentCard.track.artist}</Text>
-          </View>
-
-          <Text style={styles.question}>{currentCard.question}</Text>
-
-          {audioPlaying && (
-            <View style={styles.audioIndicator}>
-              <IconSymbol
-                name='speaker.wave.2.fill'
-                size={20}
-                color='#007AFF'
-              />
-              <Text style={styles.audioText}>Reproduciendo audio...</Text>
-            </View>
-          )}
         </View>
       )}
 
-      {/* Main actions */}
-      <View style={styles.actions}>
+      {/* Players List */}
+      <FlatList
+        data={sortedPlayers}
+        keyExtractor={(item) => item.id}
+        renderItem={renderPlayer}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.playersList}
+        contentContainerStyle={styles.playersListContent}
+      />
+
+      {/* Current Turn */}
+      <View style={styles.currentTurnContainer}>
+        <Text style={styles.turnLabel}>🎯 Turno de:</Text>
+        <Text style={styles.currentTurnName}>
+          {currentPlayer?.name || 'Nadie'}
+        </Text>
+      </View>
+
+      {/* Main Actions */}
+      <View style={styles.mainActions}>
         <TouchableOpacity
           style={styles.scanButton}
           onPress={() => setShowScanner(true)}
         >
-          <IconSymbol name='camera.fill' size={24} color='#FFFFFF' />
+          <IconSymbol name='qrcode.viewfinder' size={32} color='#FFFFFF' />
           <Text style={styles.scanButtonText}>Escanear Carta</Text>
         </TouchableOpacity>
 
-        {currentCard && (
-          <TouchableOpacity style={styles.replayButton} onPress={playCardAudio}>
-            <IconSymbol name='arrow.clockwise' size={20} color='#007AFF' />
-            <Text style={styles.replayText}>Repetir Audio</Text>
+        <View style={styles.actionButtonsRow}>
+          <TouchableOpacity
+            style={styles.bettingButton}
+            onPress={() => setShowBettingModal(true)}
+          >
+            <Text style={styles.actionButtonText}>🎰 Apostar</Text>
           </TouchableOpacity>
-        )}
+
+          <TouchableOpacity
+            style={styles.powerButton}
+            onPress={() => setShowPowerCardsModal(true)}
+          >
+            <Text style={styles.actionButtonText}>⚡ Poderes</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Game modes */}
-      <View style={styles.gameModes}>
+      {/* Game Mode Buttons */}
+      <View style={styles.gameModeButtons}>
         <TouchableOpacity
           style={styles.modeButton}
-          onPress={() => startBattleMode('', '')}
+          onPress={() => {
+            if (players.length >= 2) {
+              startBattleMode(players[0].id, players[1].id);
+            }
+          }}
         >
-          <Text style={styles.modeText}>🎯 Battle</Text>
+          <Text style={styles.modeButtonText}>⚔️ Battle</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.modeButton} onPress={startSpeedRound}>
-          <Text style={styles.modeText}>⚡ Speed</Text>
+        <TouchableOpacity
+          style={styles.modeButton}
+          onPress={() => startSpeedRound()}
+        >
+          <Text style={styles.modeButtonText}>⚡ Speed</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.modeButton} onPress={startViralMoment}>
-          <Text style={styles.modeText}>🔥 Viral</Text>
+        <TouchableOpacity
+          style={styles.modeButton}
+          onPress={() => startViralMoment()}
+        >
+          <Text style={styles.modeButtonText}>🔥 Viral</Text>
         </TouchableOpacity>
       </View>
 
       {/* QR Scanner Modal */}
-      <Modal
-        visible={showScanner}
-        animationType='slide'
-        presentationStyle='fullScreen'
-      >
-        <View style={styles.scannerContainer}>
-          <View style={styles.scannerHeader}>
-            <TouchableOpacity
-              onPress={() => setShowScanner(false)}
-              style={styles.closeButton}
-            >
-              <IconSymbol name='xmark' size={24} color='#FFFFFF' />
-            </TouchableOpacity>
-            <Text style={styles.scannerTitle}>Escanear Carta</Text>
-            <View style={{ width: 24 }} />
-          </View>
-
-          <QRScanner
-            onScanSuccess={handleScanCard}
-            onClose={() => setShowScanner(false)}
-            isVisible={showScanner}
-          />
-        </View>
+      <Modal visible={showScanner} animationType='slide'>
+        <RealQRScanner
+          isVisible={showScanner}
+          onScanSuccess={handleScanCard}
+          onClose={() => setShowScanner(false)}
+        />
       </Modal>
 
-      {/* Points Assignment Modal */}
+      {/* Points Award Modal */}
       <Modal visible={showPointsModal} transparent animationType='fade'>
         <View style={styles.modalOverlay}>
           <View style={styles.pointsModal}>
-            <Text style={styles.modalTitle}>
-              ¿Quién respondió correctamente?
+            {currentCard && (
+              <>
+                <Text style={styles.modalTitle}>
+                  🎤 {currentCard.track.title}
+                </Text>
+                <Text style={styles.modalSubtitle}>
+                  {currentCard.track.artist} • {currentCard.track.year}
+                </Text>
+
+                <View style={styles.audioStatus}>
+                  <IconSymbol
+                    name={audioPlaying ? 'speaker.wave.3' : 'speaker.slash'}
+                    size={24}
+                    color='#4ECDC4'
+                  />
+                  <Text style={styles.audioText}>
+                    {audioPlaying
+                      ? 'Audio reproduciéndose...'
+                      : 'Audio terminado'}
+                  </Text>
+                </View>
+
+                <Text style={styles.questionText}>{currentCard.question}</Text>
+                <Text style={styles.answerText}>✅ {currentCard.answer}</Text>
+
+                <Text style={styles.pointsLabel}>
+                  ¿Quién acertó? ({currentCard.points} punto
+                  {currentCard.points > 1 ? 's' : ''})
+                </Text>
+
+                <FlatList
+                  data={players}
+                  keyExtractor={(item) => item.id}
+                  renderItem={({ item: player }) => (
+                    <TouchableOpacity
+                      style={styles.playerButton}
+                      onPress={() => handleAwardPoints(player.id)}
+                    >
+                      <Text style={styles.playerButtonText}>{player.name}</Text>
+                      {player.currentBet > 0 && (
+                        <Text style={styles.playerBetIndicator}>
+                          🎰 {player.currentBet} •{' '}
+                          {getBettingMultiplier(player.currentBet)}x
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                />
+
+                <TouchableOpacity
+                  style={styles.noWinnerButton}
+                  onPress={() => setShowPointsModal(false)}
+                >
+                  <Text style={styles.noWinnerText}>Nadie acertó</Text>
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Betting Modal */}
+      <Modal visible={showBettingModal} transparent animationType='slide'>
+        <View style={styles.modalOverlay}>
+          <View style={styles.bettingModal}>
+            <Text style={styles.modalTitle}>🎰 Sistema de Apuestas</Text>
+
+            <Text style={styles.bettingInfo}>
+              Selecciona jugador y cantidad a apostar:
             </Text>
 
-            {currentCard && (
-              <View style={styles.answerSection}>
-                <Text style={styles.correctAnswer}>
-                  Respuesta: {currentCard.answer}
-                </Text>
-              </View>
-            )}
-
             <FlatList
-              data={players}
+              data={players.filter((p) => p.tokens > 0)}
               keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={styles.playerButton}
-                  onPress={() => handleAwardPoints(item.id)}
-                >
-                  <Text style={styles.playerButtonText}>{item.name}</Text>
-                  <Text style={styles.playerCurrentScore}>
-                    {item.score} pts
+              renderItem={({ item: player }) => (
+                <View style={styles.playerBettingCard}>
+                  <Text style={styles.playerBettingName}>{player.name}</Text>
+                  <Text style={styles.playerBettingTokens}>
+                    🪙 {player.tokens}
                   </Text>
-                </TouchableOpacity>
+
+                  <View style={styles.bettingOptions}>
+                    {[1, 2, 3].map(
+                      (amount) =>
+                        player.tokens >= amount && (
+                          <TouchableOpacity
+                            key={amount}
+                            style={styles.betOptionButton}
+                            onPress={() => {
+                              setSelectedPlayer(player.id);
+                              handlePlaceBet(player.id, amount);
+                            }}
+                          >
+                            <Text style={styles.betOptionText}>{amount}</Text>
+                            <Text style={styles.betOptionMultiplier}>
+                              {getBettingMultiplier(amount)}x
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                    )}
+                  </View>
+                </View>
               )}
             />
 
             <TouchableOpacity
-              style={styles.noWinnerButton}
-              onPress={() => {
-                setShowPointsModal(false);
-                nextTurn();
-              }}
+              style={styles.closeBettingButton}
+              onPress={() => setShowBettingModal(false)}
             >
-              <Text style={styles.noWinnerText}>Nadie acertó</Text>
+              <Text style={styles.closeBettingText}>Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </ThemedView>
+
+      {/* Power Cards Modal */}
+      <Modal visible={showPowerCardsModal} transparent animationType='slide'>
+        <View style={styles.modalOverlay}>
+          <View style={styles.powerCardsModal}>
+            <Text style={styles.modalTitle}>⚡ Cartas de Poder</Text>
+
+            <FlatList
+              data={players}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item: player }) => (
+                <View style={styles.playerPowerCard}>
+                  <Text style={styles.playerPowerName}>{player.name}</Text>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {player.powerCards.map((powerCard) => (
+                      <TouchableOpacity
+                        key={powerCard.id}
+                        style={[
+                          styles.powerCardItem,
+                          powerCard.currentUses >= powerCard.usageLimit &&
+                            styles.usedPowerCard,
+                        ]}
+                        onPress={() => {
+                          if (powerCard.currentUses < powerCard.usageLimit) {
+                            usePowerCard(player.id, powerCard.id);
+                          }
+                        }}
+                        disabled={powerCard.currentUses >= powerCard.usageLimit}
+                      >
+                        <Text style={styles.powerCardEmoji}>
+                          {powerCard.emoji}
+                        </Text>
+                        <Text style={styles.powerCardName}>
+                          {powerCard.name}
+                        </Text>
+                        <Text style={styles.powerCardUses}>
+                          {powerCard.currentUses}/{powerCard.usageLimit}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            />
+
+            <TouchableOpacity
+              style={styles.closePowerButton}
+              onPress={() => setShowPowerCardsModal(false)}
+            >
+              <Text style={styles.closePowerText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    </View>
   );
 }
 
-// Helper functions
-const getCardTypeStyle = (type: string) => {
-  const styles = {
-    song: { backgroundColor: '#FFD700' }, // Yellow
-    artist: { backgroundColor: '#FF4444' }, // Red
-    decade: { backgroundColor: '#4444FF' }, // Blue
-    lyrics: { backgroundColor: '#44FF44' }, // Green
-    challenge: { backgroundColor: '#FF8800' }, // Orange
-  };
-  return styles[type] || styles.song;
-};
-
-const getCardTypeEmoji = (type: string) => {
-  const emojis = {
-    song: '🎵',
-    artist: '🎤',
-    decade: '📅',
-    lyrics: '📝',
-    challenge: '🔥',
-  };
-  return emojis[type] || '🎵';
-};
-
-const getCardTypeName = (type: string) => {
-  const names = {
-    song: 'SONG CARD',
-    artist: 'ARTIST CARD',
-    decade: 'DECADE CARD',
-    lyrics: 'LYRICS CARD',
-    challenge: 'CHALLENGE CARD',
-  };
-  return names[type] || 'SONG CARD';
-};
+// Helper function
+function getBettingMultiplier(betAmount: number): number {
+  if (betAmount === 1) return 2;
+  if (betAmount === 2) return 3;
+  if (betAmount >= 3) return 4;
+  return 1;
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    backgroundColor: '#F8F9FA',
+  },
+  setupContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+  },
+  setupText: {
+    fontSize: 18,
+    color: '#666666',
   },
   header: {
-    paddingTop: 50,
-    marginBottom: 20,
-  },
-  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: '#F0F0F0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  timer: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  currentTurn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  turnLabel: {
-    fontSize: 16,
-    opacity: 0.7,
-  },
-  currentPlayer: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#007AFF',
-  },
-  scoreboard: {
-    marginBottom: 20,
-  },
-  scoreTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 10,
-  },
-  playerScore: {
-    backgroundColor: '#F8F8F8',
-    padding: 12,
-    borderRadius: 8,
-    marginRight: 10,
-    alignItems: 'center',
-    minWidth: 80,
-  },
-  currentPlayerScore: {
-    backgroundColor: '#E3F2FD',
-    borderWidth: 2,
-    borderColor: '#007AFF',
-  },
-  playerPosition: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
-  playerScoreName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  playerScorePoints: {
-    fontSize: 12,
-    color: '#007AFF',
-  },
-  cardDisplay: {
+    paddingTop: 50,
+    paddingHorizontal: 20,
+    paddingBottom: 15,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
-  cardInfo: {
+  gameInfo: {
+    flex: 1,
+  },
+  gameTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A2E',
+  },
+  gameModeText: {
+    fontSize: 12,
+    color: '#4ECDC4',
+    fontWeight: '600',
+  },
+  timerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  timerText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  potContainer: {
+    backgroundColor: '#FFD700',
+    margin: 15,
+    padding: 15,
+    borderRadius: 15,
+    alignItems: 'center',
+  },
+  potLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 5,
+  },
+  potTokens: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  potToken: {
+    fontSize: 20,
+    marginHorizontal: 2,
+  },
+  potCount: {
+    marginLeft: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  playersList: {
+    maxHeight: 120,
+  },
+  playersListContent: {
+    paddingHorizontal: 15,
+  },
+  playerCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 5,
+    padding: 15,
+    borderRadius: 15,
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  activePlayerCard: {
+    borderWidth: 2,
+    borderColor: '#4ECDC4',
+  },
+  immunePlayerCard: {
+    borderWidth: 2,
+    borderColor: '#FFD700',
+  },
+  playerHeader: {
+    marginBottom: 8,
+  },
+  playerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A2E',
+  },
+  playerStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 12,
+    marginTop: 5,
   },
-  cardType: {
+  playerScore: {
     fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  cardPoints: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-  },
-  trackInfo: {
-    marginBottom: 12,
-  },
-  trackTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  trackArtist: {
-    fontSize: 16,
-    opacity: 0.7,
-  },
-  question: {
-    fontSize: 16,
     fontWeight: '600',
-    color: '#007AFF',
-    marginBottom: 12,
+    color: '#4ECDC4',
   },
-  audioIndicator: {
+  tokenContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 8,
-    backgroundColor: '#E3F2FD',
-    borderRadius: 8,
   },
-  audioText: {
+  tokenCount: {
+    marginLeft: 3,
     fontSize: 14,
-    color: '#007AFF',
+    fontWeight: '600',
+    color: '#FFD700',
   },
-  actions: {
-    gap: 12,
+  playerStatus: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 5,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0F0F0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginRight: 5,
+    marginBottom: 3,
+  },
+  statusEmoji: {
+    fontSize: 12,
+    marginRight: 2,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#666666',
+  },
+  powerCardsIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 5,
+  },
+  powerCardsCount: {
+    marginLeft: 3,
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4ECDC4',
+  },
+  currentTurnContainer: {
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  turnLabel: {
+    fontSize: 16,
+    color: '#666666',
+  },
+  currentTurnName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A2E',
+    marginTop: 5,
+  },
+  mainActions: {
+    paddingHorizontal: 20,
     marginBottom: 20,
   },
   scanButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#4ECDC4',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 10,
+    padding: 20,
+    borderRadius: 20,
+    marginBottom: 15,
   },
   scanButtonText: {
-    color: '#FFFFFF',
+    marginLeft: 10,
     fontSize: 18,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  replayButton: {
+  actionButtonsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  bettingButton: {
+    flex: 1,
+    backgroundColor: '#FF6B6B',
+    padding: 15,
+    borderRadius: 15,
+    marginRight: 7.5,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    gap: 8,
   },
-  replayText: {
+  powerButton: {
+    flex: 1,
+    backgroundColor: '#4ECDC4',
+    padding: 15,
+    borderRadius: 15,
+    marginLeft: 7.5,
+    alignItems: 'center',
+  },
+  actionButtonText: {
     fontSize: 16,
-    color: '#007AFF',
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
-  gameModes: {
+  gameModeButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    gap: 10,
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
   modeButton: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
+    backgroundColor: '#9B59B6',
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 15,
+    marginHorizontal: 5,
     alignItems: 'center',
   },
-  modeText: {
+  modeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  message: {
-    fontSize: 16,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  scannerContainer: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  scannerHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    paddingTop: 60,
-  },
-  closeButton: {
-    padding: 8,
-  },
-  scannerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
     color: '#FFFFFF',
   },
   modalOverlay: {
@@ -568,56 +740,233 @@ const styles = StyleSheet.create({
   },
   pointsModal: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    width: width * 0.9,
-    maxHeight: '70%',
+    margin: 20,
+    padding: 25,
+    borderRadius: 20,
+    maxHeight: '80%',
+    width: '90%',
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '700',
+    color: '#1A1A2E',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 5,
   },
-  answerSection: {
-    backgroundColor: '#E8F5E8',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 20,
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 15,
   },
-  correctAnswer: {
+  audioStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 15,
+    padding: 10,
+    backgroundColor: '#F0F9FF',
+    borderRadius: 10,
+  },
+  audioText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#4ECDC4',
+    fontWeight: '600',
+  },
+  questionText: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#1A1A2E',
     textAlign: 'center',
-    color: '#2E7D32',
+    marginBottom: 10,
+  },
+  answerText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#27AE60',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  pointsLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    textAlign: 'center',
+    marginBottom: 15,
   },
   playerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    backgroundColor: '#4ECDC4',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F0F0F0',
-    borderRadius: 8,
-    marginBottom: 8,
   },
   playerButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
   },
-  playerCurrentScore: {
-    fontSize: 14,
-    color: '#007AFF',
+  playerBetIndicator: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    marginTop: 3,
+    opacity: 0.9,
   },
   noWinnerButton: {
-    backgroundColor: '#FF4444',
-    padding: 16,
-    borderRadius: 8,
+    backgroundColor: '#95A5A6',
+    padding: 15,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
   noWinnerText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  bettingModal: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    padding: 25,
+    borderRadius: 20,
+    maxHeight: '80%',
+    width: '90%',
+  },
+  bettingInfo: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  playerBettingCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+  playerBettingName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    marginBottom: 5,
+  },
+  playerBettingTokens: {
+    fontSize: 14,
+    color: '#FFD700',
+    fontWeight: '600',
+    marginBottom: 10,
+  },
+  bettingOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  betOptionButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  betOptionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  betOptionMultiplier: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    opacity: 0.8,
+  },
+  closeBettingButton: {
+    backgroundColor: '#95A5A6',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  closeBettingText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  powerCardsModal: {
+    backgroundColor: '#FFFFFF',
+    margin: 20,
+    padding: 25,
+    borderRadius: 20,
+    maxHeight: '80%',
+    width: '90%',
+  },
+  playerPowerCard: {
+    backgroundColor: '#F8F9FA',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 15,
+  },
+  playerPowerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1A1A2E',
+    marginBottom: 10,
+  },
+  powerCardItem: {
+    backgroundColor: '#4ECDC4',
+    padding: 10,
+    borderRadius: 10,
+    marginRight: 10,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  usedPowerCard: {
+    backgroundColor: '#95A5A6',
+    opacity: 0.5,
+  },
+  powerCardEmoji: {
+    fontSize: 20,
+    marginBottom: 3,
+  },
+  powerCardName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  powerCardUses: {
+    fontSize: 8,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    marginTop: 2,
+  },
+  closePowerButton: {
+    backgroundColor: '#95A5A6',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  closePowerText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  betButton: {
+    backgroundColor: '#FF6B6B',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  betButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  betMultiplier: {
+    fontSize: 12,
+    color: '#FFFFFF',
+    opacity: 0.8,
+    marginTop: 2,
   },
 });

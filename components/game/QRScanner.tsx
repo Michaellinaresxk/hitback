@@ -5,24 +5,19 @@ import {
   Text,
   TouchableOpacity,
   Alert,
+  StatusBar,
   Dimensions,
-  Vibration,
-  Platform,
 } from 'react-native';
-import { Camera, CameraType, BarcodeScanningResult } from 'expo-camera';
-import { ThemedText } from '@/components/ThemedText';
-import { ThemedView } from '@/components/ThemedView';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { cardService } from '@/services/cardService';
 
 const { width, height } = Dimensions.get('window');
 
-interface QRScannerProps {
+interface RealQRScannerProps {
   onScanSuccess: (qrData: string) => void;
   onClose: () => void;
   isVisible: boolean;
   title?: string;
-  subtitle?: string;
 }
 
 export default function QRScanner({
@@ -30,223 +25,128 @@ export default function QRScanner({
   onClose,
   isVisible,
   title = 'Escanear Carta QR',
-  subtitle = 'Apunta la cámara al código QR de la carta',
-}: QRScannerProps) {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+}: RealQRScannerProps) {
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [flashEnabled, setFlashEnabled] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  useEffect(() => {
-    requestCameraPermission();
-  }, []);
 
   useEffect(() => {
     if (isVisible) {
-      // Reset scanner state when becoming visible
       setScanned(false);
-      setIsProcessing(false);
     }
   }, [isVisible]);
 
-  const requestCameraPermission = async () => {
-    try {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    } catch (error) {
-      console.error('Error requesting camera permission:', error);
-      setHasPermission(false);
-    }
-  };
-
-  const handleBarCodeScanned = async ({ data }: BarcodeScanningResult) => {
-    if (scanned || isProcessing) return;
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (scanned) return;
 
     setScanned(true);
-    setIsProcessing(true);
 
-    try {
-      // Validate QR code format
-      if (!cardService.isValidQRCode(data)) {
-        Alert.alert(
-          'Código QR Inválido',
-          'Este no es un código QR válido de HITBACK. Asegúrate de escanear una carta oficial del juego.',
-          [
-            {
-              text: 'Intentar de nuevo',
-              onPress: resetScanner,
-            },
-          ]
-        );
-        return;
-      }
-
-      // Provide haptic feedback
-      if (Platform.OS === 'ios') {
-        Vibration.vibrate(100);
-      } else {
-        Vibration.vibrate([0, 100]);
-      }
-
-      // Success - call parent handler
+    // Validate QR format (HITBACK_XXX)
+    if (data.startsWith('HITBACK_')) {
       onScanSuccess(data);
-    } catch (error) {
-      console.error('Error processing QR scan:', error);
-      Alert.alert(
-        'Error',
-        'No se pudo procesar el código QR. Inténtalo de nuevo.',
-        [
-          {
-            text: 'Reintentar',
-            onPress: resetScanner,
-          },
-        ]
-      );
-    } finally {
-      setIsProcessing(false);
+    } else {
+      Alert.alert('QR Inválido', 'Este QR no pertenece al juego HITBACK', [
+        { text: 'OK', onPress: () => setScanned(false) },
+      ]);
     }
-  };
-
-  const resetScanner = () => {
-    setScanned(false);
-    setIsProcessing(false);
-  };
-
-  const toggleFlash = () => {
-    setFlashEnabled(!flashEnabled);
   };
 
   if (!isVisible) return null;
 
-  // Permission states
-  if (hasPermission === null) {
+  if (!permission) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.centerContent}>
-          <IconSymbol name='camera.fill' size={48} color='#007AFF' />
-          <ThemedText style={styles.statusText}>
-            Solicitando permisos de cámara...
-          </ThemedText>
-        </View>
-      </ThemedView>
+      <View style={styles.container}>
+        <Text style={styles.message}>Solicitando permisos de cámara...</Text>
+      </View>
     );
   }
 
-  if (hasPermission === false) {
+  if (!permission.granted) {
     return (
-      <ThemedView style={styles.container}>
-        <View style={styles.centerContent}>
-          <IconSymbol name='camera.fill' size={48} color='#FF3B30' />
-          <ThemedText style={styles.statusText}>
-            Sin acceso a la cámara
-          </ThemedText>
-          <ThemedText style={styles.statusSubtext}>
-            Ve a Configuración para habilitar el acceso a la cámara
-          </ThemedText>
+      <View style={styles.container}>
+        <View style={styles.permissionContainer}>
+          <IconSymbol name='camera' size={48} color='#4ECDC4' />
+          <Text style={styles.permissionTitle}>Cámara Requerida</Text>
+          <Text style={styles.permissionText}>
+            Necesitamos acceso a tu cámara para escanear las cartas QR
+          </Text>
           <TouchableOpacity
-            style={styles.retryButton}
-            onPress={requestCameraPermission}
+            style={styles.permissionButton}
+            onPress={requestPermission}
           >
-            <Text style={styles.retryButtonText}>Reintentar</Text>
+            <Text style={styles.permissionButtonText}>Permitir Cámara</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Text style={styles.closeButtonText}>Cancelar</Text>
           </TouchableOpacity>
         </View>
-      </ThemedView>
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Camera
-        style={styles.camera}
-        type={CameraType.back}
-        flashMode={flashEnabled ? 'torch' : 'off'}
-        onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-        barCodeScannerSettings={{
-          barCodeTypes: ['qr'],
-        }}
-      >
-        <View style={styles.overlay}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <IconSymbol name='xmark' size={24} color='#FFFFFF' />
-            </TouchableOpacity>
+      <StatusBar barStyle='light-content' backgroundColor='#000000' />
 
-            <View style={styles.headerContent}>
-              <Text style={styles.title}>{title}</Text>
-            </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onClose} style={styles.headerButton}>
+          <IconSymbol name='xmark' size={24} color='#FFFFFF' />
+        </TouchableOpacity>
+        <Text style={styles.title}>{title}</Text>
+        <TouchableOpacity
+          style={styles.headerButton}
+          onPress={() => setFlashEnabled(!flashEnabled)}
+        >
+          <IconSymbol
+            name={flashEnabled ? 'flashlight.on.fill' : 'flashlight.off.fill'}
+            size={24}
+            color='#FFFFFF'
+          />
+        </TouchableOpacity>
+      </View>
 
-            <TouchableOpacity onPress={toggleFlash} style={styles.flashButton}>
-              <IconSymbol
-                name={
-                  flashEnabled ? 'flashlight.on.fill' : 'flashlight.off.fill'
-                }
-                size={24}
-                color='#FFFFFF'
-              />
-            </TouchableOpacity>
+      {/* Camera View */}
+      <View style={styles.cameraContainer}>
+        <CameraView
+          style={styles.camera}
+          facing='back'
+          enableTorch={flashEnabled}
+          onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr'],
+          }}
+        />
+
+        {/* Scanning Frame */}
+        <View style={styles.scannerOverlay}>
+          <View style={styles.scanFrame}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
           </View>
 
-          {/* Scanning area */}
-          <View style={styles.scanArea}>
-            <View style={styles.scanFrame}>
-              {/* Corner indicators */}
-              <View style={[styles.corner, styles.topLeft]} />
-              <View style={[styles.corner, styles.topRight]} />
-              <View style={[styles.corner, styles.bottomLeft]} />
-              <View style={[styles.corner, styles.bottomRight]} />
-
-              {/* Scanning line animation could go here */}
-              {!scanned && !isProcessing && <View style={styles.scanLine} />}
-            </View>
-
-            <Text style={styles.subtitle}>{subtitle}</Text>
-
-            {/* Status indicators */}
-            {isProcessing && (
-              <View style={styles.processingIndicator}>
-                <IconSymbol
-                  name='checkmark.circle.fill'
-                  size={32}
-                  color='#34C759'
-                />
-                <Text style={styles.processingText}>Procesando...</Text>
-              </View>
-            )}
-
-            {scanned && !isProcessing && (
-              <TouchableOpacity
-                style={styles.resetButton}
-                onPress={resetScanner}
-              >
-                <IconSymbol name='arrow.clockwise' size={20} color='#007AFF' />
-                <Text style={styles.resetButtonText}>Escanear otra carta</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {/* Footer instructions */}
-          <View style={styles.footer}>
-            <View style={styles.instructionRow}>
-              <IconSymbol name='camera.fill' size={16} color='#FFFFFF' />
-              <Text style={styles.instructionText}>
-                Mantén la carta dentro del marco
-              </Text>
-            </View>
-
-            <View style={styles.instructionRow}>
-              <IconSymbol
-                name='flashlight.off.fill'
-                size={16}
-                color='#FFFFFF'
-              />
-              <Text style={styles.instructionText}>
-                Toca la linterna si hay poca luz
-              </Text>
-            </View>
-          </View>
+          <Text style={styles.scanText}>
+            {scanned ? 'Procesando...' : 'Apunta la cámara al código QR'}
+          </Text>
         </View>
-      </Camera>
+      </View>
+
+      {/* Instructions */}
+      <View style={styles.instructions}>
+        <Text style={styles.instructionText}>
+          Busca el código QR en tu carta HITBACK
+        </Text>
+        {scanned && (
+          <TouchableOpacity
+            style={styles.scanAgainButton}
+            onPress={() => setScanned(false)}
+          >
+            <Text style={styles.scanAgainText}>Escanear otra carta</Text>
+          </TouchableOpacity>
+        )}
+      </View>
     </View>
   );
 }
@@ -256,64 +156,52 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  camera: {
-    flex: 1,
-  },
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'space-between',
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
+    paddingTop: 50,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
   },
-  closeButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+  headerButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerContent: {
-    flex: 1,
     alignItems: 'center',
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
     color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
   },
-  flashButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanArea: {
+  cameraContainer: {
     flex: 1,
+    position: 'relative',
+  },
+  camera: {
+    flex: 1,
+  },
+  scannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
   },
   scanFrame: {
     width: 250,
     height: 250,
     position: 'relative',
-    marginBottom: 30,
   },
   corner: {
     position: 'absolute',
     width: 30,
     height: 30,
-    borderColor: '#00FF00',
+    borderColor: '#4ECDC4',
     borderWidth: 3,
   },
   topLeft: {
@@ -340,87 +228,84 @@ const styles = StyleSheet.create({
     borderLeftWidth: 0,
     borderTopWidth: 0,
   },
-  scanLine: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: '#00FF00',
-    opacity: 0.8,
-  },
-  subtitle: {
-    fontSize: 16,
+  scanText: {
     color: '#FFFFFF',
+    fontSize: 16,
     textAlign: 'center',
-    marginBottom: 20,
-  },
-  processingIndicator: {
-    alignItems: 'center',
-    padding: 20,
+    marginTop: 30,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: 12,
-  },
-  processingText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    marginTop: 8,
-  },
-  resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: 'rgba(0,122,255,0.8)',
-    borderRadius: 8,
-    gap: 8,
-  },
-  resetButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
     paddingHorizontal: 20,
-    paddingBottom: 40,
-    gap: 12,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
-  instructionRow: {
-    flexDirection: 'row',
+  instructions: {
+    padding: 20,
+    backgroundColor: 'rgba(0,0,0,0.8)',
     alignItems: 'center',
-    gap: 12,
   },
   instructionText: {
     color: '#FFFFFF',
     fontSize: 14,
+    textAlign: 'center',
     opacity: 0.8,
   },
-  centerContent: {
+  scanAgainButton: {
+    marginTop: 15,
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  scanAgainText: {
+    color: '#000000',
+    fontWeight: '600',
+  },
+  permissionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 40,
   },
-  statusText: {
-    fontSize: 18,
-    textAlign: 'center',
+  permissionTitle: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: '600',
     marginTop: 20,
+    marginBottom: 10,
   },
-  statusSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginTop: 10,
-    opacity: 0.7,
-  },
-  retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  retryButtonText: {
+  permissionText: {
     color: '#FFFFFF',
     fontSize: 16,
+    textAlign: 'center',
+    opacity: 0.8,
+    marginBottom: 30,
+  },
+  permissionButton: {
+    backgroundColor: '#4ECDC4',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 25,
+    marginBottom: 15,
+  },
+  permissionButtonText: {
+    color: '#000000',
+    fontSize: 16,
     fontWeight: '600',
+  },
+  closeButton: {
+    backgroundColor: 'transparent',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+  },
+  closeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    opacity: 0.7,
+  },
+  message: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    textAlign: 'center',
+    margin: 20,
   },
 });

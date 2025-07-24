@@ -7,34 +7,41 @@
     "year": 2017,
     "decade": "2010s",
     "genre": "Reggaeton",
-    "previewUrl": "https://p.scdn.co/mp3-preview/6b00e0d6d87bb548726e2b99e73d75b9a5c4b0db?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "previewUrl": "https://p.scdn.co/mp3-preview/6b00e0d6d87bb548726e2b99e73d75b9a5c4b0db",
     "duration": 30,
     "lyrics": "Sí, sabes que ya llevo un rato mirándote...",
+    "difficulty": "easy",
+    "popularity": 95,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Despacito",
-        "points": 1
+        "points": 1,
+        "difficulty": "easy"
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Luis Fonsi ft. Daddy Yankee",
-        "points": 2
+        "points": 2,
+        "difficulty": "easy"
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "2010s",
-        "points": 3
+        "points": 3,
+        "difficulty": "medium"
       },
       "lyrics": {
         "question": "Completa: 'Sí, sabes que ya llevo un rato...'",
         "answer": "mirándote",
-        "points": 3
+        "points": 3,
+        "difficulty": "medium"
       },
       "challenge": {
-        "question": "Baila los primeros 10 segundos",
-        "answer": "Completar baile",
+        "question": "Baila los primeros 10 segundos de Despacito",
+        "answer": "Completar baile reggaeton",
         "points": 5,
+        "difficulty": "hard",
         "challengeType": "dance"
       }
     }
@@ -47,34 +54,41 @@
     "year": 1975,
     "decade": "1970s",
     "genre": "Rock",
-    "previewUrl": "https://p.scdn.co/mp3-preview/8b1eb53a49e1388e3d8518d9c2c9ac5de7bb7ac8?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "previewUrl": "https://p.scdn.co/mp3-preview/8b1eb53a49e1388e3d8518d9c2c9ac5de7bb7ac8",
     "duration": 30,
     "lyrics": "Is this the real life, is this just fantasy...",
+    "difficulty": "hard",
+    "popularity": 90,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Bohemian Rhapsody",
-        "points": 1
+        "points": 1,
+        "difficulty": "medium"
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Queen",
-        "points": 2
+        "points": 2,
+        "difficulty": "easy"
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "1970s",
-        "points": 3
+        "points": 3,
+        "difficulty": "hard"
       },
       "lyrics": {
         "question": "Completa: 'Is this the real life...'",
         "answer": "is this just fantasy",
-        "points": 3
+        "points": 3,
+        "difficulty": "hard"
       },
       "challenge": {
-        "question": "Imita a Freddie Mercury cantando",
-        "answer": "Completar imitación",
+        "question": "Imita a Freddie Mercury cantando la canción",
+        "answer": "Completar imitación de Freddie",
         "points": 5,
+        "difficulty": "expert",
         "challengeType": "imitate"
       }
     }
@@ -87,34 +101,41 @@
     "year": 2017,
     "decade": "2010s",
     "genre": "Pop",
-    "previewUrl": "https://p.scdn.co/mp3-preview/f9b8c673c37df7ff5b0b2e8d09bd8e7c8e9f5a8b?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "previewUrl": "https://p.scdn.co/mp3-preview/f9b8c673c37df7ff5b0b2e8d09bd8e7c8e9f5a8b",
     "duration": 30,
     "lyrics": "The club isn't the best place to find a lover...",
+    "difficulty": "medium",
+    "popularity": 88,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Shape of You",
-        "points": 1
+        "points": 1,
+        "difficulty": "medium"
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Ed Sheeran",
-        "points": 2
+        "points": 2,
+        "difficulty": "easy"
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "2010s",
-        "points": 3
+        "points": 3,
+        "difficulty": "medium"
       },
       "lyrics": {
         "question": "Completa: 'The club isn't the best place...'",
         "answer": "to find a lover",
-        "points": 3
+        "points": 3,
+        "difficulty": "hard"
       },
       "challenge": {
-        "question": "Canta los siguientes 10 segundos",
-        "answer": "Completar canto",
+        "question": "Canta el coro completo",
+        "answer": "Cantar coro de Shape of You",
         "points": 5,
+        "difficulty": "medium",
         "challengeType": "sing"
       }
     }
@@ -122,39 +143,46 @@
   {
     "id": "004",
     "qrCode": "HITBACK_004",
-    "title": "Blinding Lights",
-    "artist": "The Weeknd",
-    "year": 2019,
-    "decade": "2010s",
-    "genre": "Synthpop",
-    "previewUrl": "https://p.scdn.co/mp3-preview/beed487079b9e26d49cedc5e3a7e46dba9e9c5b1?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "title": "Billie Jean",
+    "artist": "Michael Jackson",
+    "year": 1982,
+    "decade": "1980s",
+    "genre": "Pop",
+    "previewUrl": "https://p.scdn.co/mp3-preview/e3b1e5b1f5b6f5b1f5b6f5b1f5b6f5b1f5b6f5b1",
     "duration": 30,
-    "lyrics": "I've been tryna call, I've been on my own for long enough...",
+    "lyrics": "Billie Jean is not my lover...",
+    "difficulty": "medium",
+    "popularity": 92,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
-        "answer": "Blinding Lights",
-        "points": 1
+        "answer": "Billie Jean",
+        "points": 1,
+        "difficulty": "easy"
       },
       "artist": {
         "question": "¿Quién la canta?",
-        "answer": "The Weeknd",
-        "points": 2
+        "answer": "Michael Jackson",
+        "points": 2,
+        "difficulty": "easy"
       },
       "decade": {
         "question": "¿De qué década es?",
-        "answer": "2010s",
-        "points": 3
+        "answer": "1980s",
+        "points": 3,
+        "difficulty": "medium"
       },
       "lyrics": {
-        "question": "Completa: 'I've been tryna call...'",
-        "answer": "I've been on my own for long enough",
-        "points": 3
+        "question": "Completa: 'Billie Jean is not...'",
+        "answer": "my lover",
+        "points": 3,
+        "difficulty": "easy"
       },
       "challenge": {
-        "question": "Baila como en el video musical",
-        "answer": "Completar baile retro",
+        "question": "Haz el moonwalk como Michael Jackson",
+        "answer": "Completar moonwalk",
         "points": 5,
+        "difficulty": "expert",
         "challengeType": "dance"
       }
     }
@@ -162,40 +190,94 @@
   {
     "id": "005",
     "qrCode": "HITBACK_005",
-    "title": "Watermelon Sugar",
-    "artist": "Harry Styles",
-    "year": 2020,
-    "decade": "2020s",
-    "genre": "Pop Rock",
-    "previewUrl": "https://p.scdn.co/mp3-preview/d944c6c9f1c3c4f4e8f4c9c4c9c4c9c4c9c4c9c4?cid=162b7dc01f3a4a2ca32ed3cec83d1e02",
+    "title": "Stairway to Heaven",
+    "artist": "Led Zeppelin",
+    "year": 1971,
+    "decade": "1970s",
+    "genre": "Rock",
+    "previewUrl": "https://p.scdn.co/mp3-preview/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
     "duration": 30,
-    "lyrics": "Tastes like strawberries on a summer evenin'...",
+    "lyrics": "There's a lady who's sure all that glitters is gold...",
+    "difficulty": "expert",
+    "popularity": 85,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
-        "answer": "Watermelon Sugar",
-        "points": 1
+        "answer": "Stairway to Heaven",
+        "points": 1,
+        "difficulty": "hard"
       },
       "artist": {
         "question": "¿Quién la canta?",
-        "answer": "Harry Styles",
-        "points": 2
+        "answer": "Led Zeppelin",
+        "points": 2,
+        "difficulty": "medium"
       },
       "decade": {
         "question": "¿De qué década es?",
-        "answer": "2020s",
-        "points": 3
+        "answer": "1970s",
+        "points": 3,
+        "difficulty": "hard"
       },
       "lyrics": {
-        "question": "Completa: 'Tastes like strawberries...'",
-        "answer": "on a summer evenin'",
-        "points": 3
+        "question": "Completa: 'There's a lady who's sure...'",
+        "answer": "all that glitters is gold",
+        "points": 3,
+        "difficulty": "expert"
       },
       "challenge": {
-        "question": "Imita el estilo vocal de Harry Styles",
-        "answer": "Completar imitación vocal",
+        "question": "Imita el solo de guitarra final",
+        "answer": "Completar imitación de guitarra",
         "points": 5,
-        "challengeType": "sing"
+        "difficulty": "expert",
+        "challengeType": "performance"
+      }
+    }
+  },
+  {
+    "id": "006",
+    "qrCode": "HITBACK_006",
+    "title": "Macarena",
+    "artist": "Los Del Rio",
+    "year": 1993,
+    "decade": "1990s",
+    "genre": "Latin Pop",
+    "previewUrl": "https://p.scdn.co/mp3-preview/b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0a1",
+    "duration": 30,
+    "lyrics": "Dale a tu cuerpo alegría Macarena...",
+    "difficulty": "easy",
+    "popularity": 80,
+    "cardTypes": {
+      "song": {
+        "question": "¿Cuál es la canción?",
+        "answer": "Macarena",
+        "points": 1,
+        "difficulty": "easy"
+      },
+      "artist": {
+        "question": "¿Quién la canta?",
+        "answer": "Los Del Rio",
+        "points": 2,
+        "difficulty": "medium"
+      },
+      "decade": {
+        "question": "¿De qué década es?",
+        "answer": "1990s",
+        "points": 3,
+        "difficulty": "medium"
+      },
+      "lyrics": {
+        "question": "Completa: 'Dale a tu cuerpo alegría...'",
+        "answer": "Macarena",
+        "points": 3,
+        "difficulty": "easy"
+      },
+      "challenge": {
+        "question": "Baila la Macarena completa",
+        "answer": "Completar baile Macarena",
+        "points": 5,
+        "difficulty": "easy",
+        "challengeType": "dance"
       }
     }
   }
