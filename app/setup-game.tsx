@@ -1,19 +1,19 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  Alert,
-  FlatList,
-  StatusBar,
-  ScrollView,
-} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
 import { router } from 'expo-router';
-
+import React, { useState } from 'react';
+import {
+  Alert,
+  FlatList,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 export default function GameSetupScreen() {
   const { players, addPlayer, removePlayer, startGame } = useGameStore();
   const [playerName, setPlayerName] = useState('');
@@ -27,19 +27,19 @@ export default function GameSetupScreen() {
 
   const handleAddPlayer = () => {
     if (playerName.trim().length === 0) {
-      Alert.alert('Error', 'Ingresa un nombre válido');
+      Alert.alert('Error', 'Enter a valid name');
       return;
     }
 
     if (
       players.some((p) => p.name.toLowerCase() === playerName.toLowerCase())
     ) {
-      Alert.alert('Error', 'Ya existe un jugador con ese nombre');
+      Alert.alert('Error', 'Player with this name already exists');
       return;
     }
 
-    if (players.length >= 6) {
-      Alert.alert('Error', 'Máximo 6 jugadores permitidos');
+    if (players.length >= 8) {
+      Alert.alert('Error', 'Maximum 8 players allowed');
       return;
     }
 
@@ -49,7 +49,7 @@ export default function GameSetupScreen() {
 
   const handleStartGame = () => {
     if (players.length < 2) {
-      Alert.alert('Error', 'Se necesitan al menos 2 jugadores para empezar');
+      Alert.alert('Error', 'At least 2 players needed to start');
       return;
     }
 
@@ -57,7 +57,7 @@ export default function GameSetupScreen() {
       startGame();
       router.replace('/game');
     } catch (error) {
-      Alert.alert('Error', 'No se pudo iniciar el juego');
+      Alert.alert('Error', 'Could not start the game');
     }
   };
 
@@ -69,25 +69,34 @@ export default function GameSetupScreen() {
     index: number;
   }) => (
     <View style={styles.playerItem}>
+      <View style={styles.playerNumber}>
+        <Text style={styles.playerNumberText}>{index + 1}</Text>
+      </View>
+
       <View style={styles.playerInfo}>
-        <Text style={styles.playerNumber}>{index + 1}</Text>
         <Text style={styles.playerName}>{player.name}</Text>
         <View style={styles.playerStartingItems}>
           <View style={styles.startingItem}>
-            <Text style={styles.itemEmoji}>🪙</Text>
+            <IconSymbol
+              name='bitcoinsign.circle.fill'
+              size={14}
+              color='#F59E0B'
+            />
             <Text style={styles.itemCount}>5</Text>
           </View>
           <View style={styles.startingItem}>
-            <Text style={styles.itemEmoji}>⚡</Text>
+            <IconSymbol name='sparkles' size={14} color='#8B5CF6' />
             <Text style={styles.itemCount}>3</Text>
           </View>
         </View>
       </View>
+
       <TouchableOpacity
         style={styles.removeButton}
         onPress={() => removePlayer(player.id)}
+        activeOpacity={0.7}
       >
-        <IconSymbol name='trash' size={20} color='#E74C3C' />
+        <IconSymbol name='trash' size={18} color='#EF4444' />
       </TouchableOpacity>
     </View>
   );
@@ -96,10 +105,18 @@ export default function GameSetupScreen() {
     title: string,
     value: number | boolean,
     onPress: () => void,
-    unit?: string
+    unit?: string,
+    icon?: string
   ) => (
-    <TouchableOpacity style={styles.settingItem} onPress={onPress}>
-      <Text style={styles.settingTitle}>{title}</Text>
+    <TouchableOpacity
+      style={styles.settingItem}
+      onPress={onPress}
+      activeOpacity={0.8}
+    >
+      <View style={styles.settingLeft}>
+        {icon && <IconSymbol name={icon} size={20} color='#64748B' />}
+        <Text style={styles.settingTitle}>{title}</Text>
+      </View>
       <View style={styles.settingValue}>
         <Text style={styles.settingValueText}>
           {typeof value === 'boolean'
@@ -108,85 +125,101 @@ export default function GameSetupScreen() {
               : 'OFF'
             : `${value}${unit || ''}`}
         </Text>
-        <IconSymbol name='chevron.right' size={16} color='#666666' />
+        <IconSymbol name='chevron.right' size={16} color='#94A3B8' />
       </View>
     </TouchableOpacity>
   );
 
   return (
     <ScrollView style={styles.container}>
-      <StatusBar barStyle='dark-content' backgroundColor='#F8F9FA' />
+      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
 
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>🎵 HITBACK</Text>
-        <Text style={styles.subtitle}>Configuración del Juego</Text>
+        <Text style={styles.title}>HITBACK</Text>
+        <Text style={styles.subtitle}>Game Setup</Text>
       </View>
 
-      {/* Game Master Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>🎮 GAME MASTER</Text>
-        <View style={styles.gameMasterCard}>
-          <IconSymbol name='person.badge.key' size={32} color='#4ECDC4' />
-          <View style={styles.gameMasterInfo}>
-            <Text style={styles.gameMasterTitle}>Tú eres el Game Master</Text>
-            <Text style={styles.gameMasterDescription}>
-              Controlas el juego, escaneas cartas y decides ganadores
-            </Text>
+      <KeyboardAwareScrollView>
+        {/* Game Master Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <IconSymbol name='person.badge.key' size={20} color='#3B82F6' />
+            <Text style={styles.sectionTitle}>GAME MASTER</Text>
+          </View>
+          <View style={styles.gameMasterCard}>
+            <IconSymbol name='crown.fill' size={32} color='#3B82F6' />
+            <View style={styles.gameMasterInfo}>
+              <Text style={styles.gameMasterTitle}>
+                You are the Game Master
+              </Text>
+              <Text style={styles.gameMasterDescription}>
+                Control the game, scan cards and decide winners
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Players Section */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          👥 JUGADORES ({players.length}/6)
-        </Text>
+        {/* Players Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <IconSymbol name='person.3' size={20} color='#10B981' />
+            <Text style={styles.sectionTitle}>
+              PLAYERS ({players.length}/8)
+            </Text>
+          </View>
 
-        <View style={styles.addPlayerContainer}>
-          <TextInput
-            style={styles.playerInput}
-            placeholder='Nombre del jugador'
-            value={playerName}
-            onChangeText={setPlayerName}
-            onSubmitEditing={handleAddPlayer}
-            maxLength={15}
+          <View style={styles.addPlayerContainer}>
+            <TextInput
+              style={styles.playerInput}
+              placeholder='Player name'
+              placeholderTextColor='#64748B'
+              value={playerName}
+              onChangeText={setPlayerName}
+              onSubmitEditing={handleAddPlayer}
+              maxLength={15}
+            />
+            <TouchableOpacity
+              style={styles.addPlayerButton}
+              onPress={handleAddPlayer}
+              activeOpacity={0.8}
+            >
+              <IconSymbol name='plus' size={20} color='#FFFFFF' />
+            </TouchableOpacity>
+          </View>
+
+          <FlatList
+            data={players}
+            keyExtractor={(item) => item.id}
+            renderItem={renderPlayer}
+            style={styles.playersList}
+            scrollEnabled={false}
+            showsVerticalScrollIndicator={false}
           />
-          <TouchableOpacity
-            style={styles.addPlayerButton}
-            onPress={handleAddPlayer}
-          >
-            <IconSymbol name='plus' size={24} color='#FFFFFF' />
-          </TouchableOpacity>
+
+          {players.length === 0 && (
+            <View style={styles.emptyPlayersContainer}>
+              <IconSymbol name='person.3' size={48} color='#475569' />
+              <Text style={styles.emptyPlayersText}>
+                Add players to get started
+              </Text>
+            </View>
+          )}
         </View>
-
-        <FlatList
-          data={players}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPlayer}
-          style={styles.playersList}
-          scrollEnabled={false}
-        />
-
-        {players.length === 0 && (
-          <View style={styles.emptyPlayersContainer}>
-            <IconSymbol name='person.3' size={48} color='#CCCCCC' />
-            <Text style={styles.emptyPlayersText}>
-              Agrega jugadores para empezar
-            </Text>
-          </View>
-        )}
-      </View>
+      </KeyboardAwareScrollView>
 
       {/* Game Settings */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>⚙️ CONFIGURACIÓN</Text>
+        <View style={styles.sectionHeader}>
+          <IconSymbol name='gear' size={20} color='#8B5CF6' />
+          <Text style={styles.sectionTitle}>SETTINGS</Text>
+        </View>
 
         {renderGameSetting(
-          'Tiempo de juego',
+          'Game Duration',
           gameSettings.timeLimit,
           () => {
-            Alert.alert('Tiempo de juego', 'Selecciona la duración', [
+            Alert.alert('Game Duration', 'Select duration', [
               {
                 text: '15 min',
                 onPress: () =>
@@ -202,78 +235,129 @@ export default function GameSetupScreen() {
                 onPress: () =>
                   setGameSettings((s) => ({ ...s, timeLimit: 30 })),
               },
-              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Cancel', style: 'cancel' },
             ]);
           },
-          ' min'
+          ' min',
+          'clock'
         )}
 
         {renderGameSetting(
-          'Puntos para ganar',
+          'Points to Win',
           gameSettings.winCondition,
           () => {
-            Alert.alert(
-              'Puntos para ganar',
-              'Selecciona los puntos necesarios',
-              [
-                {
-                  text: '10 pts',
-                  onPress: () =>
-                    setGameSettings((s) => ({ ...s, winCondition: 10 })),
-                },
-                {
-                  text: '15 pts',
-                  onPress: () =>
-                    setGameSettings((s) => ({ ...s, winCondition: 15 })),
-                },
-                {
-                  text: '20 pts',
-                  onPress: () =>
-                    setGameSettings((s) => ({ ...s, winCondition: 20 })),
-                },
-                { text: 'Cancelar', style: 'cancel' },
-              ]
-            );
+            Alert.alert('Points to Win', 'Select required points', [
+              {
+                text: '10 pts',
+                onPress: () =>
+                  setGameSettings((s) => ({ ...s, winCondition: 10 })),
+              },
+              {
+                text: '15 pts',
+                onPress: () =>
+                  setGameSettings((s) => ({ ...s, winCondition: 15 })),
+              },
+              {
+                text: '20 pts',
+                onPress: () =>
+                  setGameSettings((s) => ({ ...s, winCondition: 20 })),
+              },
+              { text: 'Cancel', style: 'cancel' },
+            ]);
           },
-          ' pts'
+          ' pts',
+          'trophy'
         )}
 
         {renderGameSetting(
-          'Cartas de Poder',
+          'Power Cards',
           gameSettings.enablePowerCards,
           () =>
             setGameSettings((s) => ({
               ...s,
               enablePowerCards: !s.enablePowerCards,
-            }))
+            })),
+          undefined,
+          'sparkles'
         )}
 
         {renderGameSetting(
-          'Sistema de Apuestas',
+          'Betting System',
           gameSettings.enableBetting,
           () =>
-            setGameSettings((s) => ({ ...s, enableBetting: !s.enableBetting }))
+            setGameSettings((s) => ({
+              ...s,
+              enableBetting: !s.enableBetting,
+            })),
+          undefined,
+          'dice.fill'
         )}
 
-        {renderGameSetting('Combos', gameSettings.enableCombos, () =>
-          setGameSettings((s) => ({ ...s, enableCombos: !s.enableCombos }))
+        {renderGameSetting(
+          'Combo System',
+          gameSettings.enableCombos,
+          () =>
+            setGameSettings((s) => ({ ...s, enableCombos: !s.enableCombos })),
+          undefined,
+          'flame.fill'
         )}
       </View>
 
       {/* Game Rules Summary */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>📋 RESUMEN</Text>
+        <View style={styles.sectionHeader}>
+          <IconSymbol name='list.clipboard' size={20} color='#F59E0B' />
+          <Text style={styles.sectionTitle}>HOW TO PLAY</Text>
+        </View>
         <View style={styles.rulesCard}>
-          <Text style={styles.rulesTitle}>¿Cómo jugar?</Text>
-          <Text style={styles.rulesText}>
-            • Cada jugador empieza con 5 tokens 🪙 y 3 cartas de poder ⚡{'\n'}•
-            Game Master escanea cartas QR musicales{'\n'}• Suena audio por 5
-            segundos, luego aparece pregunta{'\n'}• Los jugadores compiten
-            gritando la respuesta{'\n'}• Gana puntos: 🎵 Canción (1pt), 🎤
-            Artista (2pts), 📅 Década (3pts){'\n'}• Puedes apostar tokens para
-            multiplicar puntos{'\n'}• ¡Primer jugador en{' '}
-            {gameSettings.winCondition} puntos gana!
-          </Text>
+          <View style={styles.ruleItem}>
+            <View style={styles.ruleIcon}>
+              <IconSymbol
+                name='bitcoinsign.circle.fill'
+                size={16}
+                color='#F59E0B'
+              />
+            </View>
+            <Text style={styles.ruleText}>
+              Each player starts with 5 tokens and 3 power cards
+            </Text>
+          </View>
+
+          <View style={styles.ruleItem}>
+            <View style={styles.ruleIcon}>
+              <IconSymbol name='qrcode.viewfinder' size={16} color='#3B82F6' />
+            </View>
+            <Text style={styles.ruleText}>
+              Game Master scans QR music cards
+            </Text>
+          </View>
+
+          <View style={styles.ruleItem}>
+            <View style={styles.ruleIcon}>
+              <IconSymbol name='speaker.wave.3' size={16} color='#10B981' />
+            </View>
+            <Text style={styles.ruleText}>
+              Audio plays for 5 seconds, then question appears
+            </Text>
+          </View>
+
+          <View style={styles.ruleItem}>
+            <View style={styles.ruleIcon}>
+              <IconSymbol name='person.3' size={16} color='#8B5CF6' />
+            </View>
+            <Text style={styles.ruleText}>
+              Players compete by shouting the answer
+            </Text>
+          </View>
+
+          <View style={styles.ruleItem}>
+            <View style={styles.ruleIcon}>
+              <IconSymbol name='trophy' size={16} color='#EF4444' />
+            </View>
+            <Text style={styles.ruleText}>
+              First player to reach {gameSettings.winCondition} points wins!
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -286,15 +370,14 @@ export default function GameSetupScreen() {
           ]}
           onPress={handleStartGame}
           disabled={players.length < 2}
+          activeOpacity={0.9}
         >
-          <IconSymbol name='play.circle.fill' size={32} color='#FFFFFF' />
-          <Text style={styles.startGameText}>INICIAR JUEGO</Text>
+          <IconSymbol name='play.circle.fill' size={28} color='#FFFFFF' />
+          <Text style={styles.startGameText}>START GAME</Text>
         </TouchableOpacity>
 
         {players.length < 2 && (
-          <Text style={styles.minPlayersText}>
-            Necesitas al menos 2 jugadores
-          </Text>
+          <Text style={styles.minPlayersText}>You need at least 2 players</Text>
         )}
       </View>
     </ScrollView>
@@ -304,84 +387,104 @@ export default function GameSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#0F172A',
   },
+
+  // Header
   header: {
     alignItems: 'center',
     paddingTop: 60,
-    paddingBottom: 30,
-    backgroundColor: '#FFFFFF',
+    paddingBottom: 40,
+    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   title: {
-    fontSize: 36,
-    fontWeight: '900',
-    color: '#1A1A2E',
-    marginBottom: 5,
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#F8FAFC',
+    marginBottom: 8,
+    letterSpacing: 1,
   },
   subtitle: {
     fontSize: 16,
-    color: '#666666',
+    color: '#64748B',
     fontWeight: '500',
   },
+
+  // Sections
   section: {
-    margin: 15,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 15,
+    margin: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#1A1A2E',
-    marginBottom: 15,
+    color: '#F8FAFC',
+    marginLeft: 8,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
+
+  // Game Master
   gameMasterCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F0F9FF',
-    padding: 15,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: 16,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
   },
   gameMasterInfo: {
-    marginLeft: 15,
+    marginLeft: 16,
     flex: 1,
   },
   gameMasterTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A2E',
-    marginBottom: 3,
+    color: '#F8FAFC',
+    marginBottom: 4,
   },
   gameMasterDescription: {
     fontSize: 14,
-    color: '#666666',
+    color: '#94A3B8',
+    lineHeight: 20,
   },
+
+  // Players
   addPlayerContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 16,
+    gap: 12,
   },
   playerInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#DDDDDD',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
-    paddingHorizontal: 15,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    color: '#F8FAFC',
   },
   addPlayerButton: {
-    backgroundColor: '#4ECDC4',
-    marginLeft: 10,
-    paddingHorizontal: 15,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 16,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    minWidth: 48,
   },
   playersList: {
     maxHeight: 300,
@@ -389,49 +492,60 @@ const styles = StyleSheet.create({
   playerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 12,
     borderRadius: 12,
-    marginBottom: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  playerNumber: {
+    width: 32,
+    height: 32,
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  playerNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   playerInfo: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  playerNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#4ECDC4',
-    marginRight: 15,
-    minWidth: 25,
-    textAlign: 'center',
+    justifyContent: 'space-between',
   },
   playerName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#1A1A2E',
+    color: '#F8FAFC',
     flex: 1,
   },
   playerStartingItems: {
     flexDirection: 'row',
+    gap: 12,
   },
   startingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginLeft: 10,
-  },
-  itemEmoji: {
-    fontSize: 16,
-    marginRight: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   itemCount: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#666666',
+    color: '#E2E8F0',
+    marginLeft: 4,
   },
   removeButton: {
-    padding: 5,
+    padding: 8,
+    marginLeft: 8,
   },
   emptyPlayersContainer: {
     alignItems: 'center',
@@ -439,76 +553,109 @@ const styles = StyleSheet.create({
   },
   emptyPlayersText: {
     fontSize: 16,
-    color: '#CCCCCC',
-    marginTop: 10,
+    color: '#64748B',
+    marginTop: 12,
+    fontWeight: '500',
   },
+
+  // Settings
   settingItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   settingTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#1A1A2E',
+    color: '#F8FAFC',
+    marginLeft: 12,
   },
   settingValue: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   settingValueText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#4ECDC4',
-    marginRight: 5,
-  },
-  rulesCard: {
-    backgroundColor: '#F0F9FF',
-    padding: 15,
-    borderRadius: 12,
-  },
-  rulesTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A2E',
-    marginBottom: 10,
-  },
-  rulesText: {
     fontSize: 14,
-    color: '#666666',
-    lineHeight: 20,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginRight: 8,
   },
+
+  // Rules
+  rulesCard: {
+    backgroundColor: 'rgba(245, 158, 11, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.2)',
+  },
+  ruleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  ruleIcon: {
+    width: 32,
+    height: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  ruleText: {
+    fontSize: 14,
+    color: '#CBD5E1',
+    lineHeight: 20,
+    flex: 1,
+  },
+
+  // Start Game
   startGameContainer: {
-    padding: 20,
+    padding: 24,
     alignItems: 'center',
   },
   startGameButton: {
-    backgroundColor: '#4ECDC4',
+    backgroundColor: '#3B82F6',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 40,
-    borderRadius: 25,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
     width: '100%',
-    marginBottom: 10,
+    marginBottom: 12,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
   },
   disabledStartButton: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: '#475569',
     opacity: 0.6,
+    shadowOpacity: 0,
+    elevation: 0,
   },
   startGameText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginLeft: 10,
+    marginLeft: 12,
+    letterSpacing: 0.5,
   },
   minPlayersText: {
     fontSize: 14,
-    color: '#E74C3C',
+    color: '#EF4444',
     textAlign: 'center',
+    fontWeight: '500',
   },
 });

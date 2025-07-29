@@ -1,163 +1,216 @@
 import { Audio } from 'expo-av';
-import { AudioPlayback } from '@/types/game.types';
+
+// 🔧 CHANGE THIS TO YOUR SERVER IP
+const SERVER_URL = 'http://192.168.1.10:3000'; // ✅ TU IP
 
 class AudioService {
   private sound: Audio.Sound | null = null;
-  private isPlaying = false;
-  private currentUrl: string | null = null;
-  private playbackTimer: NodeJS.Timeout | null = null;
+  private isInitialized: boolean = false;
 
   async initializeAudio() {
     try {
-      // Configuración mínima y segura
+      if (this.isInitialized) return;
+
       await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
       });
-      console.log('✅ Audio service initialized successfully');
+
+      this.isInitialized = true;
+      console.log('✅ Audio initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize audio service:', error);
-      // No lanzar error, continuar sin audio si es necesario
+      console.error('❌ Audio initialization failed:', error);
+      throw error;
     }
   }
 
-  // Play track preview for 5 seconds
-  async playTrackPreview(
-    url: string,
-    duration: number = 5000,
-    onComplete?: () => void
-  ): Promise<void> {
+  // 🎵 MAIN FUNCTION: Scan QR and get card with audio
+  async scanQRAndPlay(qrCode: string) {
     try {
-      await this.stopAudio();
+      console.log(`🔍 Scanning QR: ${qrCode}`);
 
-      if (!url) {
-        throw new Error('URL de audio no proporcionada');
+      // Llamada al backend
+      const response = await fetch(`${SERVER_URL}/api/qr/scan/${qrCode}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || `HTTP ${response.status}`);
       }
 
-      console.log(`🎵 Playing track preview: ${url}`);
+      const data = await response.json();
 
-      // Crear y cargar sonido
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        {
-          shouldPlay: true,
-          isLooping: false,
-          volume: 1.0,
+      if (!data.success) {
+        throw new Error(data.error?.message || 'QR scan failed');
+      }
+
+      console.log(`✅ QR scan success: ${data.data.track.title}`);
+
+      // 🎵 Reproducir audio si está disponible
+      if (data.data.audio.hasAudio && data.data.audio.url) {
+        try {
+          // ✅ CORRECCIÓN: duration ya viene en segundos desde el backend
+          await this.playAudio(
+            data.data.audio.url,
+            data.data.audio.duration * 1000 // Convertir a milisegundos
+          );
+          console.log('🎵 Audio playing successfully');
+        } catch (audioError) {
+          console.warn(
+            '⚠️ Audio playback failed, but QR scan succeeded:',
+            audioError
+          );
         }
+      } else {
+        console.warn('⚠️ No audio available for this track');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('❌ QR scan error:', error);
+      throw error;
+    }
+  }
+
+  // 🎵 Play audio from your backend
+  async playAudio(audioUrl: string, duration: number = 5000) {
+    try {
+      if (!this.isInitialized) {
+        await this.initializeAudio();
+      }
+
+      await this.stopAudio();
+
+      console.log(`🎵 Playing audio: ${audioUrl}`);
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioUrl },
+        { shouldPlay: true, volume: 1.0 }
       );
 
       this.sound = sound;
-      this.currentUrl = url;
-      this.isPlaying = true;
 
-      // Auto-stop después del tiempo especificado
-      this.playbackTimer = setTimeout(async () => {
+      // Auto stop after duration
+      setTimeout(async () => {
         await this.stopAudio();
-        onComplete?.();
+        console.log('⏹️ Audio finished automatically');
       }, duration);
     } catch (error) {
-      console.error('❌ Error playing audio:', error);
-      this.isPlaying = false;
-      // No lanzar error, mostrar mensaje en UI
-      throw new Error(
-        'No se pudo reproducir el audio. Verifica tu conexión a internet.'
-      );
+      console.error('❌ Audio play error:', error);
+      throw new Error('No se pudo reproducir el audio');
     }
   }
 
-  // Stop audio immediately
-  async stopAudio(): Promise<void> {
+  async stopAudio() {
     try {
-      if (this.playbackTimer) {
-        clearTimeout(this.playbackTimer);
-        this.playbackTimer = null;
-      }
-
       if (this.sound) {
         await this.sound.stopAsync();
         await this.sound.unloadAsync();
         this.sound = null;
       }
-
-      this.isPlaying = false;
-      this.currentUrl = null;
-      console.log('🔇 Audio stopped');
     } catch (error) {
       console.error('❌ Error stopping audio:', error);
-      // Reset state even if there's an error
-      this.sound = null;
-      this.isPlaying = false;
-      this.currentUrl = null;
     }
   }
 
-  // Pause/Resume functionality
-  async pauseAudio(): Promise<void> {
+  isPlaying(): boolean {
+    return this.sound !== null;
+  }
+
+  // 🧪 Test backend connection
+  async testConnection(): Promise<boolean> {
     try {
-      if (this.sound && this.isPlaying) {
-        await this.sound.pauseAsync();
-        this.isPlaying = false;
+      console.log(`🧪 Testing connection to: ${SERVER_URL}`);
+
+      const response = await fetch(`${SERVER_URL}/api/health`, {
+        method: 'GET',
+        headers: {
+          Accept: 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.error(`❌ Backend responded with status: ${response.status}`);
+        return false;
       }
+
+      const data = await response.json();
+      const isConnected = data.success && data.data?.status === 'healthy';
+
+      console.log(
+        isConnected
+          ? '✅ Backend connected'
+          : '❌ Backend not responding properly'
+      );
+      return isConnected;
     } catch (error) {
-      console.error('Error pausing audio:', error);
-    }
-  }
-
-  async resumeAudio(): Promise<void> {
-    try {
-      if (this.sound && !this.isPlaying) {
-        await this.sound.playAsync();
-        this.isPlaying = true;
-      }
-    } catch (error) {
-      console.error('Error resuming audio:', error);
-    }
-  }
-
-  // Set volume
-  async setVolume(volume: number): Promise<void> {
-    try {
-      if (this.sound) {
-        await this.sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
-      }
-    } catch (error) {
-      console.error('Error setting volume:', error);
-    }
-  }
-
-  // Get current playback status
-  getCurrentStatus(): { isPlaying: boolean; currentUrl: string | null } {
-    return {
-      isPlaying: this.isPlaying,
-      currentUrl: this.currentUrl,
-    };
-  }
-
-  // Play sound effect for UI interactions (disabled until files are available)
-  async playSoundEffect(
-    type: 'success' | 'error' | 'scan' | 'combo'
-  ): Promise<void> {
-    // TODO: Implementar cuando tengamos los archivos de audio
-    console.log(`🔊 Sound effect: ${type} (disabled - files not available)`);
-  }
-
-  // Clean up resources
-  async cleanup(): Promise<void> {
-    await this.stopAudio();
-  }
-
-  // Test audio functionality with a sample URL
-  async testAudio(): Promise<boolean> {
-    try {
-      const testUrl =
-        'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav';
-      await this.playTrackPreview(testUrl, 2000);
-      return true;
-    } catch (error) {
-      console.error('Audio test failed:', error);
+      console.error('❌ Connection test failed:', error);
       return false;
     }
+  }
+
+  // 🔍 Validate QR code format
+  async validateQRCode(qrCode: string): Promise<boolean> {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/qr/validate/${qrCode}`);
+      const data = await response.json();
+      return data.success && data.data.isValid;
+    } catch (error) {
+      console.error('❌ Failed to validate QR:', error);
+      return false;
+    }
+  }
+
+  // 🎵 Get all available tracks
+  async getAllTracks(): Promise<any[]> {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/tracks`);
+      const data = await response.json();
+      return data.success ? data.data : [];
+    } catch (error) {
+      console.error('❌ Failed to get tracks:', error);
+      return [];
+    }
+  }
+
+  // 🎯 Get audio diagnostics
+  async getAudioDiagnostics(): Promise<any> {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/audio/diagnostics`);
+      const data = await response.json();
+      return data.success ? data.data : null;
+    } catch (error) {
+      console.error('❌ Failed to get audio diagnostics:', error);
+      return null;
+    }
+  }
+
+  getServerUrl(): string {
+    return SERVER_URL;
+  }
+
+  // 📱 Get server info for debugging
+  async getServerInfo(): Promise<any> {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/health/detailed`);
+      const data = await response.json();
+      return data.success ? data.data : null;
+    } catch (error) {
+      console.error('❌ Failed to get server info:', error);
+      return null;
+    }
+  }
+
+  async cleanup() {
+    await this.stopAudio();
+    this.isInitialized = false;
   }
 }
 

@@ -1,117 +1,216 @@
-import { Track, GameCard, Difficulty, PowerCard } from '@/types/game.types';
-import tracksData from '@/data/tracks.json';
-import powerCards from '@/data/powerCards.json';
+import { audioService } from './audioService';
 
-class CardService {
-  private tracks: Track[] = tracksData;
-  private difficultyWeights = {
-    easy: 0.4,
-    medium: 0.3,
-    hard: 0.2,
-    expert: 0.1,
+// 🎮 Game Card Interface - Aligned with Backend Response
+interface GameCard {
+  // QR and scan info
+  qrCode: string;
+  trackId: string;
+  cardType: 'song' | 'artist' | 'decade' | 'lyrics' | 'challenge';
+  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
+  points: number;
+
+  // Question data
+  question: string;
+  answer: string;
+  challengeType?: string | null;
+  hints: string[];
+
+  // Track info
+  track: {
+    id: string;
+    title: string;
+    artist: string;
+    album?: string;
+    year: number;
+    genre: string;
+    decade: string;
   };
 
-  // Get card by QR code
+  // Audio info
+  audio: {
+    url: string | null;
+    hasAudio: boolean;
+    duration: number; // in seconds
+    source: 'local' | 'none';
+  };
+
+  // Metadata
+  timestamp: string;
+}
+
+/**
+ * 🎵 Card Service - Backend-First Architecture
+ *
+ * Simplified service that works directly with the backend
+ * through audioService, providing a clean interface for the game logic.
+ */
+class CardService {
+  /**
+   * 🔍 Get card by QR code - Main method for the game
+   * This is the primary method your game components should use
+   */
   async getCardByQR(qrCode: string): Promise<GameCard | null> {
     try {
-      const track = this.tracks.find((t) => t.qrCode === qrCode);
-      if (!track) return null;
+      console.log(`🔍 CardService: Processing QR: ${qrCode}`);
 
-      // Determine card type and difficulty based on QR pattern
-      const cardInfo = this.parseQRCode(qrCode);
-      const cardType = cardInfo.type;
-      const difficulty = cardInfo.difficulty;
+      // Validate QR format before making backend call
+      if (!this.isValidQRFormat(qrCode)) {
+        console.error(`❌ Invalid QR format: ${qrCode}`);
+        return null;
+      }
 
-      const cardTypeData = track.cardTypes[cardType];
-      if (!cardTypeData) return null;
+      // Get data from backend via audioService
+      const backendResponse = await audioService.scanQRAndPlay(qrCode);
 
-      return {
-        track,
-        cardType,
-        points: this.calculatePoints(cardType, difficulty),
-        question: cardTypeData.question,
-        answer: cardTypeData.answer,
-        difficulty,
-      };
+      if (!backendResponse.success) {
+        console.error('❌ Backend returned error:', backendResponse.error);
+        return null;
+      }
+
+      // Transform backend response to GameCard format
+      const gameCard = this.transformBackendResponse(backendResponse.data);
+
+      console.log('✅ CardService: Game card created:', gameCard);
+      return gameCard;
     } catch (error) {
-      console.error('Error getting card by QR:', error);
+      console.error('❌ CardService: Failed to get card:', error);
       return null;
     }
   }
 
-  // Parse QR code to extract card type and difficulty
-  private parseQRCode(qrCode: string): {
-    type: keyof Track['cardTypes'];
-    difficulty: Difficulty;
-  } {
-    // QR Format: HITBACK_XXX_TYPE_DIFFICULTY
-    // Examples:
-    // HITBACK_001_SONG_EASY
-    // HITBACK_002_ARTIST_HARD
-    // HITBACK_003_DECADE_EXPERT
+  /**
+   * 🔄 Transform backend response to consistent GameCard format
+   */
+  private transformBackendResponse(data: any): GameCard {
+    return {
+      // QR and scan info
+      qrCode: data.qrCode,
+      trackId: data.scan.trackId,
+      cardType: data.scan.cardType,
+      difficulty: data.scan.difficulty,
+      points: data.scan.points,
 
-    const parts = qrCode.split('_');
+      // Question data
+      question: data.question.text,
+      answer: data.question.answer,
+      challengeType: data.question.challengeType,
+      hints: data.question.hints || [],
 
-    let type: keyof Track['cardTypes'] = 'song'; // default
-    let difficulty: Difficulty = 'medium'; // default
+      // Track info
+      track: {
+        id: data.track.id,
+        title: data.track.title,
+        artist: data.track.artist,
+        album: data.track.album || '',
+        year: data.track.year,
+        genre: data.track.genre,
+        decade: data.track.decade,
+      },
 
-    if (parts.length >= 4) {
-      const typeStr = parts[2].toLowerCase();
-      const diffStr = parts[3].toLowerCase();
+      // Audio info
+      audio: {
+        url: data.audio.url,
+        hasAudio: data.audio.hasAudio,
+        duration: data.audio.duration, // Already in seconds from backend
+        source: data.audio.source as 'local' | 'none',
+      },
 
-      // Map card types
-      switch (typeStr) {
-        case 'song':
-          type = 'song';
-          break;
-        case 'artist':
-          type = 'artist';
-          break;
-        case 'decade':
-          type = 'decade';
-          break;
-        case 'lyrics':
-          type = 'lyrics';
-          break;
-        case 'challenge':
-          type = 'challenge';
-          break;
-        default:
-          type = 'song';
-      }
-
-      // Map difficulties
-      switch (diffStr) {
-        case 'easy':
-          difficulty = 'easy';
-          break;
-        case 'medium':
-          difficulty = 'medium';
-          break;
-        case 'hard':
-          difficulty = 'hard';
-          break;
-        case 'expert':
-          difficulty = 'expert';
-          break;
-        default:
-          difficulty = 'medium';
-      }
-    } else {
-      // Fallback: Determine by card emoji/color pattern
-      type = this.getCardTypeByPattern(qrCode);
-      difficulty = this.getDifficultyByPattern(qrCode);
-    }
-
-    return { type, difficulty };
+      // Metadata
+      timestamp: data.game.timestamp,
+    };
   }
 
-  // Calculate points based on card type and difficulty
-  private calculatePoints(
-    cardType: keyof Track['cardTypes'],
-    difficulty: Difficulty
-  ): number {
-    const basePoints = {
+  /**
+   * 🔍 Validate QR code format locally (quick check)
+   */
+  isValidQRFormat(qrCode: string): boolean {
+    try {
+      // Format: HITBACK_ID_TYPE_DIFFICULTY
+      if (!qrCode.startsWith('HITBACK_')) {
+        return false;
+      }
+
+      const parts = qrCode.split('_');
+      if (parts.length !== 4) {
+        return false;
+      }
+
+      const [prefix, trackId, cardType, difficulty] = parts;
+
+      // Validate parts
+      if (prefix !== 'HITBACK') return false;
+      if (!/^\d{3}$/.test(trackId)) return false; // 3-digit track ID
+      if (!this.isValidCardType(cardType.toLowerCase())) return false;
+      if (!this.isValidDifficulty(difficulty.toLowerCase())) return false;
+
+      return true;
+    } catch (error) {
+      console.error('Error validating QR format:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 🔍 Validate QR code with backend (comprehensive check)
+   */
+  async validateQRCode(qrCode: string): Promise<boolean> {
+    try {
+      // Quick local check first
+      if (!this.isValidQRFormat(qrCode)) {
+        return false;
+      }
+
+      // Backend validation
+      return await audioService.validateQRCode(qrCode);
+    } catch (error) {
+      console.error('Error validating QR code:', error);
+      return false;
+    }
+  }
+
+  /**
+   * 🎯 Parse QR code components
+   */
+  parseQRCode(qrCode: string): {
+    trackId: string;
+    cardType: string;
+    difficulty: string;
+  } | null {
+    try {
+      if (!this.isValidQRFormat(qrCode)) {
+        return null;
+      }
+
+      const parts = qrCode.split('_');
+      return {
+        trackId: parts[1],
+        cardType: parts[2].toLowerCase(),
+        difficulty: parts[3].toLowerCase(),
+      };
+    } catch (error) {
+      console.error('Error parsing QR code:', error);
+      return null;
+    }
+  }
+
+  /**
+   * 🎯 Generate QR code (for testing purposes)
+   */
+  generateQRCode(
+    trackId: string,
+    cardType: string,
+    difficulty: string
+  ): string {
+    const paddedId = trackId.padStart(3, '0');
+    return `HITBACK_${paddedId}_${cardType.toUpperCase()}_${difficulty.toUpperCase()}`;
+  }
+
+  /**
+   * 📊 Calculate points based on card type and difficulty
+   * (Should match backend calculation)
+   */
+  calculatePoints(cardType: string, difficulty: string): number {
+    const basePoints: Record<string, number> = {
       song: 1,
       artist: 2,
       decade: 3,
@@ -119,192 +218,91 @@ class CardService {
       challenge: 5,
     };
 
-    const difficultyMultiplier = {
+    const difficultyMultiplier: Record<string, number> = {
       easy: 1,
       medium: 1.5,
       hard: 2,
       expert: 3,
     };
 
-    return Math.round(basePoints[cardType] * difficultyMultiplier[difficulty]);
+    return Math.round(
+      (basePoints[cardType] || 1) * (difficultyMultiplier[difficulty] || 1)
+    );
   }
 
-  // Get card type by QR pattern (fallback method)
-  private getCardTypeByPattern(qrCode: string): keyof Track['cardTypes'] {
-    const num = parseInt(qrCode.replace(/\D/g, ''));
-    const types: Array<keyof Track['cardTypes']> = [
-      'song',
-      'artist',
-      'decade',
-      'lyrics',
-      'challenge',
-    ];
-    return types[num % types.length];
+  /**
+   * 📅 Calculate decade from year
+   */
+  calculateDecade(year: number): string {
+    if (!year || isNaN(year)) return 'Unknown';
+    const decade = Math.floor(year / 10) * 10;
+    return `${decade}s`;
   }
 
-  // Get difficulty by pattern (fallback method)
-  private getDifficultyByPattern(qrCode: string): Difficulty {
-    const num = parseInt(qrCode.replace(/\D/g, ''));
-    const difficulties: Difficulty[] = ['easy', 'medium', 'hard', 'expert'];
-    return difficulties[num % difficulties.length];
+  /**
+   * 🔍 Valid card types (must match backend)
+   */
+  private isValidCardType(cardType: string): boolean {
+    const validTypes = ['song', 'artist', 'decade', 'lyrics', 'challenge'];
+    return validTypes.includes(cardType);
   }
 
-  // Check if player should receive reward based on difficulty
-  shouldReceiveReward(difficulty: Difficulty): {
-    powerCard: boolean;
-    bonusTokens: number;
-  } {
-    const thresholds = {
-      easy: { powerCardChance: 0.1, bonusTokenChance: 0.2 },
-      medium: { powerCardChance: 0.2, bonusTokenChance: 0.3 },
-      hard: { powerCardChance: 0.4, bonusTokenChance: 0.5 },
-      expert: { powerCardChance: 0.6, bonusTokenChance: 0.7 },
-    };
-
-    const threshold = thresholds[difficulty];
-    const powerCard = Math.random() < threshold.powerCardChance;
-    const bonusTokens =
-      Math.random() < threshold.bonusTokenChance
-        ? this.getBonusTokensByDifficulty(difficulty)
-        : 0;
-
-    return { powerCard, bonusTokens };
+  /**
+   * 🔍 Valid difficulties (must match backend)
+   */
+  private isValidDifficulty(difficulty: string): boolean {
+    const validDifficulties = ['easy', 'medium', 'hard', 'expert'];
+    return validDifficulties.includes(difficulty);
   }
 
-  private getBonusTokensByDifficulty(difficulty: Difficulty): number {
-    switch (difficulty) {
-      case 'easy':
-        return 1;
-      case 'medium':
-        return 1;
-      case 'hard':
-        return 2;
-      case 'expert':
-        return 3;
-      default:
-        return 0;
-    }
-  }
-
-  // Get random power card for rewards
-  getRandomPowerCard(): PowerCard {
-    const availableCards = powerCards.powerCards;
-    const randomIndex = Math.floor(Math.random() * availableCards.length);
-    const card = availableCards[randomIndex];
-
-    return {
-      ...card,
-      id: `${card.id}_${Date.now()}_${Math.random()}`,
-      currentUses: 0,
-    };
-  }
-
-  // Generate QR codes for physical cards
-  generateQRCode(
-    trackId: string,
-    cardType: keyof Track['cardTypes'],
-    difficulty: Difficulty
-  ): string {
-    const paddedId = trackId.padStart(3, '0');
-    return `HITBACK_${paddedId}_${cardType.toUpperCase()}_${difficulty.toUpperCase()}`;
-  }
-
-  // Get all tracks for card generation
-  getAllTracks(): Track[] {
-    return this.tracks;
-  }
-
-  // Get track by ID
-  getTrackById(id: string): Track | null {
-    return this.tracks.find((t) => t.id === id) || null;
-  }
-
-  // Validate QR code format
-  isValidQRCode(qrCode: string): boolean {
-    const qrPattern = /^HITBACK_\d{3}(_[A-Z]+_[A-Z]+)?$/;
-    return qrPattern.test(qrCode);
-  }
-
-  // Get card type emoji for UI
-  getCardTypeEmoji(cardType: keyof Track['cardTypes']): string {
-    const emojis = {
+  /**
+   * 🎨 Get card type emoji for UI
+   */
+  getCardTypeEmoji(cardType: string): string {
+    const emojis: Record<string, string> = {
       song: '🎵',
       artist: '🎤',
       decade: '📅',
       lyrics: '📝',
       challenge: '🔥',
     };
-    return emojis[cardType];
+    return emojis[cardType] || '🎵';
   }
 
-  // Get difficulty color for UI
-  getDifficultyColor(difficulty: Difficulty): string {
-    const colors = {
-      easy: '#27AE60',
-      medium: '#F39C12',
-      hard: '#E74C3C',
-      expert: '#9B59B6',
+  /**
+   * 🎨 Get card type color for UI
+   */
+  getCardTypeColor(cardType: string): string {
+    const colors: Record<string, string> = {
+      song: '#F59E0B', // Yellow
+      artist: '#EF4444', // Red
+      decade: '#3B82F6', // Blue
+      lyrics: '#10B981', // Green
+      challenge: '#8B5CF6', // Purple
     };
-    return colors[difficulty];
+    return colors[cardType] || '#6B7280';
   }
 
-  // Generate cards for printing (physical cards)
-  generateCardsForPrinting(): Array<{
-    qrCode: string;
-    track: Track;
-    cardType: keyof Track['cardTypes'];
-    difficulty: Difficulty;
-    emoji: string;
-    color: string;
-    points: number;
-  }> {
-    const cards: any[] = [];
-
-    this.tracks.forEach((track) => {
-      const cardTypes: Array<keyof Track['cardTypes']> = [
-        'song',
-        'artist',
-        'decade',
-        'lyrics',
-        'challenge',
-      ];
-      const difficulties: Difficulty[] = ['easy', 'medium', 'hard', 'expert'];
-
-      cardTypes.forEach((cardType) => {
-        difficulties.forEach((difficulty) => {
-          // Generate more easy/medium cards, fewer expert cards
-          const shouldGenerate =
-            Math.random() < this.difficultyWeights[difficulty];
-
-          if (shouldGenerate) {
-            const qrCode = this.generateQRCode(track.id, cardType, difficulty);
-            cards.push({
-              qrCode,
-              track,
-              cardType,
-              difficulty,
-              emoji: this.getCardTypeEmoji(cardType),
-              color: this.getDifficultyColor(difficulty),
-              points: this.calculatePoints(cardType, difficulty),
-            });
-          }
-        });
-      });
-    });
-
-    return cards;
+  /**
+   * 🎨 Get difficulty color for UI
+   */
+  getDifficultyColor(difficulty: string): string {
+    const colors: Record<string, string> = {
+      easy: '#10B981', // Green
+      medium: '#F59E0B', // Yellow
+      hard: '#EF4444', // Red
+      expert: '#8B5CF6', // Purple
+    };
+    return colors[difficulty] || '#6B7280';
   }
 
-  // Search tracks by query (for admin/testing)
-  searchTracks(query: string): Track[] {
-    const searchTerm = query.toLowerCase();
-    return this.tracks.filter(
-      (track) =>
-        track.title.toLowerCase().includes(searchTerm) ||
-        track.artist.toLowerCase().includes(searchTerm) ||
-        track.genre.toLowerCase().includes(searchTerm)
-    );
+  /**
+   * 🧪 Test connection to backend
+   */
+  async testBackendConnection(): Promise<boolean> {
+    return await audioService.testConnection();
   }
 }
 
 export const cardService = new CardService();
+export type { GameCard };

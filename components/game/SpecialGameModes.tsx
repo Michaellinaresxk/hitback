@@ -15,7 +15,7 @@ import { useGameStore } from '@/store/gameStore';
 
 const { width, height } = Dimensions.get('window');
 
-// Battle Mode Component
+// ⚔️ BATTLE MODE - Connected to Real Points
 interface BattleModeProps {
   visible: boolean;
   onClose: () => void;
@@ -29,8 +29,8 @@ export function BattleMode({
   player1Id,
   player2Id,
 }: BattleModeProps) {
-  const { players, currentCard, awardPoints } = useGameStore();
-  const [battlerResults, setBattlerResults] = useState<{
+  const { players, currentCard, awardPoints, nextTurn } = useGameStore();
+  const [battleResults, setBattleResults] = useState<{
     player1Correct: boolean;
     player2Correct: boolean;
   } | null>(null);
@@ -41,41 +41,75 @@ export function BattleMode({
   const generateBattleQuestions = () => {
     if (!currentCard) return { q1: '', q2: '' };
 
-    const questions = {
-      song: ['¿Cuál es la canción?', '¿Cuál es el nombre de esta canción?'],
-      artist: ['¿Quién canta esta canción?', '¿Cuál es el artista?'],
-      decade: ['¿De qué década es?', '¿En qué década salió?'],
-      lyrics: ['Completa la letra', 'Sigue cantando'],
-      challenge: ['Imita al artista', 'Baila la canción'],
-    };
+    const baseQuestion = currentCard.question;
+    const track = currentCard.track;
 
-    const cardQuestions = questions[currentCard.cardType] || questions.song;
-    return {
-      q1: cardQuestions[0],
-      q2: cardQuestions[1],
-    };
+    // Generate different questions based on card type
+    switch (currentCard.cardType) {
+      case 'song':
+        return {
+          q1: '¿Cuál es el nombre de esta canción?',
+          q2: '¿Cómo se llama esta canción?',
+        };
+      case 'artist':
+        return {
+          q1: '¿Quién canta esta canción?',
+          q2: '¿Cuál es el artista?',
+        };
+      case 'decade':
+        return {
+          q1: `¿En qué década salió "${track.title}"?`,
+          q2: `¿De qué década es esta canción?`,
+        };
+      case 'lyrics':
+        return {
+          q1: 'Completa la letra que escuchaste',
+          q2: 'Continúa cantando desde donde terminó',
+        };
+      case 'challenge':
+        return {
+          q1: `Imita el estilo de ${track.artist}`,
+          q2: `Baila como si fueras ${track.artist}`,
+        };
+      default:
+        return { q1: baseQuestion, q2: baseQuestion };
+    }
   };
 
   const battleQuestions = generateBattleQuestions();
 
+  // ✅ CONNECTED TO REAL POINT SYSTEM
   const handleBattleResult = (player1Won: boolean, player2Won: boolean) => {
     if (!currentCard) return;
 
-    if (player1Won) {
-      awardPoints(player1Id, currentCard.points);
-    }
-    if (player2Won) {
-      awardPoints(player2Id, currentCard.points);
+    let battlePoints = currentCard.points;
+
+    // Battle mode bonus: +1 point for participating, +2 for winning
+    if (player1Won && player2Won) {
+      // Both won - give normal points to both
+      awardPoints(player1Id, battlePoints, 2500);
+      setTimeout(() => {
+        awardPoints(player2Id, battlePoints, 2500);
+      }, 100);
+    } else if (player1Won) {
+      // Player 1 wins - gets normal points + battle bonus
+      awardPoints(player1Id, battlePoints + 1, 2000);
+    } else if (player2Won) {
+      // Player 2 wins - gets normal points + battle bonus
+      awardPoints(player2Id, battlePoints + 1, 2000);
+    } else {
+      // No one won - just proceed to next turn
+      nextTurn();
     }
 
-    setBattlerResults({
+    setBattleResults({
       player1Correct: player1Won,
       player2Correct: player2Won,
     });
 
     setTimeout(() => {
       onClose();
-      setBattlerResults(null);
+      setBattleResults(null);
     }, 3000);
   };
 
@@ -89,43 +123,61 @@ export function BattleMode({
           <Text style={styles.battleSubtitle}>
             {currentCard.track.title} - {currentCard.track.artist}
           </Text>
+          <Text style={styles.battleBonus}>+1 punto bonus para el ganador</Text>
 
-          {!battlerResults ? (
+          {!battleResults ? (
             <>
               <View style={styles.battlePlayers}>
                 <View style={styles.battlePlayer}>
-                  <Text style={styles.battlePlayerName}>{player1.name}</Text>
+                  <View style={styles.battlePlayerHeader}>
+                    <Text style={styles.battlePlayerName}>{player1.name}</Text>
+                    <Text style={styles.battlePlayerScore}>
+                      {player1.score} pts
+                    </Text>
+                  </View>
                   <Text style={styles.battleQuestion}>
                     {battleQuestions.q1}
                   </Text>
                   <TouchableOpacity
                     style={[
                       styles.battleButton,
-                      { backgroundColor: '#E74C3C' },
+                      { backgroundColor: '#EF4444' },
                     ]}
                     onPress={() => handleBattleResult(true, false)}
                   >
-                    <Text style={styles.battleButtonText}>✅ Correcto</Text>
+                    <Text style={styles.battleButtonText}>
+                      ✅ {player1.name} Ganó
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.battleVs}>
                   <Text style={styles.vsText}>VS</Text>
+                  <Text style={styles.battlePointsText}>
+                    {currentCard.points + 1} pts
+                  </Text>
                 </View>
 
                 <View style={styles.battlePlayer}>
-                  <Text style={styles.battlePlayerName}>{player2.name}</Text>
+                  <View style={styles.battlePlayerHeader}>
+                    <Text style={styles.battlePlayerName}>{player2.name}</Text>
+                    <Text style={styles.battlePlayerScore}>
+                      {player2.score} pts
+                    </Text>
+                  </View>
                   <Text style={styles.battleQuestion}>
                     {battleQuestions.q2}
                   </Text>
                   <TouchableOpacity
                     style={[
                       styles.battleButton,
-                      { backgroundColor: '#3498DB' },
+                      { backgroundColor: '#3B82F6' },
                     ]}
                     onPress={() => handleBattleResult(false, true)}
                   >
-                    <Text style={styles.battleButtonText}>✅ Correcto</Text>
+                    <Text style={styles.battleButtonText}>
+                      ✅ {player2.name} Ganó
+                    </Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -135,87 +187,97 @@ export function BattleMode({
                   style={styles.battleOptionButton}
                   onPress={() => handleBattleResult(true, true)}
                 >
-                  <Text style={styles.battleOptionText}>Ambos correctos</Text>
+                  <Text style={styles.battleOptionText}>Ambos Correctos</Text>
+                  <Text style={styles.battleOptionSubtext}>
+                    {currentCard.points} pts c/u
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.battleOptionButton}
+                  style={[
+                    styles.battleOptionButton,
+                    { backgroundColor: '#64748B' },
+                  ]}
                   onPress={() => handleBattleResult(false, false)}
                 >
-                  <Text style={styles.battleOptionText}>Ninguno correcto</Text>
+                  <Text style={styles.battleOptionText}>Ninguno Correcto</Text>
+                  <Text style={styles.battleOptionSubtext}>0 pts</Text>
                 </TouchableOpacity>
               </View>
             </>
           ) : (
             <View style={styles.battleResults}>
-              <Text style={styles.resultsTitle}>¡Resultados!</Text>
+              <Text style={styles.resultsTitle}>
+                ¡Resultados de la Batalla!
+              </Text>
               <View style={styles.resultsList}>
                 <Text
                   style={[
                     styles.resultText,
                     {
-                      color: battlerResults.player1Correct
-                        ? '#27AE60'
-                        : '#E74C3C',
+                      color: battleResults.player1Correct
+                        ? '#10B981'
+                        : '#EF4444',
                     },
                   ]}
                 >
-                  {player1.name}: {battlerResults.player1Correct ? '✅' : '❌'}
+                  {player1.name}:{' '}
+                  {battleResults.player1Correct ? '✅ Ganó' : '❌ Perdió'}
                 </Text>
                 <Text
                   style={[
                     styles.resultText,
                     {
-                      color: battlerResults.player2Correct
-                        ? '#27AE60'
-                        : '#E74C3C',
+                      color: battleResults.player2Correct
+                        ? '#10B981'
+                        : '#EF4444',
                     },
                   ]}
                 >
-                  {player2.name}: {battlerResults.player2Correct ? '✅' : '❌'}
+                  {player2.name}:{' '}
+                  {battleResults.player2Correct ? '✅ Ganó' : '❌ Perdió'}
                 </Text>
               </View>
+              <Text style={styles.resultsNote}>
+                Puntos otorgados automáticamente
+              </Text>
             </View>
           )}
-
-          <TouchableOpacity style={styles.closeBattleButton} onPress={onClose}>
-            <Text style={styles.closeBattleText}>Cerrar</Text>
-          </TouchableOpacity>
         </View>
       </View>
     </Modal>
   );
 }
 
-// Speed Round Component
+// ⚡ SPEED ROUND - Connected to Real Points
 interface SpeedRoundProps {
   visible: boolean;
   onClose: () => void;
 }
 
 export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
-  const {
-    players,
-    speedRoundCards,
-    speedRoundTimeLeft,
-    currentSpeedRoundIndex,
-    awardPoints,
-  } = useGameStore();
-
+  const { players, awardPoints, nextTurn } = useGameStore();
   const [playerAnswers, setPlayerAnswers] = useState<Record<string, number>>(
     {}
   );
   const [roundActive, setRoundActive] = useState(false);
   const [countdown, setCountdown] = useState(3);
+  const [timeLeft, setTimeLeft] = useState(30);
 
   useEffect(() => {
     if (visible && !roundActive) {
+      // Reset states
+      setPlayerAnswers({});
+      setTimeLeft(30);
+      setCountdown(3);
+
       // Start countdown
       const countdownInterval = setInterval(() => {
         setCountdown((prev) => {
           if (prev <= 1) {
             clearInterval(countdownInterval);
             setRoundActive(true);
+            startSpeedTimer();
             return 0;
           }
           return prev - 1;
@@ -226,8 +288,21 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
     }
   }, [visible]);
 
+  const startSpeedTimer = () => {
+    const speedInterval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(speedInterval);
+          finishSpeedRound();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
   const handlePlayerAnswer = (playerId: string) => {
-    if (!roundActive) return;
+    if (!roundActive || timeLeft <= 0) return;
 
     setPlayerAnswers((prev) => ({
       ...prev,
@@ -235,26 +310,46 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
     }));
   };
 
+  // ✅ CONNECTED TO REAL POINT SYSTEM
   const finishSpeedRound = () => {
+    if (Object.keys(playerAnswers).length === 0) {
+      Alert.alert('Speed Round Terminado', 'Nadie respondió preguntas');
+      onClose();
+      return;
+    }
+
     // Find winner (most correct answers)
     const maxAnswers = Math.max(...Object.values(playerAnswers));
     const winners = Object.entries(playerAnswers)
       .filter(([_, answers]) => answers === maxAnswers)
       .map(([playerId]) => playerId);
 
-    // Award points to winner(s)
+    // Award points to winner(s) - Speed Round gives 2x normal points
     winners.forEach((winnerId) => {
-      awardPoints(winnerId, speedRoundCards.length * 2); // 2 points per card
+      const answersCount = playerAnswers[winnerId] || 0;
+      const speedBonusPoints = answersCount * 2; // 2 points per correct answer
+      awardPoints(winnerId, speedBonusPoints, 1500); // Fast answer time
     });
 
+    // Award participation points to others
+    Object.entries(playerAnswers).forEach(([playerId, answers]) => {
+      if (!winners.includes(playerId) && answers > 0) {
+        awardPoints(playerId, answers, 3000); // 1 point per answer
+      }
+    });
+
+    const winnerNames = winners
+      .map((id) => players.find((p) => p.id === id)?.name)
+      .join(', ');
+
     Alert.alert(
-      '¡Speed Round Terminado!',
-      `Ganador${winners.length > 1 ? 'es' : ''}: ${winners
-        .map((id) => players.find((p) => p.id === id)?.name)
-        .join(', ')}`
+      '⚡ Speed Round Terminado!',
+      `Ganador${winners.length > 1 ? 'es' : ''}: ${winnerNames}\n` +
+        `Respuestas correctas: ${maxAnswers}`,
+      [{ text: 'Continuar', onPress: onClose }]
     );
 
-    onClose();
+    // Reset for next round
     setPlayerAnswers({});
     setRoundActive(false);
     setCountdown(3);
@@ -267,6 +362,7 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
       <View style={styles.speedOverlay}>
         <View style={styles.speedContainer}>
           <Text style={styles.speedTitle}>⚡ SPEED ROUND</Text>
+          <Text style={styles.speedSubtitle}>¡Responde rápido para ganar!</Text>
 
           {countdown > 0 ? (
             <View style={styles.countdownContainer}>
@@ -277,23 +373,34 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
             <>
               <View style={styles.speedTimer}>
                 <IconSymbol name='timer' size={24} color='#FFD700' />
-                <Text style={styles.speedTimerText}>{speedRoundTimeLeft}s</Text>
+                <Text style={styles.speedTimerText}>{timeLeft}s</Text>
               </View>
 
               <Text style={styles.speedInstruction}>
-                5 cartas - 30 segundos - ¡El que más acierte gana!
+                Toca tu nombre cada vez que sepas una respuesta
+              </Text>
+              <Text style={styles.speedPoints}>
+                2 puntos por respuesta correcta
               </Text>
 
               <View style={styles.speedPlayers}>
                 {players.map((player) => (
                   <TouchableOpacity
                     key={player.id}
-                    style={styles.speedPlayerButton}
+                    style={[
+                      styles.speedPlayerButton,
+                      (playerAnswers[player.id] || 0) > 0 &&
+                        styles.activeSpeedPlayer,
+                    ]}
                     onPress={() => handlePlayerAnswer(player.id)}
+                    disabled={!roundActive || timeLeft <= 0}
                   >
                     <Text style={styles.speedPlayerName}>{player.name}</Text>
                     <Text style={styles.speedPlayerScore}>
-                      {playerAnswers[player.id] || 0} correctas
+                      {playerAnswers[player.id] || 0} respuestas
+                    </Text>
+                    <Text style={styles.speedPlayerPoints}>
+                      {(playerAnswers[player.id] || 0) * 2} pts
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -303,7 +410,7 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
                 style={styles.finishSpeedButton}
                 onPress={finishSpeedRound}
               >
-                <Text style={styles.finishSpeedText}>Terminar Round</Text>
+                <Text style={styles.finishSpeedText}>Terminar Ahora</Text>
               </TouchableOpacity>
             </>
           )}
@@ -317,15 +424,14 @@ export function SpeedRound({ visible, onClose }: SpeedRoundProps) {
   );
 }
 
-// Viral Moment Component
+// 🔥 VIRAL MOMENT - Connected to Real Points
 interface ViralMomentProps {
   visible: boolean;
   onClose: () => void;
 }
 
 export function ViralMoment({ visible, onClose }: ViralMomentProps) {
-  const { players, currentCard, awardPoints, viralMomentActive } =
-    useGameStore();
+  const { players, currentCard, awardPoints, nextTurn } = useGameStore();
   const [recording, setRecording] = useState(false);
   const [performanceComplete, setPerformanceComplete] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<string>('');
@@ -334,9 +440,16 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
     setRecording(true);
     Alert.alert(
       '📱 Grabando',
-      'La cámara está grabando el performance. ¡Dale todo!',
+      'El performance está siendo evaluado. ¡Dale todo!',
       [{ text: 'OK' }]
     );
+
+    // Auto-stop recording after 15 seconds
+    setTimeout(() => {
+      if (recording) {
+        stopRecording();
+      }
+    }, 15000);
   };
 
   const stopRecording = () => {
@@ -344,23 +457,32 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
     setPerformanceComplete(true);
   };
 
+  // ✅ CONNECTED TO REAL POINT SYSTEM
   const handleViralResult = (playerId: string, success: boolean) => {
     if (!currentCard) return;
 
+    const player = players.find((p) => p.id === playerId);
+
     if (success) {
-      // Double points for viral success
-      awardPoints(playerId, currentCard.points * 2);
+      // Viral success: Triple points + viral bonus
+      const viralPoints = currentCard.points * 3 + 2; // 3x + 2 bonus
+      awardPoints(playerId, viralPoints, 1000); // Very fast "answer"
+
       Alert.alert(
-        '🔥 ¡VIRAL!',
-        `${players.find((p) => p.id === playerId)?.name} gana doble puntos!`,
-        [{ text: '¡Genial!' }]
+        '🔥 ¡SE VOLVIÓ VIRAL!',
+        `${player?.name} gana ${viralPoints} puntos!\n` +
+          `(${currentCard.points}x3 + 2 bonus viral)`,
+        [{ text: '¡Increíble!' }]
       );
     } else {
+      // Failed viral: No points, but no penalty either
       Alert.alert(
-        '😅 ¡Fallaste!',
-        'Pierdes el turno pero todos se divirtieron',
+        '😅 ¡Buen Intento!',
+        `${player?.name} no se volvió viral, pero todos se divirtieron.\n` +
+          'No pierde puntos ni tokens.',
         [{ text: 'Jajaja' }]
       );
+      nextTurn(); // Just move to next turn
     }
 
     onClose();
@@ -376,7 +498,7 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
       <View style={styles.viralOverlay}>
         <View style={styles.viralContainer}>
           <Text style={styles.viralTitle}>🔥 VIRAL MOMENT</Text>
-          <Text style={styles.viralSubtitle}>Challenge Card Activada</Text>
+          <Text style={styles.viralSubtitle}>¡Performance Challenge!</Text>
 
           <View style={styles.viralCard}>
             <Text style={styles.viralCardTitle}>{currentCard.track.title}</Text>
@@ -384,6 +506,20 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
               {currentCard.track.artist}
             </Text>
             <Text style={styles.viralChallenge}>{currentCard.question}</Text>
+          </View>
+
+          <View style={styles.viralRewards}>
+            <Text style={styles.viralRewardsTitle}>💰 RECOMPENSAS</Text>
+            <View style={styles.viralRewardItem}>
+              <Text style={styles.viralRewardText}>
+                🔥 Viral: {currentCard.points * 3 + 2} puntos
+              </Text>
+            </View>
+            <View style={styles.viralRewardItem}>
+              <Text style={styles.viralRewardText}>
+                😅 Falló: 0 puntos (sin penalización)
+              </Text>
+            </View>
           </View>
 
           {!recording && !performanceComplete && (
@@ -405,11 +541,14 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
                     onPress={() => setSelectedPlayer(player.id)}
                   >
                     <Text style={styles.viralPlayerName}>{player.name}</Text>
+                    <Text style={styles.viralPlayerScore}>
+                      {player.score} pts
+                    </Text>
                     {selectedPlayer === player.id && (
                       <IconSymbol
                         name='checkmark.circle.fill'
                         size={24}
-                        color='#27AE60'
+                        color='#10B981'
                       />
                     )}
                   </TouchableOpacity>
@@ -425,7 +564,9 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
                 disabled={!selectedPlayer}
               >
                 <IconSymbol name='video.circle' size={24} color='#FFFFFF' />
-                <Text style={styles.startRecordingText}>Empezar Grabación</Text>
+                <Text style={styles.startRecordingText}>
+                  Empezar Performance
+                </Text>
               </TouchableOpacity>
             </>
           )}
@@ -434,7 +575,7 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
             <View style={styles.recordingContainer}>
               <View style={styles.recordingIndicator}>
                 <View style={styles.recordingDot} />
-                <Text style={styles.recordingText}>GRABANDO...</Text>
+                <Text style={styles.recordingText}>EVALUANDO...</Text>
               </View>
 
               <Text style={styles.recordingPlayer}>
@@ -450,36 +591,44 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
                 onPress={stopRecording}
               >
                 <IconSymbol name='stop.circle' size={24} color='#FFFFFF' />
-                <Text style={styles.stopRecordingText}>Parar Grabación</Text>
+                <Text style={styles.stopRecordingText}>
+                  Terminar Performance
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {performanceComplete && (
             <View style={styles.viralResultsContainer}>
-              <Text style={styles.viralResultsTitle}>¿Cómo lo hizo?</Text>
+              <Text style={styles.viralResultsTitle}>
+                ¿Cómo estuvo el performance?
+              </Text>
 
               <View style={styles.viralResultButtons}>
                 <TouchableOpacity
                   style={[
                     styles.viralResultButton,
-                    { backgroundColor: '#27AE60' },
+                    { backgroundColor: '#10B981' },
                   ]}
                   onPress={() => handleViralResult(selectedPlayer, true)}
                 >
-                  <Text style={styles.viralResultText}>🔥 ¡VIRAL!</Text>
-                  <Text style={styles.viralResultSubtext}>Doble puntos</Text>
+                  <Text style={styles.viralResultText}>
+                    🔥 ¡SE VOLVIÓ VIRAL!
+                  </Text>
+                  <Text style={styles.viralResultSubtext}>
+                    {currentCard.points * 3 + 2} puntos
+                  </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={[
                     styles.viralResultButton,
-                    { backgroundColor: '#E74C3C' },
+                    { backgroundColor: '#F59E0B' },
                   ]}
                   onPress={() => handleViralResult(selectedPlayer, false)}
                 >
-                  <Text style={styles.viralResultText}>😅 Falló</Text>
-                  <Text style={styles.viralResultSubtext}>Pierde turno</Text>
+                  <Text style={styles.viralResultText}>😅 Buen Intento</Text>
+                  <Text style={styles.viralResultSubtext}>0 puntos</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -494,105 +643,8 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
   );
 }
 
-// Player Selection Modal for Battle Mode
-interface PlayerSelectionModalProps {
-  visible: boolean;
-  onClose: () => void;
-  onSelectPlayers: (player1Id: string, player2Id: string) => void;
-  title: string;
-}
-
-export function PlayerSelectionModal({
-  visible,
-  onClose,
-  onSelectPlayers,
-  title,
-}: PlayerSelectionModalProps) {
-  const { players } = useGameStore();
-  const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
-
-  const handlePlayerToggle = (playerId: string) => {
-    setSelectedPlayers((prev) => {
-      if (prev.includes(playerId)) {
-        return prev.filter((id) => id !== playerId);
-      } else if (prev.length < 2) {
-        return [...prev, playerId];
-      }
-      return prev;
-    });
-  };
-
-  const handleConfirm = () => {
-    if (selectedPlayers.length === 2) {
-      onSelectPlayers(selectedPlayers[0], selectedPlayers[1]);
-      setSelectedPlayers([]);
-      onClose();
-    }
-  };
-
-  return (
-    <Modal visible={visible} transparent animationType='slide'>
-      <View style={styles.selectionOverlay}>
-        <View style={styles.selectionContainer}>
-          <Text style={styles.selectionTitle}>{title}</Text>
-          <Text style={styles.selectionSubtitle}>
-            Selecciona 2 jugadores para la batalla
-          </Text>
-
-          <FlatList
-            data={players}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item: player }) => (
-              <TouchableOpacity
-                style={[
-                  styles.selectionPlayerButton,
-                  selectedPlayers.includes(player.id) &&
-                    styles.selectedSelectionPlayer,
-                ]}
-                onPress={() => handlePlayerToggle(player.id)}
-              >
-                <Text style={styles.selectionPlayerName}>{player.name}</Text>
-                <Text style={styles.selectionPlayerScore}>
-                  {player.score} pts
-                </Text>
-                {selectedPlayers.includes(player.id) && (
-                  <IconSymbol
-                    name='checkmark.circle.fill'
-                    size={24}
-                    color='#4ECDC4'
-                  />
-                )}
-              </TouchableOpacity>
-            )}
-          />
-
-          <TouchableOpacity
-            style={[
-              styles.confirmSelectionButton,
-              selectedPlayers.length !== 2 && styles.disabledButton,
-            ]}
-            onPress={handleConfirm}
-            disabled={selectedPlayers.length !== 2}
-          >
-            <Text style={styles.confirmSelectionText}>
-              Iniciar Batalla ({selectedPlayers.length}/2)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.cancelSelectionButton}
-            onPress={onClose}
-          >
-            <Text style={styles.cancelSelectionText}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
-  // Battle Mode Styles
+  // Battle Mode styles
   battleOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -616,8 +668,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
     opacity: 0.8,
+  },
+  battleBonus: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    marginBottom: 20,
   },
   battlePlayers: {
     flexDirection: 'row',
@@ -629,11 +687,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
   },
+  battlePlayerHeader: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   battlePlayerName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 10,
+    marginBottom: 4,
+  },
+  battlePlayerScore: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
   },
   battleQuestion: {
     fontSize: 14,
@@ -641,6 +708,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 15,
     opacity: 0.9,
+    minHeight: 40,
   },
   battleButton: {
     paddingHorizontal: 20,
@@ -648,7 +716,7 @@ const styles = StyleSheet.create({
     borderRadius: 15,
   },
   battleButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
   },
@@ -661,6 +729,12 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     color: '#FFD700',
+    marginBottom: 4,
+  },
+  battlePointsText: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
   },
   battleOptions: {
     flexDirection: 'row',
@@ -673,18 +747,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     paddingVertical: 10,
     borderRadius: 12,
+    alignItems: 'center',
   },
   battleOptionText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  battleOptionSubtext: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
   },
   battleResults: {
     alignItems: 'center',
     marginBottom: 20,
   },
   resultsTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFD700',
     marginBottom: 15,
@@ -693,23 +773,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   resultText: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 5,
   },
-  closeBattleButton: {
-    backgroundColor: '#95A5A6',
-    paddingHorizontal: 25,
-    paddingVertical: 12,
-    borderRadius: 15,
-  },
-  closeBattleText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+  resultsNote: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 10,
+    textAlign: 'center',
   },
 
-  // Speed Round Styles
+  // Speed Round styles
   speedOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -727,7 +802,13 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 10,
+    marginBottom: 5,
+  },
+  speedSubtitle: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    marginBottom: 15,
+    opacity: 0.9,
   },
   countdownContainer: {
     alignItems: 'center',
@@ -762,8 +843,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 8,
     opacity: 0.9,
+  },
+  speedPoints: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    marginBottom: 20,
   },
   speedPlayers: {
     width: '100%',
@@ -778,15 +865,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 10,
   },
+  activeSpeedPlayer: {
+    backgroundColor: 'rgba(16,185,129,0.3)',
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
   speedPlayerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    flex: 1,
   },
   speedPlayerScore: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     color: '#FFD700',
+    marginRight: 8,
+  },
+  speedPlayerPoints: {
+    fontSize: 12,
+    color: '#10B981',
+    fontWeight: '600',
   },
   finishSpeedButton: {
     backgroundColor: '#FFD700',
@@ -812,7 +911,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 
-  // Viral Moment Styles
+  // Viral Moment styles
   viralOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.95)',
@@ -847,21 +946,43 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   viralCardTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 5,
   },
   viralCardArtist: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#FFFFFF',
     marginBottom: 10,
     opacity: 0.8,
   },
   viralChallenge: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFD700',
+    textAlign: 'center',
+  },
+  viralRewards: {
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    width: '100%',
+  },
+  viralRewardsTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  viralRewardItem: {
+    marginBottom: 4,
+  },
+  viralRewardText: {
+    fontSize: 12,
+    color: '#FFFFFF',
     textAlign: 'center',
   },
   viralInstruction: {
@@ -886,9 +1007,15 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   viralPlayerName: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+    flex: 1,
+  },
+  viralPlayerScore: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginRight: 8,
   },
   startRecordingButton: {
     backgroundColor: '#000000',
@@ -913,7 +1040,7 @@ const styles = StyleSheet.create({
   recordingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E74C3C',
+    backgroundColor: '#10B981',
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
@@ -962,10 +1089,11 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   viralResultsTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 20,
+    textAlign: 'center',
   },
   viralResultButtons: {
     flexDirection: 'row',
@@ -978,18 +1106,19 @@ const styles = StyleSheet.create({
     padding: 15,
     borderRadius: 12,
     alignItems: 'center',
-    marginHorizontal: 10,
+    marginHorizontal: 5,
   },
   viralResultText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 3,
+    marginBottom: 4,
+    textAlign: 'center',
   },
   viralResultSubtext: {
     fontSize: 12,
-    color: '#FFFFFF',
-    opacity: 0.8,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
   },
   closeViralButton: {
     backgroundColor: 'rgba(255,255,255,0.2)',
@@ -998,81 +1127,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   closeViralText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-
-  // Player Selection Styles
-  selectionOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionContainer: {
-    backgroundColor: '#FFFFFF',
-    width: width * 0.9,
-    maxHeight: height * 0.7,
-    borderRadius: 20,
-    padding: 25,
-  },
-  selectionTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1A2E',
-    textAlign: 'center',
-    marginBottom: 10,
-  },
-  selectionSubtitle: {
-    fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  selectionPlayerButton: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#F8F9FA',
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
-  },
-  selectedSelectionPlayer: {
-    backgroundColor: '#E8F8F5',
-    borderWidth: 2,
-    borderColor: '#4ECDC4',
-  },
-  selectionPlayerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1A1A2E',
-  },
-  selectionPlayerScore: {
-    fontSize: 14,
-    color: '#666666',
-  },
-  confirmSelectionButton: {
-    backgroundColor: '#4ECDC4',
-    padding: 15,
-    borderRadius: 15,
-    alignItems: 'center',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  confirmSelectionText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  cancelSelectionButton: {
-    backgroundColor: '#95A5A6',
-    padding: 12,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelSelectionText: {
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
