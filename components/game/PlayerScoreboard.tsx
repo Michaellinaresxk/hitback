@@ -1,13 +1,13 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
+import React from 'react';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 interface PlayerScoreboardProps {
   players: Player[];

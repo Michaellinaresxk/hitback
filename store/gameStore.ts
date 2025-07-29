@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { cardService } from '@/services/cardService';
 import { audioService } from '@/services/audioService';
+import { cardService } from '@/services/cardService';
 import { rewardsService } from '@/services/RewardsService';
+import { create } from 'zustand';
 
 // Tipos básicos actualizados - manteniendo compatibilidad
 export interface Player {

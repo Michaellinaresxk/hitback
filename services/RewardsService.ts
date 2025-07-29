@@ -1,11 +1,5 @@
-import {
-  Difficulty,
-  PowerCard,
-  Combo,
-  ComboReward,
-  Player,
-} from '@/types/game.types';
 import powerCardsJson from '@/data/powerCards.json';
+import { Combo, Difficulty, Player, PowerCard } from '@/types/game.types';
 
 interface RewardResult {
   powerCard?: PowerCard;
