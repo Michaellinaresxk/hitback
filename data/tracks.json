@@ -7,7 +7,7 @@
     "year": 2017,
     "decade": "2010s",
     "genre": "Reggaeton",
-    "previewUrl": "https://p.scdn.co/mp3-preview/6b00e0d6d87bb548726e2b99e73d75b9a5c4b0db",
+    "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
     "duration": 30,
     "lyrics": "Sí, sabes que ya llevo un rato mirándote...",
     "difficulty": "easy",
@@ -16,32 +16,27 @@
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Despacito",
-        "points": 1,
-        "difficulty": "easy"
+        "points": 1
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Luis Fonsi ft. Daddy Yankee",
-        "points": 2,
-        "difficulty": "easy"
+        "points": 2
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "2010s",
-        "points": 3,
-        "difficulty": "medium"
+        "points": 3
       },
       "lyrics": {
         "question": "Completa: 'Sí, sabes que ya llevo un rato...'",
         "answer": "mirándote",
-        "points": 3,
-        "difficulty": "medium"
+        "points": 3
       },
       "challenge": {
         "question": "Baila los primeros 10 segundos de Despacito",
         "answer": "Completar baile reggaeton",
         "points": 5,
-        "difficulty": "hard",
         "challengeType": "dance"
       }
     }
@@ -54,7 +49,7 @@
     "year": 1975,
     "decade": "1970s",
     "genre": "Rock",
-    "previewUrl": "https://p.scdn.co/mp3-preview/8b1eb53a49e1388e3d8518d9c2c9ac5de7bb7ac8",
+    "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
     "duration": 30,
     "lyrics": "Is this the real life, is this just fantasy...",
     "difficulty": "hard",
@@ -63,32 +58,27 @@
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Bohemian Rhapsody",
-        "points": 1,
-        "difficulty": "medium"
+        "points": 1
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Queen",
-        "points": 2,
-        "difficulty": "easy"
+        "points": 2
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "1970s",
-        "points": 3,
-        "difficulty": "hard"
+        "points": 3
       },
       "lyrics": {
         "question": "Completa: 'Is this the real life...'",
         "answer": "is this just fantasy",
-        "points": 3,
-        "difficulty": "hard"
+        "points": 3
       },
       "challenge": {
         "question": "Imita a Freddie Mercury cantando la canción",
         "answer": "Completar imitación de Freddie",
         "points": 5,
-        "difficulty": "expert",
         "challengeType": "imitate"
       }
     }
@@ -101,7 +91,7 @@
     "year": 2017,
     "decade": "2010s",
     "genre": "Pop",
-    "previewUrl": "https://p.scdn.co/mp3-preview/f9b8c673c37df7ff5b0b2e8d09bd8e7c8e9f5a8b",
+    "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
     "duration": 30,
     "lyrics": "The club isn't the best place to find a lover...",
     "difficulty": "medium",
@@ -110,32 +100,27 @@
       "song": {
         "question": "¿Cuál es la canción?",
         "answer": "Shape of You",
-        "points": 1,
-        "difficulty": "medium"
+        "points": 1
       },
       "artist": {
         "question": "¿Quién la canta?",
         "answer": "Ed Sheeran",
-        "points": 2,
-        "difficulty": "easy"
+        "points": 2
       },
       "decade": {
         "question": "¿De qué década es?",
         "answer": "2010s",
-        "points": 3,
-        "difficulty": "medium"
+        "points": 3
       },
       "lyrics": {
         "question": "Completa: 'The club isn't the best place...'",
         "answer": "to find a lover",
-        "points": 3,
-        "difficulty": "hard"
+        "points": 3
       },
       "challenge": {
         "question": "Canta el coro completo",
         "answer": "Cantar coro de Shape of You",
         "points": 5,
-        "difficulty": "medium",
         "challengeType": "sing"
       }
     }
@@ -143,141 +128,42 @@
   {
     "id": "004",
     "qrCode": "HITBACK_004",
-    "title": "Billie Jean",
-    "artist": "Michael Jackson",
-    "year": 1982,
-    "decade": "1980s",
+    "title": "Test QR Easy",
+    "artist": "Test Artist",
+    "year": 2020,
+    "decade": "2020s",
     "genre": "Pop",
-    "previewUrl": "https://p.scdn.co/mp3-preview/e3b1e5b1f5b6f5b1f5b6f5b1f5b6f5b1f5b6f5b1",
+    "previewUrl": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
     "duration": 30,
-    "lyrics": "Billie Jean is not my lover...",
-    "difficulty": "medium",
-    "popularity": 92,
-    "cardTypes": {
-      "song": {
-        "question": "¿Cuál es la canción?",
-        "answer": "Billie Jean",
-        "points": 1,
-        "difficulty": "easy"
-      },
-      "artist": {
-        "question": "¿Quién la canta?",
-        "answer": "Michael Jackson",
-        "points": 2,
-        "difficulty": "easy"
-      },
-      "decade": {
-        "question": "¿De qué década es?",
-        "answer": "1980s",
-        "points": 3,
-        "difficulty": "medium"
-      },
-      "lyrics": {
-        "question": "Completa: 'Billie Jean is not...'",
-        "answer": "my lover",
-        "points": 3,
-        "difficulty": "easy"
-      },
-      "challenge": {
-        "question": "Haz el moonwalk como Michael Jackson",
-        "answer": "Completar moonwalk",
-        "points": 5,
-        "difficulty": "expert",
-        "challengeType": "dance"
-      }
-    }
-  },
-  {
-    "id": "005",
-    "qrCode": "HITBACK_005",
-    "title": "Stairway to Heaven",
-    "artist": "Led Zeppelin",
-    "year": 1971,
-    "decade": "1970s",
-    "genre": "Rock",
-    "previewUrl": "https://p.scdn.co/mp3-preview/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0",
-    "duration": 30,
-    "lyrics": "There's a lady who's sure all that glitters is gold...",
-    "difficulty": "expert",
-    "popularity": 85,
-    "cardTypes": {
-      "song": {
-        "question": "¿Cuál es la canción?",
-        "answer": "Stairway to Heaven",
-        "points": 1,
-        "difficulty": "hard"
-      },
-      "artist": {
-        "question": "¿Quién la canta?",
-        "answer": "Led Zeppelin",
-        "points": 2,
-        "difficulty": "medium"
-      },
-      "decade": {
-        "question": "¿De qué década es?",
-        "answer": "1970s",
-        "points": 3,
-        "difficulty": "hard"
-      },
-      "lyrics": {
-        "question": "Completa: 'There's a lady who's sure...'",
-        "answer": "all that glitters is gold",
-        "points": 3,
-        "difficulty": "expert"
-      },
-      "challenge": {
-        "question": "Imita el solo de guitarra final",
-        "answer": "Completar imitación de guitarra",
-        "points": 5,
-        "difficulty": "expert",
-        "challengeType": "performance"
-      }
-    }
-  },
-  {
-    "id": "006",
-    "qrCode": "HITBACK_006",
-    "title": "Macarena",
-    "artist": "Los Del Rio",
-    "year": 1993,
-    "decade": "1990s",
-    "genre": "Latin Pop",
-    "previewUrl": "https://p.scdn.co/mp3-preview/b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0a1",
-    "duration": 30,
-    "lyrics": "Dale a tu cuerpo alegría Macarena...",
+    "lyrics": "This is a test song for easy scanning...",
     "difficulty": "easy",
-    "popularity": 80,
+    "popularity": 50,
     "cardTypes": {
       "song": {
         "question": "¿Cuál es la canción?",
-        "answer": "Macarena",
-        "points": 1,
-        "difficulty": "easy"
+        "answer": "Test QR Easy",
+        "points": 1
       },
       "artist": {
         "question": "¿Quién la canta?",
-        "answer": "Los Del Rio",
-        "points": 2,
-        "difficulty": "medium"
+        "answer": "Test Artist",
+        "points": 2
       },
       "decade": {
         "question": "¿De qué década es?",
-        "answer": "1990s",
-        "points": 3,
-        "difficulty": "medium"
+        "answer": "2020s",
+        "points": 3
       },
       "lyrics": {
-        "question": "Completa: 'Dale a tu cuerpo alegría...'",
-        "answer": "Macarena",
-        "points": 3,
-        "difficulty": "easy"
+        "question": "Completa: 'This is a test song...'",
+        "answer": "for easy scanning",
+        "points": 3
       },
       "challenge": {
-        "question": "Baila la Macarena completa",
-        "answer": "Completar baile Macarena",
+        "question": "Canta cualquier parte de la canción",
+        "answer": "Cantar test song",
         "points": 5,
-        "difficulty": "easy",
-        "challengeType": "dance"
+        "challengeType": "sing"
       }
     }
   }
