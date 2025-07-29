@@ -1,349 +1,338 @@
+// components/game/CardDisplay.tsx - VERSION ROBUSTA
+
 import React from 'react';
 import {
-  View,
-  Text,
+  Dimensions,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  Animated,
+  View,
 } from 'react-native';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { GameCard, Difficulty } from '@/types/game.types';
 
+// 🎯 TYPES - Asegurar que todo esté definido
 interface CardDisplayProps {
-  card: GameCard | null;
+  card?: {
+    id?: string;
+    type?: string;
+    difficulty?: string;
+    question?: string;
+    answer?: string;
+    points?: number;
+    hints?: string[];
+    color?: string;
+    track?: {
+      id?: string;
+      title?: string;
+      artist?: string;
+      album?: string;
+      year?: number;
+      genre?: string;
+    };
+    audio?: {
+      hasAudio?: boolean;
+      url?: string;
+      duration?: number;
+    };
+  } | null;
   showAnswer?: boolean;
   showQuestion?: boolean;
   onRevealAnswer?: () => void;
-  audioFinished?: boolean;
 }
+
+const { width } = Dimensions.get('window');
 
 export default function CardDisplay({
   card,
   showAnswer = false,
   showQuestion = false,
   onRevealAnswer,
-  audioFinished = false,
 }: CardDisplayProps) {
+  // 🛡️ GUARD: Si no hay card, mostrar placeholder
   if (!card) {
     return (
-      <View style={styles.emptyContainer}>
-        <IconSymbol name='qrcode.viewfinder' size={48} color='#64748B' />
-        <Text style={styles.emptyText}>Escanea una carta para empezar</Text>
+      <View style={styles.cardContainer}>
+        <View style={[styles.card, styles.placeholderCard]}>
+          <Text style={styles.placeholderText}>🎵</Text>
+          <Text style={styles.placeholderSubtext}>Scan a QR to start</Text>
+        </View>
       </View>
     );
   }
 
-  const getCardTypeConfig = () => {
-    const configs = {
-      song: {
-        emoji: '🎵',
-        color: '#F59E0B',
-        label: 'SONG CARD',
-      },
-      artist: {
-        emoji: '🎤',
-        color: '#EF4444',
-        label: 'ARTIST CARD',
-      },
-      decade: {
-        emoji: '📅',
-        color: '#3B82F6',
-        label: 'DECADE CARD',
-      },
-      lyrics: {
-        emoji: '📝',
-        color: '#10B981',
-        label: 'LYRICS CARD',
-      },
-      challenge: {
-        emoji: '🔥',
-        color: '#8B5CF6',
-        label: 'CHALLENGE CARD',
-      },
-    };
-    return configs[card.cardType];
+  // 🛡️ SAFE ACCESSORS - Con valores por defecto
+  const safeCard = {
+    id: card.id || 'unknown',
+    type: card.type || 'SONG',
+    difficulty: card.difficulty || 'EASY',
+    question: card.question || '¿Cuál es la canción?',
+    answer: card.answer || 'Respuesta no disponible',
+    points: card.points || 1,
+    hints: card.hints || [],
+    color: card.color || '#10B981', // ✅ DEFAULT COLOR - EVITA EL ERROR
+    track: {
+      id: card.track?.id || '001',
+      title: card.track?.title || 'Título desconocido',
+      artist: card.track?.artist || 'Artista desconocido',
+      album: card.track?.album || 'Álbum desconocido',
+      year: card.track?.year || 2024,
+      genre: card.track?.genre || 'Pop',
+    },
+    audio: {
+      hasAudio: card.audio?.hasAudio || false,
+      url: card.audio?.url || '',
+      duration: card.audio?.duration || 0,
+    },
   };
 
-  const getDifficultyConfig = (difficulty: Difficulty) => {
-    const configs = {
-      easy: { color: '#10B981', label: 'EASY' },
-      medium: { color: '#F59E0B', label: 'MEDIUM' },
-      hard: { color: '#EF4444', label: 'HARD' },
-      expert: { color: '#8B5CF6', label: 'EXPERT' },
-    };
-    return configs[difficulty];
-  };
+  // 🎨 DYNAMIC STYLES
+  const cardStyle = [
+    styles.card,
+    {
+      borderColor: safeCard.color,
+      shadowColor: safeCard.color,
+    },
+  ];
 
-  const cardConfig = getCardTypeConfig();
-  const difficultyConfig = getDifficultyConfig(card.difficulty);
+  const headerStyle = [styles.cardHeader, { backgroundColor: safeCard.color }];
+
+  // 🎯 DIFFICULTY COLORS
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'EASY':
+        return '#10B981';
+      case 'MEDIUM':
+        return '#F59E0B';
+      case 'HARD':
+        return '#EF4444';
+      default:
+        return '#64748B';
+    }
+  };
 
   return (
-    <View style={styles.container}>
-      {/* Card Header */}
-      <View style={[styles.header, { backgroundColor: cardConfig.color }]}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.cardEmoji}>{cardConfig.emoji}</Text>
-          <Text style={styles.cardType}>{cardConfig.label}</Text>
+    <View style={styles.cardContainer}>
+      <View style={cardStyle}>
+        {/* 🎯 CARD HEADER */}
+        <View style={headerStyle}>
+          <Text style={styles.cardType}>
+            {safeCard.type} - {safeCard.difficulty}
+          </Text>
+          <Text style={styles.cardPoints}>
+            {safeCard.points} pt{safeCard.points !== 1 ? 's' : ''}
+          </Text>
         </View>
-        <View style={styles.headerRight}>
-          <View
-            style={[
-              styles.difficultyBadge,
-              { backgroundColor: difficultyConfig.color },
-            ]}
-          >
-            <Text style={styles.difficultyText}>{difficultyConfig.label}</Text>
-          </View>
-          <View style={styles.pointsBadge}>
-            <Text style={styles.pointsText}>{card.points} pts</Text>
+
+        {/* 🎵 TRACK INFO */}
+        <View style={styles.trackInfo}>
+          <Text style={styles.trackTitle} numberOfLines={2}>
+            {safeCard.track.title}
+          </Text>
+          <Text style={styles.trackArtist} numberOfLines={1}>
+            {safeCard.track.artist}
+          </Text>
+
+          <View style={styles.trackMeta}>
+            <Text style={styles.trackMetaText}>
+              {safeCard.track.genre} • {safeCard.track.year}
+            </Text>
+            {safeCard.track.album && (
+              <Text style={styles.trackAlbum} numberOfLines={1}>
+                {safeCard.track.album}
+              </Text>
+            )}
           </View>
         </View>
-      </View>
 
-      {/* Track Info */}
-      <View style={styles.trackSection}>
-        <Text style={styles.trackTitle}>{card.track.title}</Text>
-        <Text style={styles.trackArtist}>{card.track.artist}</Text>
-        <Text style={styles.trackYear}>
-          {card.track.year} • {card.track.genre}
-        </Text>
-      </View>
-
-      {/* Audio Status */}
-      <View style={styles.audioSection}>
-        {!audioFinished ? (
-          <View style={styles.audioPlaying}>
-            <IconSymbol name='speaker.wave.3' size={20} color='#3B82F6' />
-            <Text style={styles.audioText}>Audio reproduciendo...</Text>
-            <View style={styles.audioWave} />
-          </View>
-        ) : (
-          <View style={styles.audioFinished}>
-            <IconSymbol
-              name='checkmark.circle.fill'
-              size={20}
-              color='#10B981'
-            />
-            <Text style={styles.audioFinishedText}>Audio terminado</Text>
+        {/* 🎵 AUDIO STATUS */}
+        {safeCard.audio.hasAudio && (
+          <View style={styles.audioStatus}>
+            <Text style={styles.audioIndicator}>
+              🎵 Audio disponible ({safeCard.audio.duration}s)
+            </Text>
           </View>
         )}
-      </View>
 
-      {/* Question Section */}
-      {showQuestion && audioFinished && (
-        <View style={styles.questionSection}>
-          <Text style={styles.questionLabel}>PREGUNTA:</Text>
-          <Text style={styles.questionText}>{card.question}</Text>
+        {/* ❓ QUESTION SECTION */}
+        {showQuestion && (
+          <View style={styles.questionSection}>
+            <Text style={styles.questionLabel}>Pregunta:</Text>
+            <Text style={styles.questionText}>{safeCard.question}</Text>
 
-          {!showAnswer && onRevealAnswer && (
-            <TouchableOpacity
-              style={styles.revealButton}
-              onPress={onRevealAnswer}
-              activeOpacity={0.8}
-            >
-              <IconSymbol name='eye.fill' size={16} color='#FFFFFF' />
-              <Text style={styles.revealButtonText}>Ver Respuesta</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
+            {safeCard.hints.length > 0 && (
+              <View style={styles.hintsContainer}>
+                <Text style={styles.hintsLabel}>💡 Pistas:</Text>
+                {safeCard.hints.map((hint, index) => (
+                  <Text key={index} style={styles.hintText}>
+                    • {hint}
+                  </Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
-      {/* Answer Section */}
-      {showAnswer && (
-        <View style={styles.answerSection}>
-          <Text style={styles.answerLabel}>RESPUESTA:</Text>
-          <Text style={styles.answerText}>{card.answer}</Text>
+        {/* 💡 ANSWER SECTION */}
+        {showAnswer && (
+          <View style={styles.answerSection}>
+            <Text style={styles.answerLabel}>Respuesta:</Text>
+            <Text style={styles.answerText}>{safeCard.answer}</Text>
+          </View>
+        )}
 
-          {card.cardType === 'challenge' && (
-            <View style={styles.challengeNote}>
-              <IconSymbol name='info.circle' size={16} color='#F59E0B' />
-              <Text style={styles.challengeText}>
-                El Game Master decide si se completó correctamente
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
+        {/* 🎯 ACTION BUTTON */}
+        {showQuestion && !showAnswer && onRevealAnswer && (
+          <TouchableOpacity
+            style={styles.revealButton}
+            onPress={onRevealAnswer}
+          >
+            <Text style={styles.revealButtonText}>🔍 Revelar Respuesta</Text>
+          </TouchableOpacity>
+        )}
 
-      {/* QR Code Info */}
-      <View style={styles.qrSection}>
-        <Text style={styles.qrText}>QR: {card.track.qrCode}</Text>
+        {/* 🔧 DEBUG INFO (solo en desarrollo) */}
+        {__DEV__ && (
+          <View style={styles.debugInfo}>
+            <Text style={styles.debugText}>
+              ID: {safeCard.id} | Color: {safeCard.color}
+            </Text>
+          </View>
+        )}
       </View>
     </View>
   );
 }
 
+// 🎨 STYLES
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#1E293B',
-    borderRadius: 20,
-    margin: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  emptyContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 20,
-    margin: 16,
-    padding: 40,
+  cardContainer: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  card: {
+    width: width - 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  placeholderCard: {
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 60,
   },
-  emptyText: {
+  placeholderText: {
+    fontSize: 48,
+    marginBottom: 10,
+  },
+  placeholderSubtext: {
     fontSize: 16,
-    color: '#64748B',
-    fontWeight: '500',
-    marginTop: 12,
-    textAlign: 'center',
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
-  header: {
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardEmoji: {
-    fontSize: 24,
-    marginRight: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   cardType: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  difficultyBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  difficultyText: {
-    fontSize: 10,
-    fontWeight: '700',
+  cardPoints: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  pointsBadge: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  pointsText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  trackSection: {
+  trackInfo: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#F3F4F6',
   },
   trackTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#F8FAFC',
+    color: '#1F2937',
     marginBottom: 4,
   },
   trackArtist: {
     fontSize: 16,
-    color: '#94A3B8',
     fontWeight: '500',
-    marginBottom: 4,
+    color: '#6B7280',
+    marginBottom: 8,
   },
-  trackYear: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  audioSection: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  audioPlaying: {
+  trackMeta: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    padding: 12,
-    borderRadius: 12,
   },
-  audioText: {
-    fontSize: 14,
-    color: '#3B82F6',
-    fontWeight: '600',
+  trackMetaText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  trackAlbum: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    flex: 1,
+    textAlign: 'right',
     marginLeft: 8,
-    marginRight: 8,
   },
-  audioWave: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3B82F6',
-  },
-  audioFinished: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  audioStatus: {
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    padding: 12,
-    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
   },
-  audioFinishedText: {
-    fontSize: 14,
-    color: '#10B981',
+  audioIndicator: {
+    fontSize: 12,
+    color: '#059669',
     fontWeight: '600',
-    marginLeft: 8,
+    textAlign: 'center',
   },
   questionSection: {
     padding: 16,
+    backgroundColor: '#F9FAFB',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: '#F3F4F6',
   },
   questionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#F59E0B',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  questionText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#F8FAFC',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  revealButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#3B82F6',
-    padding: 12,
-    borderRadius: 12,
-  },
-  revealButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  questionText: {
+    fontSize: 16,
+    color: '#1F2937',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  hintsContainer: {
+    marginTop: 8,
+  },
+  hintsLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  hintText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
     marginLeft: 8,
   },
   answerSection: {
@@ -351,41 +340,38 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.05)',
   },
   answerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#10B981',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#059669',
     marginBottom: 8,
-    letterSpacing: 0.5,
   },
   answerText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#10B981',
+    color: '#059669',
     lineHeight: 24,
   },
-  challengeNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 12,
-    padding: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    borderRadius: 8,
-  },
-  challengeText: {
-    fontSize: 12,
-    color: '#F59E0B',
-    fontWeight: '500',
-    marginLeft: 8,
-    flex: 1,
-  },
-  qrSection: {
-    padding: 12,
+  revealButton: {
+    backgroundColor: '#F59E0B',
+    marginHorizontal: 16,
+    marginVertical: 12,
+    paddingVertical: 14,
+    borderRadius: 10,
     alignItems: 'center',
   },
-  qrText: {
-    fontSize: 10,
-    color: '#64748B',
-    fontFamily: 'monospace',
+  revealButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
     fontWeight: '600',
+  },
+  debugInfo: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  debugText: {
+    fontSize: 10,
+    color: '#6B7280',
+    fontFamily: 'monospace',
   },
 });
