@@ -1,23 +1,33 @@
-import { audioService } from '@/services/audioService';
-import { cardService } from '@/services/cardService';
-import { rewardsService } from '@/services/RewardsService';
+// store/SimplifiedGameStore.ts - 🎮 Store Optimizado y Estable
+import {
+  calculateFinalPoints,
+  generateInitialPowerCards,
+} from '@/utils/gameHelpers';
 import { create } from 'zustand';
 
-// Tipos básicos actualizados - manteniendo compatibilidad
+export interface PowerCard {
+  id: string;
+  type: 'robo' | 'escudo' | 'boost' | 'refresh' | 'peek' | 'precision';
+  name: string;
+  description: string;
+  emoji: string;
+  usageLimit: number;
+  currentUses: number;
+}
+
 export interface Player {
   id: string;
   name: string;
   score: number;
   isCurrentTurn: boolean;
   tokens: number;
-  powerCards: any[];
+  powerCards: PowerCard[];
   currentBet: number;
   isImmune: boolean;
   boostActive: boolean;
   peekUsed: boolean;
   consecutiveWins: number;
   cardTypeStreaks: Record<string, number>;
-  difficultyStreaks: Record<string, number>;
 }
 
 export interface Card {
@@ -37,126 +47,72 @@ export interface Card {
 }
 
 interface GameState {
+  // Core State
   id: string;
   players: Player[];
   currentTurn: number;
-  gameMode: 'normal' | 'battle' | 'speed' | 'viral';
   timeLeft: number;
   isActive: boolean;
   round: number;
   currentCard: Card | null;
-  isScanning: boolean;
   error: string | null;
+
+  // Timer
   timerInterval: NodeJS.Timeout | null;
-
-  // Game Features
-  gamePot: { tokens: number; powerCards: any[] };
-  viralMomentActive: boolean;
-  speedRoundCards: Card[];
-  speedRoundAnswers: Record<string, number>;
-  battleRound: any;
-  currentSpeedRoundIndex: number;
-  speedRoundTimeLeft: number;
-
-  // Audio State
-  audioFinished: boolean;
-  showQuestion: boolean;
-  showAnswer: boolean;
-  showGameEndModal: boolean;
-
-  // Special Modes State
-  battleModeActive: boolean;
-  speedRoundActive: boolean;
-  selectedBattlePlayers: { player1Id: string; player2Id: string } | null;
 }
 
 interface GameActions {
-  // Core actions
+  // Player Management
   addPlayer: (name: string) => void;
   removePlayer: (id: string) => void;
+
+  // Game Lifecycle
   startGame: () => void;
   endGame: () => void;
-  createNewGame: () => void;
   nextTurn: () => void;
+  resetGame: () => void;
 
-  // Card & Audio
-  scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;
-  playCardAudio: () => Promise<void>;
-  stopAudio: () => Promise<void>;
-  setAudioFinished: (finished: boolean) => void;
-  setShowQuestion: (show: boolean) => void;
-  setShowAnswer: (show: boolean) => void;
+  // Card Management
+  scanCard: (qrCode: string, card: Card) => void;
 
-  // Scoring
-  awardPoints: (playerId: string, points?: number, answerTime?: number) => void;
+  // Points System
+  awardPoints: (playerId: string, points?: number) => void;
 
-  // UI States
-  setScanning: (scanning: boolean) => void;
-  setError: (error: string | null) => void;
-
-  // Timer
-  startTimer: (duration: number) => void;
-  stopTimer: () => void;
-
-  // Betting System - ✅ IMPLEMENTED
+  // Betting System
   placeBet: (playerId: string, amount: number) => void;
   clearBets: () => void;
 
-  // Power Cards - ✅ IMPLEMENTED
+  // Power Cards
   usePowerCard: (
     playerId: string,
     powerCardId: string,
     targetPlayerId?: string
   ) => void;
-  addPowerCardToPlayer: (playerId: string, powerCard: any) => void;
+  addPowerCardToPlayer: (playerId: string, powerCard: PowerCard) => void;
 
-  // Special Modes - ✅ IMPLEMENTED
-  startBattleMode: (player1Id: string, player2Id: string) => void;
-  startSpeedRound: () => void;
-  startViralMoment: () => void;
-
-  // Testing Functions
-  addTestingButtons: () => void;
+  // Utilities
+  setError: (error: string | null) => void;
+  startTimer: (duration: number) => void;
+  stopTimer: () => void;
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
-  // Initial State
+  // 🎮 Initial State
   id: '',
   players: [],
   currentTurn: 0,
-  gameMode: 'normal',
   timeLeft: 0,
   isActive: false,
   round: 1,
   currentCard: null,
-  isScanning: false,
   error: null,
   timerInterval: null,
 
-  // Game Features
-  gamePot: { tokens: 0, powerCards: [] },
-  viralMomentActive: false,
-  speedRoundCards: [],
-  speedRoundAnswers: {},
-  battleRound: null,
-  currentSpeedRoundIndex: 0,
-  speedRoundTimeLeft: 30,
-
-  // Audio State
-  audioFinished: false,
-  showQuestion: false,
-  showAnswer: false,
-  showGameEndModal: false,
-
-  // Special Modes State
-  battleModeActive: false,
-  speedRoundActive: false,
-  selectedBattlePlayers: null,
-
-  // Player Management
+  // 👥 PLAYER MANAGEMENT
   addPlayer: (name: string) => {
     const { players } = get();
 
+    // Validation
     if (name.trim().length < 2) {
       throw new Error('El nombre debe tener al menos 2 caracteres');
     }
@@ -171,11 +127,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       throw new Error('Ya existe un jugador con ese nombre');
     }
 
+    // Create new player
     const newPlayer: Player = {
-      id: `player_${Date.now()}`,
+      id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
       score: 0,
-      isCurrentTurn: false,
+      isCurrentTurn: players.length === 0,
       tokens: 5,
       powerCards: [],
       currentBet: 0,
@@ -184,7 +141,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       peekUsed: false,
       consecutiveWins: 0,
       cardTypeStreaks: {},
-      difficultyStreaks: {},
     };
 
     set((state) => ({
@@ -203,15 +159,89 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newCurrentTurn = Math.max(0, state.currentTurn - 1);
       }
 
+      // Update turn indicators
+      const updatedPlayers = newPlayers.map((player, index) => ({
+        ...player,
+        isCurrentTurn: index === newCurrentTurn,
+      }));
+
       return {
-        players: newPlayers,
+        players: updatedPlayers,
         currentTurn: newCurrentTurn,
       };
     });
   },
 
-  createNewGame: () => {
-    audioService.stopAudio();
+  // 🎮 GAME LIFECYCLE
+  startGame: () => {
+    const { players } = get();
+
+    if (players.length < 2) {
+      throw new Error('Se necesitan al menos 2 jugadores para empezar');
+    }
+
+    // Initialize players for game
+    const gameReadyPlayers = players.map((player, index) => ({
+      ...player,
+      isCurrentTurn: index === 0,
+      score: 0,
+      tokens: 5,
+      powerCards: generateInitialPowerCards(),
+      currentBet: 0,
+      consecutiveWins: 0,
+      cardTypeStreaks: {},
+      isImmune: false,
+      boostActive: false,
+      peekUsed: false,
+    }));
+
+    set({
+      players: gameReadyPlayers,
+      isActive: true,
+      currentTurn: 0,
+      timeLeft: 1200, // 20 minutes
+      round: 1,
+      error: null,
+      currentCard: null,
+    });
+
+    // Start game timer
+    get().startTimer(1200);
+  },
+
+  endGame: () => {
+    get().stopTimer();
+    set({
+      isActive: false,
+      currentCard: null,
+    });
+  },
+
+  nextTurn: () => {
+    set((state) => {
+      const nextTurnIndex = (state.currentTurn + 1) % state.players.length;
+
+      const updatedPlayers = state.players.map((player, index) => ({
+        ...player,
+        isCurrentTurn: index === nextTurnIndex,
+        peekUsed: false, // Reset peek power
+        // Gradually reduce immunity
+        isImmune: player.isImmune && Math.random() > 0.5,
+      }));
+
+      return {
+        players: updatedPlayers,
+        currentTurn: nextTurnIndex,
+        currentCard: null,
+        round: state.round + 1,
+      };
+    });
+
+    // Clear all bets for new round
+    get().clearBets();
+  },
+
+  resetGame: () => {
     const { timerInterval } = get();
     if (timerInterval) {
       clearInterval(timerInterval);
@@ -221,201 +251,80 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       id: `game_${Date.now()}`,
       players: [],
       currentTurn: 0,
-      gameMode: 'normal',
       timeLeft: 0,
       isActive: false,
       round: 1,
       currentCard: null,
-      isScanning: false,
       error: null,
       timerInterval: null,
-      gamePot: { tokens: 0, powerCards: [] },
-      viralMomentActive: false,
-      audioFinished: false,
-      showQuestion: false,
-      showAnswer: false,
     });
   },
 
-  startGame: () => {
-    const { players } = get();
-
-    if (players.length < 2) {
-      throw new Error('Se necesitan al menos 2 jugadores para empezar');
-    }
-
-    try {
-      audioService.initializeAudio().catch(console.error);
-
-      const updatedPlayers = players.map((player, index) => ({
-        ...player,
-        isCurrentTurn: index === 0,
-        score: 0,
-        tokens: 5,
-        powerCards: [],
-        currentBet: 0,
-        consecutiveWins: 0,
-        cardTypeStreaks: {},
-        difficultyStreaks: {},
-      }));
-
-      set({
-        players: updatedPlayers,
-        isActive: true,
-        currentTurn: 0,
-        timeLeft: 1200, // 20 minutes
-        gameMode: 'normal',
-        round: 1,
-        error: null,
-      });
-
-      get().startTimer(1200);
-      console.log('✅ Game started successfully');
-    } catch (error) {
-      console.error('❌ Error starting game:', error);
-      set({ error: 'No se pudo iniciar el juego' });
-    }
-  },
-
-  endGame: () => {
-    audioService.stopAudio();
-    get().stopTimer();
-
-    // Save game stats to backend
-    const { players, id, timeLeft } = get();
-    const winner = players.reduce((max, player) =>
-      player.score > max.score ? player : max
-    );
-
-    audioService
-      .saveGameStats({
-        gameId: id,
-        players: players,
-        duration: 1200 - timeLeft, // Time elapsed
-        winner: winner.name,
-        totalRounds: get().round,
-      })
-      .catch(console.error);
-
+  // 🎯 CARD MANAGEMENT
+  scanCard: (qrCode: string, card: Card) => {
     set({
-      isActive: false,
-      currentCard: null,
-      gameMode: 'normal',
-      viralMomentActive: false,
-      audioFinished: false,
-      showQuestion: false,
-      showAnswer: false,
-      showGameEndModal: true, // ✅ Show end game modal
+      currentCard: card,
+      error: null,
     });
   },
 
-  // Card & Audio System
-  scanCard: async (qrCode: string, gameCard?: Card) => {
-    try {
-      set({
-        isScanning: true,
-        error: null,
-        audioFinished: false,
-        showQuestion: false,
-        showAnswer: false,
-      });
+  // 🏆 POINTS SYSTEM
+  awardPoints: (playerId: string, points?: number) => {
+    const { currentCard, players } = get();
+    const player = players.find((p) => p.id === playerId);
 
-      let card: Card;
-
-      if (gameCard) {
-        // Use card from backend
-        card = gameCard;
-      } else {
-        // Fallback to local card service
-        const localCard = await cardService.getCardByQR(qrCode);
-        if (!localCard) {
-          throw new Error('Carta no encontrada o código QR inválido');
-        }
-        card = localCard;
-      }
-
-      set({
-        currentCard: card,
-        isScanning: false,
-      });
-
-      // Audio will be handled by AudioPlayer component with autoPlay
-      console.log('✅ Card scanned successfully:', card.track.title);
-    } catch (error) {
-      console.error('Error scanning card:', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido';
-      set({
-        isScanning: false,
-        error: errorMessage,
-      });
-    }
-  },
-
-  playCardAudio: async () => {
-    const { currentCard } = get();
-    if (!currentCard?.track.previewUrl) {
-      set({ error: 'No hay URL de audio disponible' });
+    if (!player || !currentCard) {
+      console.warn('Cannot award points: player or card not found');
       return;
     }
 
-    try {
-      await audioService.playTrackPreview(
-        currentCard.track.previewUrl,
-        5000,
-        () => {
-          set({ audioFinished: true, showQuestion: true });
-          console.log('Audio preview finished');
+    const basePoints = points || currentCard.points || 1;
+    const finalPoints = calculateFinalPoints(basePoints, player, currentCard);
+
+    set((state) => ({
+      players: state.players.map((p) => {
+        if (p.id === playerId) {
+          return {
+            ...p,
+            score: p.score + finalPoints,
+            consecutiveWins: p.consecutiveWins + 1,
+            currentBet: 0, // Clear bet after awarding
+            boostActive: false, // Clear boost after use
+            cardTypeStreaks: {
+              ...p.cardTypeStreaks,
+              [currentCard.cardType]:
+                (p.cardTypeStreaks[currentCard.cardType] || 0) + 1,
+            },
+          };
+        } else {
+          // Reset other players' streaks
+          return {
+            ...p,
+            consecutiveWins: 0,
+            cardTypeStreaks: {},
+          };
         }
-      );
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      set({
-        error: 'No se pudo reproducir el audio',
-        audioFinished: true,
-        showQuestion: true,
-      });
-    }
+      }),
+    }));
   },
 
-  stopAudio: async () => {
-    await audioService.stopAudio();
-  },
-
-  setAudioFinished: (finished: boolean) => {
-    set({ audioFinished: finished });
-  },
-
-  setShowQuestion: (show: boolean) => {
-    set({ showQuestion: show });
-  },
-
-  setShowAnswer: (show: boolean) => {
-    set({ showAnswer: show });
-  },
-
-  setShowGameEndModal: (show: boolean) => {
-    set({ showGameEndModal: show });
-  },
-
-  // ✅ BETTING SYSTEM - FULLY IMPLEMENTED
+  // 🎰 BETTING SYSTEM
   placeBet: (playerId: string, amount: number) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
 
-      if (!player) {
-        console.error('Player not found');
-        return state;
+      if (!player || player.tokens < amount || amount < 1 || amount > 3) {
+        return {
+          ...state,
+          error: 'Apuesta inválida: tokens insuficientes o cantidad incorrecta',
+        };
       }
 
-      if (player.tokens < amount) {
-        console.error('Not enough tokens');
-        return { ...state, error: 'No tienes suficientes tokens' };
-      }
-
-      if (amount < 1 || amount > 3) {
-        console.error('Invalid bet amount');
-        return { ...state, error: 'Apuesta debe ser entre 1 y 3 tokens' };
+      if (player.currentBet > 0) {
+        return {
+          ...state,
+          error: 'Ya tienes una apuesta activa',
+        };
       }
 
       return {
@@ -432,8 +341,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         error: null,
       };
     });
-
-    console.log(`✅ Player ${playerId} bet ${amount} tokens`);
   },
 
   clearBets: () => {
@@ -442,7 +349,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }));
   },
 
-  // ✅ POWER CARDS SYSTEM - FULLY IMPLEMENTED
+  // ⚡ POWER CARDS SYSTEM
   usePowerCard: (
     playerId: string,
     powerCardId: string,
@@ -450,295 +357,112 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   ) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
-      const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
+      const powerCard = player?.powerCards.find((pc) => pc.id === powerCardId);
 
-      if (!player || !powerCard) {
-        return { ...state, error: 'Carta de poder no encontrada' };
+      if (
+        !player ||
+        !powerCard ||
+        powerCard.currentUses >= powerCard.usageLimit
+      ) {
+        return {
+          ...state,
+          error: 'No se puede usar esta carta de poder',
+        };
       }
 
-      if (powerCard.currentUses >= powerCard.usageLimit) {
-        return { ...state, error: 'Carta de poder ya usada' };
-      }
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id === playerId) {
+          // Update power card usage
+          const updatedPowerCards = p.powerCards.map((pc) =>
+            pc.id === powerCardId
+              ? { ...pc, currentUses: pc.currentUses + 1 }
+              : pc
+          );
 
-      let newPlayers = [...state.players];
+          // Apply power card effects
+          let playerUpdates: Partial<Player> = {
+            powerCards: updatedPowerCards,
+          };
 
-      // Apply power card effect
-      switch (powerCard.type) {
-        case 'robo': // Steal 1 token
-          if (targetPlayerId) {
-            newPlayers = newPlayers.map((p) => {
-              if (p.id === targetPlayerId && p.tokens > 0) {
-                return { ...p, tokens: p.tokens - 1 };
-              }
-              if (p.id === playerId) {
-                return {
-                  ...p,
-                  tokens: p.tokens + 1,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                };
-              }
-              return p;
-            });
+          switch (powerCard.type) {
+            case 'escudo':
+              playerUpdates.isImmune = true;
+              break;
+            case 'boost':
+              playerUpdates.boostActive = true;
+              break;
+            case 'refresh':
+              playerUpdates.tokens = Math.min((p.tokens || 0) + 1, 5);
+              break;
+            case 'peek':
+              playerUpdates.peekUsed = true;
+              break;
           }
-          break;
 
-        case 'escudo': // Immunity shield
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  isImmune: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
+          return { ...p, ...playerUpdates };
+        }
 
-        case 'boost': // Double points next round
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  boostActive: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
+        // Handle target effects (robo)
+        if (
+          targetPlayerId &&
+          p.id === targetPlayerId &&
+          powerCard.type === 'robo' &&
+          !p.isImmune
+        ) {
+          return {
+            ...p,
+            tokens: Math.max((p.tokens || 0) - 1, 0),
+          };
+        }
 
-        case 'refresh': // Recover 1 token
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  tokens: p.tokens + 1,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
+        return p;
+      });
 
-        case 'peek': // See answer early
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  peekUsed: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          set({ showAnswer: true }); // Show answer immediately
-          break;
-
-        case 'precision': // +2 points for exact year
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
+      // Add stolen token to user if robo was successful
+      if (powerCard.type === 'robo' && targetPlayerId) {
+        const targetPlayer = state.players.find((p) => p.id === targetPlayerId);
+        if (targetPlayer && !targetPlayer.isImmune) {
+          const userIndex = updatedPlayers.findIndex((p) => p.id === playerId);
+          if (userIndex !== -1) {
+            updatedPlayers[userIndex] = {
+              ...updatedPlayers[userIndex],
+              tokens: (updatedPlayers[userIndex].tokens || 0) + 1,
+            };
+          }
+        }
       }
 
       return {
         ...state,
-        players: newPlayers,
+        players: updatedPlayers,
         error: null,
       };
     });
-
-    console.log(`✅ Power card ${powerCardId} used by player ${playerId}`);
   },
 
-  addPowerCardToPlayer: (playerId: string, powerCard: any) => {
+  addPowerCardToPlayer: (playerId: string, powerCard: PowerCard) => {
     set((state) => ({
       players: state.players.map((p) =>
         p.id === playerId
-          ? { ...p, powerCards: [...(p.powerCards || []), powerCard] }
+          ? {
+              ...p,
+              powerCards: [...(p.powerCards || []), powerCard],
+            }
           : p
       ),
     }));
   },
 
-  // Scoring System with Rewards
-  awardPoints: (playerId: string, points?: number, answerTime?: number) => {
-    const { currentCard, gameMode, players } = get();
-    const player = players.find((p) => p.id === playerId);
-
-    if (!player || !currentCard) return;
-
-    let basePoints = points || currentCard.points || 0;
-
-    // Apply betting multiplier
-    if (player.currentBet > 0) {
-      const multiplier = rewardsService.getBettingMultiplier(player.currentBet);
-      basePoints = basePoints * multiplier;
-    }
-
-    // Apply boost power card
-    if (player.boostActive) {
-      basePoints = basePoints * 2;
-    }
-
-    // Apply game mode multipliers
-    if (gameMode === 'viral') {
-      basePoints = basePoints * 2;
-    }
-
-    // Calculate rewards
-    const rewards = rewardsService.calculateRewards(
-      currentCard.difficulty as any,
-      answerTime || 3000,
-      player.consecutiveWins,
-      player.cardTypeStreaks[currentCard.cardType] || 0,
-      player.difficultyStreaks[currentCard.difficulty] || 0
-    );
-
-    set((state) => ({
-      players: state.players.map((p) => {
-        if (p.id === playerId) {
-          const newPlayer = {
-            ...p,
-            score: p.score + basePoints + rewards.totalPoints,
-            tokens: (p.tokens || 0) + rewards.bonusTokens,
-            consecutiveWins: p.consecutiveWins + 1,
-            currentBet: 0, // Clear bet after use
-            boostActive: false, // Clear boost after use
-            cardTypeStreaks: {
-              ...p.cardTypeStreaks,
-              [currentCard.cardType]:
-                (p.cardTypeStreaks[currentCard.cardType] || 0) + 1,
-            },
-            difficultyStreaks: {
-              ...p.difficultyStreaks,
-              [currentCard.difficulty]:
-                (p.difficultyStreaks[currentCard.difficulty] || 0) + 1,
-            },
-          };
-
-          // Add power card reward
-          if (rewards.powerCard) {
-            newPlayer.powerCards = [
-              ...(newPlayer.powerCards || []),
-              rewards.powerCard,
-            ];
-          }
-
-          return newPlayer;
-        } else {
-          // Reset streaks for other players
-          return {
-            ...p,
-            consecutiveWins: 0,
-            cardTypeStreaks: {},
-            difficultyStreaks: {},
-          };
-        }
-      }),
-    }));
-
-    console.log(
-      `✅ Awarded ${basePoints + rewards.totalPoints} points to ${player.name}`
-    );
-    get().nextTurn();
+  // 🛠️ UTILITIES
+  setError: (error: string | null) => {
+    set({ error });
   },
 
-  nextTurn: () => {
-    const { players, currentTurn } = get();
-    const nextTurnIndex = (currentTurn + 1) % players.length;
-
-    const updatedPlayers = players.map((player, index) => ({
-      ...player,
-      isCurrentTurn: index === nextTurnIndex,
-      // Reduce immunity duration
-      isImmune: player.isImmune && Math.random() > 0.5, // 50% chance to lose immunity each turn
-      peekUsed: false, // Reset peek
-    }));
-
-    set({
-      players: updatedPlayers,
-      currentTurn: nextTurnIndex,
-      currentCard: null,
-      round: get().round + 1,
-      audioFinished: false,
-      showQuestion: false,
-      showAnswer: false,
-    });
-
-    // Clear all bets
-    get().clearBets();
-
-    // Check win condition (15 points)
-    const winner = updatedPlayers.find((p) => p.score >= 15);
-    if (winner) {
-      get().endGame();
-    }
-  },
-
-  // ✅ SPECIAL GAME MODES - IMPLEMENTED
-  startBattleMode: (player1Id: string, player2Id: string) => {
-    console.log(`🥊 Starting Battle Mode: ${player1Id} vs ${player2Id}`);
-    set({
-      gameMode: 'battle',
-      battleModeActive: true,
-      selectedBattlePlayers: { player1Id, player2Id },
-      battleRound: { player1Id, player2Id, active: true },
-    });
-  },
-
-  startSpeedRound: () => {
-    console.log('⚡ Starting Speed Round');
-    set({
-      gameMode: 'speed',
-      speedRoundActive: true,
-      speedRoundTimeLeft: 30,
-      speedRoundAnswers: {},
-      currentSpeedRoundIndex: 0,
-    });
-  },
-
-  startViralMoment: () => {
-    console.log('🔥 Starting Viral Moment');
-    set({
-      gameMode: 'viral',
-      viralMomentActive: true,
-    });
-  },
-
-  setBattlePlayers: (player1Id: string, player2Id: string) => {
-    set({ selectedBattlePlayers: { player1Id, player2Id } });
-  },
-
-  // Timer Management
+  // ⏰ TIMER MANAGEMENT
   startTimer: (duration: number) => {
     const { timerInterval } = get();
+
+    // Clear existing timer
     if (timerInterval) {
       clearInterval(timerInterval);
     }
@@ -768,19 +492,5 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       clearInterval(timerInterval);
       set({ timerInterval: null });
     }
-  },
-
-  // UI States
-  setScanning: (scanning: boolean) => {
-    set({ isScanning: scanning });
-  },
-
-  setError: (error: string | null) => {
-    set({ error });
-  },
-
-  // ✅ TESTING FUNCTIONS FOR DEVELOPMENT
-  addTestingButtons: () => {
-    console.log('🧪 Adding testing functions to game store');
   },
 }));

@@ -1,192 +1,241 @@
-// hooks/useGameFlow.ts - FIXED Turn Management & Feedback
+// hooks/useGameFlow.ts - 🎮 ARREGLAR crashes y race conditions
 import { audioService } from '@/services/audioService';
 import { useGameStore } from '@/store/gameStore';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-export interface GameFlowState {
-  isScanning: boolean;
-  audioPlaying: boolean;
-  questionPhase: boolean;
-  showAnswerRevealed: boolean;
-  currentError: string | null;
-  lastWinnerId: string | null; // 🔧 FIXED: Track who won for correct feedback
+type GamePhase = 'idle' | 'scanning' | 'audio' | 'question' | 'answered';
+
+interface GameFlowState {
+  phase: GamePhase;
+  isLoading: boolean;
+  error: string | null;
+  showAnswer: boolean;
+  canAwardPoints: boolean;
 }
 
 export const useGameFlow = () => {
+  const { scanCard, currentCard } = useGameStore();
+
   const [flowState, setFlowState] = useState<GameFlowState>({
-    isScanning: false,
-    audioPlaying: false,
-    questionPhase: false,
-    showAnswerRevealed: false,
-    currentError: null,
-    lastWinnerId: null, // 🔧 FIXED: Initialize winner tracking
+    phase: 'idle',
+    isLoading: false,
+    error: null,
+    showAnswer: false,
+    canAwardPoints: false,
   });
 
-  const {
-    scanCard,
-    setShowQuestion,
-    setAudioFinished,
-    setShowAnswer,
-    currentCard,
-    nextTurn, // 🔧 FIXED: Import nextTurn
-  } = useGameStore();
+  // 🔧 ARREGLO: Refs para prevenir crashes
+  const audioTimeoutRef = useRef<NodeJS.Timeout>();
+  const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const callbackExecutedRef = useRef(false);
 
-  // 🎯 CLEAN QR SCANNING - NO ALERTS
-  const handleQRScan = useCallback(
-    async (qrCode: string): Promise<boolean> => {
-      try {
-        setFlowState((prev) => ({
-          ...prev,
-          isScanning: true,
-          currentError: null,
-          lastWinnerId: null, // Reset winner tracking
-        }));
-
-        const scanResult = await audioService.scanQRAndPlay(qrCode);
-
-        if (scanResult.success && scanResult.card) {
-          // Convert backend response to game card format
-          const gameCard = {
-            id: scanResult.card.track.id,
-            qrCode: qrCode,
-            cardType: scanResult.card.type.toLowerCase(),
-            track: {
-              title: scanResult.card.track.title,
-              artist: scanResult.card.track.artist,
-              year: scanResult.card.track.year,
-              genre: scanResult.card.track.genre,
-              album: scanResult.card.track.album || '',
-              decade: `${Math.floor(scanResult.card.track.year / 10) * 10}s`,
-              previewUrl: scanResult.card.audio?.url || '',
-            },
-            question: scanResult.card.question,
-            answer: scanResult.card.answer,
-            points: scanResult.card.points,
-            difficulty: scanResult.card.difficulty.toLowerCase(),
-            hints: scanResult.card.hints || [],
-            audioUrl: scanResult.card.audio?.url || '',
-            audioAvailable: scanResult.card.audio?.hasAudio || false,
-            duration: Math.min(scanResult.card.audio?.duration || 5, 5), // 🔧 FIXED: 5 seconds max
-          };
-
-          await scanCard(qrCode, gameCard);
-
-          setFlowState((prev) => ({
-            ...prev,
-            isScanning: false,
-            audioPlaying: true,
-          }));
-
-          return true;
-        }
-
-        throw new Error('Invalid scan result');
-      } catch (error) {
-        console.error('QR Scan failed:', error);
-        setFlowState((prev) => ({
-          ...prev,
-          isScanning: false,
-          currentError: getErrorMessage(error),
-        }));
-        return false;
-      }
-    },
-    [scanCard]
-  );
-
-  // 🎵 AUDIO FLOW MANAGEMENT
-  const handleAudioFinished = useCallback(() => {
-    setFlowState((prev) => ({
-      ...prev,
-      audioPlaying: false,
-      questionPhase: true,
-    }));
-
-    setAudioFinished(true);
-    setShowQuestion(true);
-  }, [setAudioFinished, setShowQuestion]);
-
-  // 🔍 REVEAL ANSWER
-  const revealAnswer = useCallback(() => {
-    setFlowState((prev) => ({
-      ...prev,
-      showAnswerRevealed: true,
-    }));
-    setShowAnswer(true);
-  }, [setShowAnswer]);
-
-  // 🏆 AWARD POINTS AND AUTO-ADVANCE TURN
-  const awardPointsAndAdvance = useCallback(
-    (playerId: string, playerName: string) => {
-      // Set winner for correct feedback
-      setFlowState((prev) => ({
-        ...prev,
-        lastWinnerId: playerId,
-      }));
-
-      // Award points will be handled by the calling component
-      // Then automatically advance to next turn after a brief delay
-      setTimeout(() => {
-        nextTurn(); // 🔧 FIXED: Auto advance to next player
-        resetFlow(); // Reset flow state for next round
-      }, 1500); // Small delay to show feedback
-
-      return { playerId, playerName }; // Return for feedback
-    },
-    [nextTurn]
-  );
-
-  // 🔄 RESET FLOW STATE
-  const resetFlow = useCallback(() => {
-    setFlowState({
-      isScanning: false,
-      audioPlaying: false,
-      questionPhase: false,
-      showAnswerRevealed: false,
-      currentError: null,
-      lastWinnerId: null,
-    });
+  // 🔧 ARREGLO: Cleanup en unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      clearTimeouts();
+      audioService.stopAudio();
+      isProcessingRef.current = false;
+    };
   }, []);
 
-  // 🧪 CONNECTION TEST
-  const testConnection = useCallback(async (): Promise<boolean> => {
-    try {
-      return await audioService.testConnection();
-    } catch {
-      return false;
+  // 🔄 Clear timeouts - MEJORADO
+  const clearTimeouts = useCallback(() => {
+    if (audioTimeoutRef.current) {
+      clearTimeout(audioTimeoutRef.current);
+      audioTimeoutRef.current = undefined;
+    }
+    callbackExecutedRef.current = false;
+  }, []);
+
+  // 🔧 ARREGLO: Safe state update
+  const safeSetState = useCallback((newState: Partial<GameFlowState>) => {
+    if (isMountedRef.current) {
+      setFlowState((prev) => ({ ...prev, ...newState }));
     }
   }, []);
 
-  // 📱 GET WINNER INFO FOR FEEDBACK
-  const getWinnerInfo = useCallback(() => {
-    return {
-      winnerId: flowState.lastWinnerId,
-      hasWinner: !!flowState.lastWinnerId,
-    };
-  }, [flowState.lastWinnerId]);
+  // 🎯 Main QR scan handler - ARREGLOS para evitar crashes
+  const handleQRScan = useCallback(
+    async (qrCode: string): Promise<boolean> => {
+      // 🔧 ARREGLO: Prevenir múltiples scans
+      if (isProcessingRef.current || !isMountedRef.current) {
+        return false;
+      }
+
+      try {
+        isProcessingRef.current = true;
+        callbackExecutedRef.current = false;
+        clearTimeouts();
+
+        safeSetState({
+          phase: 'scanning',
+          isLoading: true,
+          error: null,
+          showAnswer: false,
+          canAwardPoints: false,
+        });
+
+        // Get card data
+        const result = await audioService.scanQRAndPlay(qrCode);
+
+        if (!isMountedRef.current) {
+          return false;
+        }
+
+        if (!result.success || !result.card) {
+          throw new Error(result.error?.message || 'Failed to scan QR');
+        }
+
+        // Store card in game state
+        await scanCard(qrCode, result.card);
+
+        if (!isMountedRef.current) {
+          return false;
+        }
+
+        // Start audio phase
+        safeSetState({ phase: 'audio' });
+
+        // 🔧 ARREGLO: Audio con callback seguro
+        if (result.card.track.previewUrl) {
+          await audioService.playTrackPreview(
+            result.card.track.previewUrl,
+            5000,
+            () => {
+              // 🔧 ARREGLO: Callback seguro que solo se ejecuta una vez
+              if (!callbackExecutedRef.current && isMountedRef.current) {
+                callbackExecutedRef.current = true;
+                safeSetState({
+                  phase: 'question',
+                  isLoading: false,
+                  error: null,
+                  showAnswer: false,
+                  canAwardPoints: true,
+                });
+              }
+            }
+          );
+        } else {
+          // 🔧 ARREGLO: Sin audio, timeout seguro
+          audioTimeoutRef.current = setTimeout(() => {
+            if (!callbackExecutedRef.current && isMountedRef.current) {
+              callbackExecutedRef.current = true;
+              safeSetState({
+                phase: 'question',
+                isLoading: false,
+                error: null,
+                showAnswer: false,
+                canAwardPoints: true,
+              });
+            }
+          }, 1000);
+        }
+
+        return true;
+      } catch (error) {
+        if (isMountedRef.current) {
+          safeSetState({
+            phase: 'idle',
+            isLoading: false,
+            error: error instanceof Error ? error.message : 'Unknown error',
+            showAnswer: false,
+            canAwardPoints: false,
+          });
+        }
+        return false;
+      } finally {
+        isProcessingRef.current = false;
+      }
+    },
+    [scanCard, clearTimeouts, safeSetState]
+  );
+
+  // 👁️ Reveal answer - SEGURO
+  const revealAnswer = useCallback(() => {
+    if (isMountedRef.current) {
+      safeSetState({ showAnswer: true });
+    }
+  }, [safeSetState]);
+
+  // 🏆 Award points and advance - MEJORADO
+  const awardPointsAndAdvance = useCallback(
+    (playerId: string) => {
+      if (!isMountedRef.current) return;
+
+      safeSetState({
+        phase: 'answered',
+        isLoading: false,
+        error: null,
+        showAnswer: true,
+        canAwardPoints: false,
+      });
+
+      // 🔧 ARREGLO: Auto-reset seguro
+      audioTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          resetFlow();
+        }
+      }, 2000);
+    },
+    [safeSetState]
+  );
+
+  // ➡️ No winner advance - SEGURO
+  const noWinnerAdvance = useCallback(() => {
+    if (isMountedRef.current) {
+      resetFlow();
+    }
+  }, []);
+
+  // 🔄 Reset flow - MEJORADO con cleanup completo
+  const resetFlow = useCallback(() => {
+    clearTimeouts();
+    audioService.stopAudio();
+    isProcessingRef.current = false;
+    callbackExecutedRef.current = false;
+
+    if (isMountedRef.current) {
+      safeSetState({
+        phase: 'idle',
+        isLoading: false,
+        error: null,
+        showAnswer: false,
+        canAwardPoints: false,
+      });
+    }
+  }, [clearTimeouts, safeSetState]);
+
+  // 🧹 Cleanup - MEJORADO
+  const cleanup = useCallback(() => {
+    isMountedRef.current = false;
+    clearTimeouts();
+    audioService.stopAudio();
+    isProcessingRef.current = false;
+    callbackExecutedRef.current = false;
+  }, [clearTimeouts]);
 
   return {
+    // State - MANTENER INTERFACE ORIGINAL
     flowState,
+    currentCard,
+
+    // Actions - MANTENER NOMBRES ORIGINALES
     handleQRScan,
-    handleAudioFinished,
     revealAnswer,
-    awardPointsAndAdvance, // 🔧 FIXED: New method that handles points + turn advance
+    awardPointsAndAdvance,
+    noWinnerAdvance,
     resetFlow,
-    testConnection,
-    getWinnerInfo, // 🔧 FIXED: Method to get winner info for correct feedback
+    cleanup,
+
+    // Derived state for UI - COMO ESTABA ANTES
+    isScanning: flowState.phase === 'scanning',
+    isAudioPlaying: flowState.phase === 'audio',
+    showQuestion:
+      flowState.phase === 'question' || flowState.phase === 'answered',
+    showAnswer: flowState.showAnswer,
+    canAwardPoints: flowState.canAwardPoints,
   };
 };
-
-// Helper function for error messages
-function getErrorMessage(error: any): string {
-  if (error.message?.includes('HTTP 404')) {
-    return 'Carta no encontrada en la base de datos';
-  }
-  if (error.message?.includes('HTTP 400')) {
-    return 'Código QR inválido';
-  }
-  if (error.message?.includes('fetch') || error.message?.includes('Network')) {
-    return 'Sin conexión al servidor';
-  }
-  return error.message || 'Error desconocido';
-}
