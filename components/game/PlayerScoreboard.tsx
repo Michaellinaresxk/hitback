@@ -1,3 +1,4 @@
+// components/game/PlayerScoreboard.tsx - FIXED Text Component Error
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
 import React from 'react';
@@ -40,7 +41,7 @@ export default function PlayerScoreboard({
       highlightWinner && player.id === winner?.id && player.score >= 15;
     const position = index + 1;
 
-    const getPositionEmoji = (pos: number) => {
+    const getPositionEmoji = (pos: number): string => {
       if (pos === 1) return '🥇';
       if (pos === 2) return '🥈';
       if (pos === 3) return '🥉';
@@ -74,10 +75,7 @@ export default function PlayerScoreboard({
             ]}
           >
             <Text style={styles.positionText}>
-              {typeof getPositionEmoji(position) === 'string' &&
-              getPositionEmoji(position).length === 2
-                ? getPositionEmoji(position)
-                : position}
+              {getPositionEmoji(position)}
             </Text>
           </View>
 
@@ -92,7 +90,7 @@ export default function PlayerScoreboard({
         <View style={styles.playerInfo}>
           <Text style={[styles.playerName, isWinner && styles.winnerName]}>
             {player.name}
-            {isWinner && ' 👑'}
+            {isWinner ? ' 👑' : ''}
           </Text>
 
           <View style={styles.playerStats}>
