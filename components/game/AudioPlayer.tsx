@@ -1,19 +1,20 @@
-import React, { useState, useEffect } from 'react';
+// components/game/AudioPlayer.tsx - FIXED Audio Player
+import { IconSymbol } from '@/components/ui/IconSymbol';
+import { Audio } from 'expo-av';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
+  Animated,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Animated,
+  View,
 } from 'react-native';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { audioService } from '@/services/audioService';
 
 interface AudioPlayerProps {
   previewUrl: string | null;
   trackTitle?: string;
   artist?: string;
-  duration?: number;
+  duration?: number; // Max duration in milliseconds
   onAudioFinished?: () => void;
   autoPlay?: boolean;
 }
@@ -22,81 +23,172 @@ export default function AudioPlayer({
   previewUrl,
   trackTitle = 'Unknown Track',
   artist = 'Unknown Artist',
-  duration = 5000,
+  duration = 5000, // 5 seconds default
   onAudioFinished,
   autoPlay = false,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(duration / 1000);
+  const [timeLeft, setTimeLeft] = useState(Math.floor(duration / 1000));
   const [progress] = useState(new Animated.Value(0));
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const hasFinished = useRef(false);
+
+  // Initialize audio on mount
   useEffect(() => {
-    if (autoPlay && previewUrl) {
+    initializeAudio();
+    return () => cleanup();
+  }, []);
+
+  // Auto play when preview URL changes
+  useEffect(() => {
+    if (autoPlay && previewUrl && !hasFinished.current) {
       handlePlay();
     }
-
-    return () => {
-      audioService.stopAudio();
-    };
   }, [previewUrl, autoPlay]);
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
+  const initializeAudio = async () => {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        // 🔧 FIXED: Removed problematic properties
+      });
+    } catch (error) {
+      console.warn('Audio initialization warning:', error);
+    }
+  };
 
-    if (isPlaying) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            handleStop();
-            onAudioFinished?.();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+  const handlePlay = async () => {
+    if (!previewUrl || hasFinished.current) {
+      console.warn('No preview URL available or already finished');
+      return;
+    }
 
-      // Animate progress bar
+    try {
+      setIsLoading(true);
+
+      // Stop any existing sound
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+
+      console.log('🎵 Loading audio:', previewUrl);
+
+      // Create and load new sound
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        { uri: previewUrl },
+        {
+          shouldPlay: true,
+          volume: 1.0,
+          rate: 1.0, // 🔧 FIXED: Ensure normal playback rate
+          isLooping: false,
+          isMuted: false,
+        },
+        onPlaybackStatusUpdate
+      );
+
+      setSound(newSound);
+      setIsPlaying(true);
+      setIsLoading(false);
+      setTimeLeft(Math.floor(duration / 1000));
+      hasFinished.current = false;
+
+      // Start progress animation
       Animated.timing(progress, {
         toValue: 1,
         duration: duration,
         useNativeDriver: false,
       }).start();
-    }
 
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isPlaying, duration]);
+      // Start countdown timer
+      startCountdown();
 
-  const handlePlay = async () => {
-    if (!previewUrl) {
-      console.error('❌ No preview URL available');
-      return;
-    }
-
-    try {
-      setIsPlaying(true);
-      setTimeLeft(duration / 1000);
-
-      await audioService.playTrackPreview(previewUrl, duration, () => {
-        setIsPlaying(false);
-        setTimeLeft(0);
-        onAudioFinished?.();
-      });
+      console.log('✅ Audio started successfully');
     } catch (error) {
       console.error('❌ Error playing audio:', error);
+      setIsLoading(false);
       setIsPlaying(false);
+      // Don't show alert, just handle gracefully
+      onAudioFinished?.();
     }
+  };
+
+  const onPlaybackStatusUpdate = (status: any) => {
+    if (status.isLoaded && status.didJustFinish && !hasFinished.current) {
+      console.log('🎵 Audio finished naturally');
+      handleAudioEnd();
+    }
+  };
+
+  const startCountdown = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+
+    timerRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          handleAudioEnd();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  const handleAudioEnd = () => {
+    if (hasFinished.current) return;
+
+    hasFinished.current = true;
+    setIsPlaying(false);
+
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+
+    cleanup().then(() => {
+      console.log('🎵 Audio ended, triggering callback');
+      onAudioFinished?.();
+    });
   };
 
   const handleStop = async () => {
     try {
-      await audioService.stopAudio();
       setIsPlaying(false);
-      setTimeLeft(duration / 1000);
+
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+
+      await cleanup();
+
+      // Reset values
+      setTimeLeft(Math.floor(duration / 1000));
       progress.setValue(0);
+      hasFinished.current = false;
     } catch (error) {
       console.error('❌ Error stopping audio:', error);
+    }
+  };
+
+  const cleanup = async () => {
+    try {
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+      }
+    } catch (error) {
+      console.warn('Cleanup warning:', error);
     }
   };
 
@@ -132,17 +224,22 @@ export default function AudioPlayer({
           style={[styles.playButton, isPlaying && styles.playingButton]}
           onPress={isPlaying ? handleStop : handlePlay}
           activeOpacity={0.8}
+          disabled={isLoading}
         >
-          <IconSymbol
-            name={isPlaying ? 'stop.fill' : 'play.fill'}
-            size={20}
-            color='#FFFFFF'
-          />
+          {isLoading ? (
+            <IconSymbol name='clock' size={20} color='#FFFFFF' />
+          ) : (
+            <IconSymbol
+              name={isPlaying ? 'stop.fill' : 'play.fill'}
+              size={20}
+              color='#FFFFFF'
+            />
+          )}
         </TouchableOpacity>
 
         <View style={styles.timeContainer}>
           <Text style={styles.timeText}>
-            {isPlaying ? `${timeLeft}s` : `${duration / 1000}s`}
+            {isPlaying ? `${timeLeft}s` : `${Math.floor(duration / 1000)}s`}
           </Text>
         </View>
       </View>

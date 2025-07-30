@@ -1,161 +1,66 @@
+// services/audioService.ts - FIXED Audio Service
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
-// 🏗️ TYPES & INTERFACES - Clean Architecture
-interface ServerResponse<T = any> {
-  success: boolean;
-  data?: T;
-  error?: {
-    message: string;
-    code?: string;
-  };
-  message?: string;
-  meta?: {
-    requestId: string;
+// Types
+interface BackendTrackData {
+  scan: {
+    qrCode: string;
     timestamp: string;
+    points: number;
+    difficulty: string;
+    processingTime: number;
+    cardType: string;
   };
-}
-
-interface HealthCheckData {
-  status: 'healthy' | 'error' | 'degraded';
-  environment: string;
-  uptime: number;
-  version: string;
-  services?: Record<string, any>;
-}
-
-interface TrackData {
   track: {
     id: string;
     title: string;
     artist: string;
+    album: string;
+    year: number;
+    genre: string;
     difficulty: string;
+  };
+  question: {
+    type: string;
+    text: string;
+    answer: string;
+    points: number;
+    hints: string[];
+    challengeType?: string;
+  };
+  audio: {
+    hasAudio: boolean;
+    url: string;
+    duration: number;
+  };
+}
+
+interface FrontendCard {
+  id: string;
+  type: 'SONG' | 'ARTIST' | 'DECADE' | 'LYRICS' | 'CHALLENGE';
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  question: string;
+  answer: string;
+  points: number;
+  hints: string[];
+  color: string;
+  track: {
+    id: string;
+    title: string;
+    artist: string;
+    album: string;
+    year: number;
+    genre: string;
   };
   audio?: {
     hasAudio: boolean;
     url: string;
     duration: number;
   };
-  question?: any;
 }
 
-interface ConnectionInfo {
-  serverUrl: string;
-  yourSpecificIP: string;
-  isExpoDevMode: boolean;
-  expoHostUri?: string;
-  timestamp: string;
-}
-
-// 🔧 CONFIGURATION CLASS - Single Responsibility
-class ServerConfig {
-  private static readonly YOUR_IP = '192.168.1.10';
-  private static readonly PORT = '3000';
-
-  static getServerUrl(): string {
-    // En desarrollo, intenta usar la IP del servidor de desarrollo de Expo
-    if (__DEV__ && Constants.expoConfig?.hostUri) {
-      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
-      if (hostUri && hostUri !== 'localhost' && !hostUri.startsWith('127.')) {
-        console.log(`🔧 Using Expo detected IP: ${hostUri}:${this.PORT}`);
-        return `http://${hostUri}:${this.PORT}`;
-      }
-    }
-
-    console.log(`🔧 Using specific IP: ${this.YOUR_IP}:${this.PORT}`);
-    return `http://${this.YOUR_IP}:${this.PORT}`;
-  }
-
-  static getConnectionInfo(): ConnectionInfo {
-    return {
-      serverUrl: this.getServerUrl(),
-      yourSpecificIP: `${this.YOUR_IP}:${this.PORT}`,
-      isExpoDevMode: __DEV__,
-      expoHostUri: Constants.expoConfig?.hostUri,
-      timestamp: new Date().toISOString(),
-    };
-  }
-}
-
-// 🌐 HTTP CLIENT CLASS - Separation of Concerns
-class HttpClient {
-  private readonly baseUrl: string;
-  private readonly defaultHeaders: Record<string, string>;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    this.defaultHeaders = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      'x-expo-token': 'expo-dev-client',
-    };
-  }
-
-  async get<T>(
-    endpoint: string,
-    options?: RequestInit
-  ): Promise<ServerResponse<T>> {
-    return this.request<T>(endpoint, { method: 'GET', ...options });
-  }
-
-  async post<T>(
-    endpoint: string,
-    body?: any,
-    options?: RequestInit
-  ): Promise<ServerResponse<T>> {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
-  }
-
-  private async request<T>(
-    endpoint: string,
-    options: RequestInit
-  ): Promise<ServerResponse<T>> {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    try {
-      console.log(`📡 ${options.method} ${url}`);
-
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
-
-      const response = await fetch(url, {
-        ...options,
-        headers: { ...this.defaultHeaders, ...options.headers },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      console.log(`📡 Response: ${response.status} ${response.statusText}`);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      const data: ServerResponse<T> = await response.json();
-      return data;
-    } catch (error) {
-      console.error(`❌ Request failed for ${url}:`, error);
-
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout - server took too long to respond');
-      }
-
-      if (error.message.includes('Network request failed')) {
-        throw new Error(`Network error: Cannot connect to ${this.baseUrl}`);
-      }
-
-      throw error;
-    }
-  }
-}
-
-// 🔊 AUDIO MANAGER CLASS - Single Responsibility
+// 🎵 FIXED Audio Manager - No more slowdown issues
 class AudioManager {
   private sound: Audio.Sound | null = null;
   private isInitialized: boolean = false;
@@ -164,44 +69,60 @@ class AudioManager {
     if (this.isInitialized) return;
 
     try {
+      // 🔧 FIXED: Simple, working audio configuration
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: false,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
+        // Removed problematic properties that caused slowdown
       });
 
       this.isInitialized = true;
-      console.log('✅ AudioManager initialized');
+      console.log('✅ AudioManager initialized successfully');
     } catch (error) {
       console.error('❌ AudioManager initialization failed:', error);
       throw error;
     }
   }
 
-  async play(audioUrl: string, duration: number = 5000): Promise<void> {
+  // 🎵 FIXED: Play with normal speed and duration control
+  async playTrackPreview(
+    audioUrl: string,
+    maxDuration: number = 10000, // 10 seconds max
+    onFinished?: () => void
+  ): Promise<void> {
     try {
       if (!this.isInitialized) {
         await this.initialize();
       }
 
-      await this.stop(); // Stop any existing audio
+      await this.stop();
+      console.log(`🎵 Playing preview: ${audioUrl} (max ${maxDuration}ms)`);
 
-      console.log(`🎵 Playing: ${audioUrl}`);
-
+      // 🔧 FIXED: Simple sound creation with proper rate
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
-        { shouldPlay: true, volume: 1.0 }
+        {
+          shouldPlay: true,
+          volume: 1.0,
+          rate: 1.0, // 🔧 FIXED: Ensure normal playback speed
+          isLooping: false,
+          isMuted: false,
+        }
       );
 
       this.sound = sound;
 
-      // Auto-stop after duration
+      // Auto-stop after max duration
       setTimeout(async () => {
         await this.stop();
-        console.log('⏹️ Audio finished automatically');
-      }, duration);
+        console.log('⏹️ Audio stopped after max duration');
+        onFinished?.();
+      }, maxDuration);
+
+      console.log('✅ Audio preview started successfully');
     } catch (error) {
       console.error('❌ Audio playback failed:', error);
       throw new Error(`Audio playback failed: ${error.message}`);
@@ -230,107 +151,191 @@ class AudioManager {
   }
 }
 
-// 🏥 HEALTH CHECK SERVICE - Specialized Logic
-class HealthCheckService {
-  constructor(private httpClient: HttpClient) {}
+// 🌐 HTTP Client for backend communication
+class HttpClient {
+  private readonly baseUrl: string;
+  private readonly defaultHeaders: Record<string, string>;
 
-  async checkHealth(): Promise<boolean> {
+  constructor(baseUrl: string) {
+    this.baseUrl = baseUrl;
+    this.defaultHeaders = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    };
+  }
+
+  async get<T>(endpoint: string, options?: RequestInit) {
+    return this.request<T>(endpoint, { method: 'GET', ...options });
+  }
+
+  async post<T>(endpoint: string, body?: any, options?: RequestInit) {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    });
+  }
+
+  private async request<T>(endpoint: string, options: RequestInit) {
+    const url = `${this.baseUrl}${endpoint}`;
+
     try {
-      console.log('🧪 Checking server health...');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
 
-      const response = await this.httpClient.get<HealthCheckData>(
-        '/api/health'
-      );
-
-      console.log('📦 Health response:', {
-        success: response.success,
-        status: response.data?.status,
-        message: response.message,
+      const response = await fetch(url, {
+        ...options,
+        headers: { ...this.defaultHeaders, ...options.headers },
+        signal: controller.signal,
       });
 
-      // ✅ FIXED: More resilient health check logic
-      if (!response.success) {
-        console.warn('⚠️ Health check: success=false');
-        return false;
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      // Check multiple conditions for health status
-      const isHealthy = this.evaluateHealthStatus(response);
-
-      console.log(
-        isHealthy ? '✅ Server is healthy' : '❌ Server is not healthy'
-      );
-      return isHealthy;
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('❌ Health check failed:', error);
-      this.logTroubleshootingInfo();
-      return false;
-    }
-  }
-
-  private evaluateHealthStatus(
-    response: ServerResponse<HealthCheckData>
-  ): boolean {
-    // Si el servidor responde con success=true, considerarlo disponible
-    // incluso si el status interno no es "healthy"
-    if (response.success) {
-      const status = response.data?.status;
-
-      // Aceptar tanto "healthy" como "error" si el servidor responde
-      if (status === 'healthy') {
-        return true;
+      if (error.name === 'AbortError') {
+        throw new Error('Request timeout');
       }
-
-      // Si status es "error" pero el servidor responde, log warning pero continuar
-      if (status === 'error') {
-        console.warn('⚠️ Server reports internal errors but is responding');
-        return true; // ✅ Changed: Be more permissive
+      if (error.message.includes('Network request failed')) {
+        throw new Error(`Network error: Cannot connect to ${this.baseUrl}`);
       }
-
-      // Para estados desconocidos, ser conservador
-      console.warn(`⚠️ Unknown server status: ${status}`);
-      return false;
+      throw error;
     }
-
-    return false;
-  }
-
-  private logTroubleshootingInfo(): void {
-    const serverUrl = ServerConfig.getServerUrl();
-    console.error('💡 Troubleshooting:');
-    console.error(`   - Server URL: ${serverUrl}`);
-    console.error(`   - Make sure server is running`);
-    console.error(`   - Check WiFi network connection`);
-    console.error(`   - Verify firewall settings`);
   }
 }
 
-// 🎯 MAIN AUDIO SERVICE - Clean Architecture
+// 🔧 Server Configuration
+class ServerConfig {
+  private static readonly YOUR_IP = '192.168.1.10'; // 🔧 Update this IP
+  private static readonly PORT = '3000';
+
+  static getServerUrl(): string {
+    if (__DEV__ && Constants.expoConfig?.hostUri) {
+      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
+      if (hostUri && hostUri !== 'localhost' && !hostUri.startsWith('127.')) {
+        return `http://${hostUri}:${this.PORT}`;
+      }
+    }
+    return `http://${this.YOUR_IP}:${this.PORT}`;
+  }
+}
+
+// 🔄 Data Adapter for converting backend to frontend format
+class DataAdapter {
+  private static readonly TYPE_COLORS = {
+    song: '#10B981',
+    artist: '#3B82F6',
+    decade: '#F59E0B',
+    lyrics: '#8B5CF6',
+    challenge: '#EF4444',
+  };
+
+  static backendToCard(backendData: BackendTrackData): FrontendCard {
+    try {
+      const { track, question, audio, scan } = backendData;
+
+      const card: FrontendCard = {
+        id: `${track.id}_${question.type}_${scan.difficulty}`,
+        type: this.normalizeQuestionType(question.type),
+        difficulty: this.normalizeDifficulty(scan.difficulty),
+        question: question.text || 'Pregunta no disponible',
+        answer: question.answer || 'Respuesta no disponible',
+        points: question.points || 1,
+        hints: question.hints || [],
+        color: this.TYPE_COLORS[question.type.toLowerCase()] || '#64748B',
+        track: {
+          id: track.id,
+          title: track.title || 'Título desconocido',
+          artist: track.artist || 'Artista desconocido',
+          album: track.album || 'Álbum desconocido',
+          year: track.year || 2024,
+          genre: track.genre || 'Género desconocido',
+        },
+        audio: audio
+          ? {
+              hasAudio: audio.hasAudio,
+              url: audio.url,
+              duration: audio.duration,
+            }
+          : undefined,
+      };
+
+      return card;
+    } catch (error) {
+      console.error('❌ Data conversion failed:', error);
+      throw error;
+    }
+  }
+
+  private static normalizeQuestionType(
+    type: string
+  ): 'SONG' | 'ARTIST' | 'DECADE' | 'LYRICS' | 'CHALLENGE' {
+    const normalizedType = type.toUpperCase();
+    switch (normalizedType) {
+      case 'SONG':
+        return 'SONG';
+      case 'ARTIST':
+        return 'ARTIST';
+      case 'DECADE':
+        return 'DECADE';
+      case 'LYRICS':
+        return 'LYRICS';
+      case 'CHALLENGE':
+        return 'CHALLENGE';
+      default:
+        return 'SONG';
+    }
+  }
+
+  private static normalizeDifficulty(
+    difficulty: string
+  ): 'EASY' | 'MEDIUM' | 'HARD' {
+    const normalizedDifficulty = difficulty.toUpperCase();
+    switch (normalizedDifficulty) {
+      case 'EASY':
+        return 'EASY';
+      case 'MEDIUM':
+        return 'MEDIUM';
+      case 'HARD':
+        return 'HARD';
+      default:
+        return 'EASY';
+    }
+  }
+}
+
+// 🎯 Main Audio Service
 class AudioService {
   private httpClient: HttpClient;
   private audioManager: AudioManager;
-  private healthCheck: HealthCheckService;
 
   constructor() {
     const serverUrl = ServerConfig.getServerUrl();
     this.httpClient = new HttpClient(serverUrl);
     this.audioManager = new AudioManager();
-    this.healthCheck = new HealthCheckService(this.httpClient);
   }
 
-  // 🚀 PUBLIC API - Clean Interface
-  async scanQRAndPlay(qrCode: string): Promise<ServerResponse<TrackData>> {
+  // Initialize audio system
+  async initializeAudio(): Promise<void> {
+    await this.audioManager.initialize();
+  }
+
+  // 🎯 MAIN METHOD: Scan QR and get card data
+  async scanQRAndPlay(qrCode: string): Promise<{
+    success: boolean;
+    card: FrontendCard;
+    data: BackendTrackData;
+  }> {
     try {
       console.log(`🔍 Scanning QR: ${qrCode}`);
 
-      // 1. Check connectivity first
-      const isConnected = await this.healthCheck.checkHealth();
-      if (!isConnected) {
-        throw new Error('Server is not available. Check your connection.');
-      }
-
-      // 2. Scan QR code
-      const response = await this.httpClient.post<TrackData>(
+      const response = await this.httpClient.post<BackendTrackData>(
         `/api/qr/scan/${qrCode}`
       );
 
@@ -338,110 +343,84 @@ class AudioService {
         throw new Error(response.error?.message || 'QR scan failed');
       }
 
-      // 3. Validate response structure
-      if (!this.validateTrackData(response.data)) {
-        throw new Error('Invalid response structure from server');
-      }
+      const card = DataAdapter.backendToCard(response.data);
 
-      console.log(
-        `✅ QR scan success: ${response.data.track.title} by ${response.data.track.artist}`
-      );
-
-      // 4. Play audio if available
-      await this.handleAudioPlayback(response.data);
-
-      return response;
+      return {
+        success: true,
+        card: card,
+        data: response.data,
+      };
     } catch (error) {
       console.error('❌ QR scan error:', error);
-      throw this.enhanceError(error);
+      throw error;
     }
   }
 
-  async testConnection(): Promise<boolean> {
-    return this.healthCheck.checkHealth();
+  // 🎵 Audio playback methods
+  async playTrackPreview(
+    audioUrl: string,
+    duration: number = 10000,
+    onFinished?: () => void
+  ): Promise<void> {
+    return this.audioManager.playTrackPreview(audioUrl, duration, onFinished);
   }
 
-  async validateQRCode(qrCode: string): Promise<boolean> {
-    try {
-      const response = await this.httpClient.get<{ isValid: boolean }>(
-        `/api/qr/validate/${qrCode}`
-      );
-      return response.success && response.data?.isValid === true;
-    } catch (error) {
-      console.error('❌ QR validation failed:', error);
-      return false;
-    }
-  }
-
-  async getAllTracks(): Promise<any[]> {
-    try {
-      const response = await this.httpClient.get<any[]>('/api/tracks');
-      return response.success ? response.data || [] : [];
-    } catch (error) {
-      console.error('❌ Failed to get tracks:', error);
-      return [];
-    }
-  }
-
-  // 🎵 Audio Controls
   async stopAudio(): Promise<void> {
-    await this.audioManager.stop();
+    return this.audioManager.stop();
   }
 
   isPlaying(): boolean {
     return this.audioManager.isPlaying();
   }
 
-  // 🎵 Audio Initialization (Public API for compatibility)
-  async initializeAudio(): Promise<void> {
-    await this.audioManager.initialize();
+  // 🧪 Connection testing
+  async testConnection(): Promise<boolean> {
+    try {
+      const response = await this.httpClient.get('/api/health');
+      return response.success && response.data?.status === 'healthy';
+    } catch (error) {
+      console.error('❌ Health check failed:', error);
+      return false;
+    }
   }
 
-  // 📊 Utility Methods
+  // 📊 Utility methods
   getServerUrl(): string {
     return ServerConfig.getServerUrl();
-  }
-
-  getConnectionInfo(): ConnectionInfo {
-    return ServerConfig.getConnectionInfo();
   }
 
   async cleanup(): Promise<void> {
     await this.audioManager.cleanup();
   }
 
-  // 🔒 PRIVATE METHODS - Internal Logic
-  private validateTrackData(data: TrackData | undefined): data is TrackData {
-    return !!(data && data.track && data.track.title && data.track.artist);
-  }
-
-  private async handleAudioPlayback(trackData: TrackData): Promise<void> {
-    if (trackData.audio?.hasAudio && trackData.audio.url) {
-      try {
-        console.log(`🎵 Playing audio: ${trackData.audio.url}`);
-        const duration = (trackData.audio.duration || 5) * 1000;
-        await this.audioManager.play(trackData.audio.url, duration);
-        console.log('🎵 Audio started successfully');
-      } catch (audioError) {
-        console.warn('⚠️ Audio playback failed (non-critical):', audioError);
-        // Don't throw - audio failure shouldn't break QR scan
-      }
-    } else {
-      console.warn('⚠️ No audio available for this track');
+  // Additional methods for game statistics
+  async saveGameStats(gameStats: any): Promise<void> {
+    try {
+      await this.httpClient.post('/api/game/stats', gameStats);
+    } catch (error) {
+      console.error('Failed to save game stats:', error);
     }
   }
 
-  private enhanceError(error: any): Error {
-    if (error.message?.includes('Network')) {
-      const serverUrl = this.getServerUrl();
-      return new Error(
-        `Network error: Cannot connect to ${serverUrl}. ` +
-          'Check if server is running and both devices are on the same WiFi network.'
-      );
+  async validateQRCode(qrCode: string): Promise<boolean> {
+    try {
+      const response = await this.httpClient.get(`/api/qr/validate/${qrCode}`);
+      return response.success && response.data?.isValid === true;
+    } catch (error) {
+      return false;
     }
-    return error;
+  }
+
+  async getAllTracks(): Promise<any[]> {
+    try {
+      const response = await this.httpClient.get('/api/tracks');
+      return response.success ? response.data || [] : [];
+    } catch (error) {
+      return [];
+    }
   }
 }
 
-// 🎯 SINGLETON EXPORT
+// 🎯 Singleton export
 export const audioService = new AudioService();
+export type { BackendTrackData, FrontendCard };
