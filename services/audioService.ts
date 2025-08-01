@@ -1,8 +1,6 @@
-// services/audioService.ts - CORREGIDO para el JSON real del backend
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
-// ✅ CORREGIDO: Interfaces que coinciden con el JSON real del backend
 interface BackendTrack {
   id: string;
   title: string;
@@ -13,7 +11,7 @@ interface BackendTrack {
   decade: string;
   popularity: number;
   duration: number;
-  audioFile: string; // ✅ CORREGIDO: Es "audioFile" no "audio.url"
+  audioFile: string;
   audioSource: 'local' | 'none';
   hasAudio: boolean;
   hasQuestions: boolean;
@@ -21,7 +19,6 @@ interface BackendTrack {
   questionCount: number;
   lastUpdated: string;
   questions: {
-    // ✅ CORREGIDO: Es "questions" plural
     song: QuestionDetails;
     artist: QuestionDetails;
     decade: QuestionDetails;
@@ -31,7 +28,7 @@ interface BackendTrack {
 }
 
 interface QuestionDetails {
-  question: string; // ✅ CORREGIDO: Es "question" no "text"
+  question: string;
   answer: string;
   points: number;
   hints: string[];
@@ -41,7 +38,6 @@ interface ChallengeQuestionDetails extends QuestionDetails {
   challengeType: 'dance' | 'sing' | 'imitate' | 'performance';
 }
 
-// ✅ CORREGIDO: Response format que generaremos para el frontend
 interface ProcessedScanResponse {
   success: boolean;
   card?: {
@@ -50,8 +46,6 @@ interface ProcessedScanResponse {
     trackId: string;
     cardType: string;
     difficulty: string;
-
-    // Track info (del JSON)
     track: {
       id: string;
       title: string;
@@ -60,15 +54,11 @@ interface ProcessedScanResponse {
       year: number;
       genre: string;
     };
-
-    // Question info (extraído del JSON según cardType)
     question: string;
     answer: string;
     points: number;
     hints: string[];
     challengeType?: string;
-
-    // Audio info (construido por nosotros)
     audio: {
       hasAudio: boolean;
       url: string;
@@ -77,8 +67,6 @@ interface ProcessedScanResponse {
   };
   error?: { message: string };
 }
-
-// 🎵 Audio Manager (sin cambios, funciona bien)
 class AudioManager {
   private sound: Audio.Sound | null = null;
   private isInitialized: boolean = false;
@@ -105,7 +93,7 @@ class AudioManager {
 
   async playTrackPreview(
     audioUrl: string,
-    maxDuration: number = 5000, // 5 seconds for game
+    maxDuration: number = 5000,
     onFinished?: () => void
   ): Promise<void> {
     try {
@@ -129,7 +117,6 @@ class AudioManager {
 
       this.sound = sound;
 
-      // Auto-stop after max duration
       setTimeout(async () => {
         await this.stop();
         console.log('⏹️ Audio stopped after max duration');
@@ -165,7 +152,6 @@ class AudioManager {
   }
 }
 
-// 🌐 HTTP Client (sin cambios)
 class HttpClient {
   private readonly baseUrl: string;
   private readonly defaultHeaders: Record<string, string>;
@@ -224,9 +210,8 @@ class HttpClient {
   }
 }
 
-// 🔧 Server Configuration (sin cambios)
 class ServerConfig {
-  private static readonly YOUR_IP = '192.168.1.10'; // 🔧 Update this IP
+  private static readonly YOUR_IP = '192.168.1.10';
   private static readonly PORT = '3000';
 
   static getServerUrl(): string {
@@ -240,7 +225,6 @@ class ServerConfig {
   }
 }
 
-// ✅ NUEVO: QR Code Parser que funciona con el formato real
 class QRCodeParser {
   static parseQRCode(qrCode: string): {
     trackId: string;
@@ -248,7 +232,6 @@ class QRCodeParser {
     difficulty: string;
   } | null {
     try {
-      // Format: HITBACK_001_SONG_EASY
       if (!qrCode.startsWith('HITBACK_')) {
         return null;
       }
@@ -276,7 +259,6 @@ class QRCodeParser {
   }
 }
 
-// ✅ NUEVO: Data Processor que funciona con el JSON real del backend
 class BackendDataProcessor {
   static processTrackData(
     backendTrack: BackendTrack,
@@ -284,13 +266,11 @@ class BackendDataProcessor {
     serverUrl: string
   ): ProcessedScanResponse {
     try {
-      // Parse QR code to get card type and difficulty
       const qrData = QRCodeParser.parseQRCode(qrCode);
       if (!qrData) {
         throw new Error('Invalid QR code format');
       }
 
-      // ✅ CORREGIDO: Extraer la pregunta según el card type
       const questionData =
         backendTrack.questions[
           qrData.cardType as keyof typeof backendTrack.questions
@@ -299,12 +279,9 @@ class BackendDataProcessor {
         throw new Error(`No question data for card type: ${qrData.cardType}`);
       }
 
-      // ✅ CORREGIDO: Construir URL de audio correctamente
       const audioUrl = backendTrack.hasAudio
         ? `${serverUrl}/audio/tracks/${backendTrack.audioFile}`
         : '';
-
-      // ✅ CORREGIDO: Calcular puntos según dificultad
       const difficultyMultiplier = this.getDifficultyMultiplier(
         qrData.difficulty
       );
@@ -327,7 +304,7 @@ class BackendDataProcessor {
           genre: backendTrack.genre,
         },
 
-        question: questionData.question, // ✅ CORREGIDO: Es "question" no "text"
+        question: questionData.question,
         answer: questionData.answer,
         points: finalPoints,
         hints: questionData.hints || [],
@@ -339,7 +316,7 @@ class BackendDataProcessor {
         audio: {
           hasAudio: backendTrack.hasAudio,
           url: audioUrl,
-          duration: 5, // 5 seconds for game
+          duration: 5,
         },
       };
 
@@ -366,8 +343,6 @@ class BackendDataProcessor {
     return multipliers[difficulty as keyof typeof multipliers] || 1;
   }
 }
-
-// 🎯 NUEVO: Local Tracks Database (como fallback si no hay backend)
 class LocalTracksDatabase {
   private tracks: BackendTrack[] = [];
 
@@ -376,7 +351,6 @@ class LocalTracksDatabase {
   }
 
   private initializeLocalTracks() {
-    // ✅ CORREGIDO: Usa el formato real del JSON del backend
     this.tracks = [
       {
         id: '001',
@@ -492,7 +466,6 @@ class LocalTracksDatabase {
   }
 }
 
-// 🎯 CORREGIDO: Main Audio Service
 class AudioService {
   private httpClient: HttpClient;
   private audioManager: AudioManager;
@@ -509,12 +482,10 @@ class AudioService {
     await this.audioManager.initialize();
   }
 
-  // ✅ CORREGIDO: Método principal que funciona con el JSON real
   async scanQRAndPlay(qrCode: string): Promise<ProcessedScanResponse> {
     try {
       console.log(`🔍 Scanning QR: ${qrCode}`);
 
-      // Parse QR code
       const qrData = QRCodeParser.parseQRCode(qrCode);
       if (!qrData) {
         throw new Error('Invalid QR code format');
@@ -522,7 +493,6 @@ class AudioService {
 
       console.log('📋 Parsed QR:', qrData);
 
-      // Try to get track from backend first
       let backendTrack: BackendTrack | null = null;
 
       try {
@@ -538,8 +508,6 @@ class AudioService {
       } catch (error) {
         console.log('⚠️ Backend unavailable, using local database');
       }
-
-      // Fallback to local database
       if (!backendTrack) {
         backendTrack = this.localDatabase.getTrackById(qrData.trackId);
         if (!backendTrack) {
@@ -548,7 +516,6 @@ class AudioService {
         console.log('✅ Got track from local database');
       }
 
-      // ✅ CORREGIDO: Process track data with correct structure
       const processedResponse = BackendDataProcessor.processTrackData(
         backendTrack,
         qrCode,
@@ -575,7 +542,6 @@ class AudioService {
     }
   }
 
-  // Audio playback methods (sin cambios)
   async playTrackPreview(
     audioUrl: string,
     duration: number = 5000,
@@ -592,18 +558,16 @@ class AudioService {
     return this.audioManager.isPlaying();
   }
 
-  // Connection testing
   async testConnection(): Promise<boolean> {
     try {
       const response = await this.httpClient.get('/api/health');
       return response.success && response.data?.status === 'healthy';
     } catch (error) {
       console.error('❌ Health check failed, using local mode');
-      return true; // Return true for local mode
+      return true;
     }
   }
 
-  // Utility methods
   getServerUrl(): string {
     return ServerConfig.getServerUrl();
   }
@@ -612,7 +576,6 @@ class AudioService {
     await this.audioManager.cleanup();
   }
 
-  // Additional methods
   async saveGameStats(gameStats: any): Promise<void> {
     try {
       await this.httpClient.post('/api/game/stats', gameStats);
@@ -623,16 +586,13 @@ class AudioService {
 
   async validateQRCode(qrCode: string): Promise<boolean> {
     try {
-      // First validate format locally
       if (!QRCodeParser.isValidQRFormat(qrCode)) {
         return false;
       }
 
-      // Then try backend validation
       const response = await this.httpClient.get(`/api/qr/validate/${qrCode}`);
       return response.success && response.data?.isValid === true;
     } catch (error) {
-      // Fallback to local validation
       const qrData = QRCodeParser.parseQRCode(qrCode);
       if (!qrData) return false;
 
@@ -652,7 +612,6 @@ class AudioService {
     }
   }
 
-  // ✅ NUEVO: Get connection info for diagnostics
   async getConnectionInfo(): Promise<any> {
     const serverUrl = this.getServerUrl();
     const isExpoDevMode = __DEV__ && !!Constants.expoConfig?.hostUri;
@@ -666,6 +625,5 @@ class AudioService {
   }
 }
 
-// 🎯 Singleton export
 export const audioService = new AudioService();
 export type { BackendTrack, ProcessedScanResponse };
