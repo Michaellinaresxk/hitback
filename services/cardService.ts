@@ -345,16 +345,10 @@ class CardService {
     return testCodes;
   }
 
-  /**
-   * ✅ NUEVO: Validate track has questions for card type
-   */
   validateTrackCardType(track: any, cardType: string): boolean {
     return track.questions && track.questions[cardType];
   }
 
-  /**
-   * ✅ NUEVO: Get question preview without revealing answer
-   */
   getQuestionPreview(
     track: any,
     cardType: string
