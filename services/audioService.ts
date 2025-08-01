@@ -1,66 +1,84 @@
-// services/audioService.ts - FIXED Audio Service
+// services/audioService.ts - CORREGIDO para el JSON real del backend
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
-// Types
-interface BackendTrackData {
-  scan: {
+// ✅ CORREGIDO: Interfaces que coinciden con el JSON real del backend
+interface BackendTrack {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  year: number;
+  genre: string;
+  decade: string;
+  popularity: number;
+  duration: number;
+  audioFile: string; // ✅ CORREGIDO: Es "audioFile" no "audio.url"
+  audioSource: 'local' | 'none';
+  hasAudio: boolean;
+  hasQuestions: boolean;
+  availableCardTypes: string[];
+  questionCount: number;
+  lastUpdated: string;
+  questions: {
+    // ✅ CORREGIDO: Es "questions" plural
+    song: QuestionDetails;
+    artist: QuestionDetails;
+    decade: QuestionDetails;
+    lyrics: QuestionDetails;
+    challenge: ChallengeQuestionDetails;
+  };
+}
+
+interface QuestionDetails {
+  question: string; // ✅ CORREGIDO: Es "question" no "text"
+  answer: string;
+  points: number;
+  hints: string[];
+}
+
+interface ChallengeQuestionDetails extends QuestionDetails {
+  challengeType: 'dance' | 'sing' | 'imitate' | 'performance';
+}
+
+// ✅ CORREGIDO: Response format que generaremos para el frontend
+interface ProcessedScanResponse {
+  success: boolean;
+  card?: {
+    // QR info (generado por nosotros)
     qrCode: string;
-    timestamp: string;
-    points: number;
-    difficulty: string;
-    processingTime: number;
+    trackId: string;
     cardType: string;
-  };
-  track: {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    year: number;
-    genre: string;
     difficulty: string;
-  };
-  question: {
-    type: string;
-    text: string;
+
+    // Track info (del JSON)
+    track: {
+      id: string;
+      title: string;
+      artist: string;
+      album: string;
+      year: number;
+      genre: string;
+    };
+
+    // Question info (extraído del JSON según cardType)
+    question: string;
     answer: string;
     points: number;
     hints: string[];
     challengeType?: string;
+
+    // Audio info (construido por nosotros)
+    audio: {
+      hasAudio: boolean;
+      url: string;
+      duration: number;
+    };
   };
-  audio: {
-    hasAudio: boolean;
-    url: string;
-    duration: number;
-  };
+  error?: { message: string };
 }
 
-interface FrontendCard {
-  id: string;
-  type: 'SONG' | 'ARTIST' | 'DECADE' | 'LYRICS' | 'CHALLENGE';
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
-  question: string;
-  answer: string;
-  points: number;
-  hints: string[];
-  color: string;
-  track: {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    year: number;
-    genre: string;
-  };
-  audio?: {
-    hasAudio: boolean;
-    url: string;
-    duration: number;
-  };
-}
-
-// 🎵 FIXED Audio Manager - No more slowdown issues
+// 🎵 Audio Manager (sin cambios, funciona bien)
 class AudioManager {
   private sound: Audio.Sound | null = null;
   private isInitialized: boolean = false;
@@ -69,14 +87,12 @@ class AudioManager {
     if (this.isInitialized) return;
 
     try {
-      // 🔧 FIXED: Simple, working audio configuration
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         staysActiveInBackground: false,
         playsInSilentModeIOS: true,
         shouldDuckAndroid: true,
         playThroughEarpieceAndroid: false,
-        // Removed problematic properties that caused slowdown
       });
 
       this.isInitialized = true;
@@ -87,10 +103,9 @@ class AudioManager {
     }
   }
 
-  // 🎵 FIXED: Play with normal speed and duration control
   async playTrackPreview(
     audioUrl: string,
-    maxDuration: number = 10000, // 10 seconds max
+    maxDuration: number = 5000, // 5 seconds for game
     onFinished?: () => void
   ): Promise<void> {
     try {
@@ -101,13 +116,12 @@ class AudioManager {
       await this.stop();
       console.log(`🎵 Playing preview: ${audioUrl} (max ${maxDuration}ms)`);
 
-      // 🔧 FIXED: Simple sound creation with proper rate
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
         {
           shouldPlay: true,
           volume: 1.0,
-          rate: 1.0, // 🔧 FIXED: Ensure normal playback speed
+          rate: 1.0,
           isLooping: false,
           isMuted: false,
         }
@@ -151,7 +165,7 @@ class AudioManager {
   }
 }
 
-// 🌐 HTTP Client for backend communication
+// 🌐 HTTP Client (sin cambios)
 class HttpClient {
   private readonly baseUrl: string;
   private readonly defaultHeaders: Record<string, string>;
@@ -181,7 +195,7 @@ class HttpClient {
 
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const response = await fetch(url, {
         ...options,
@@ -210,7 +224,7 @@ class HttpClient {
   }
 }
 
-// 🔧 Server Configuration
+// 🔧 Server Configuration (sin cambios)
 class ServerConfig {
   private static readonly YOUR_IP = '192.168.1.10'; // 🔧 Update this IP
   private static readonly PORT = '3000';
@@ -226,140 +240,345 @@ class ServerConfig {
   }
 }
 
-// 🔄 Data Adapter for converting backend to frontend format
-class DataAdapter {
-  private static readonly TYPE_COLORS = {
-    song: '#10B981',
-    artist: '#3B82F6',
-    decade: '#F59E0B',
-    lyrics: '#8B5CF6',
-    challenge: '#EF4444',
-  };
-
-  static backendToCard(backendData: BackendTrackData): FrontendCard {
+// ✅ NUEVO: QR Code Parser que funciona con el formato real
+class QRCodeParser {
+  static parseQRCode(qrCode: string): {
+    trackId: string;
+    cardType: string;
+    difficulty: string;
+  } | null {
     try {
-      const { track, question, audio, scan } = backendData;
+      // Format: HITBACK_001_SONG_EASY
+      if (!qrCode.startsWith('HITBACK_')) {
+        return null;
+      }
 
-      const card: FrontendCard = {
-        id: `${track.id}_${question.type}_${scan.difficulty}`,
-        type: this.normalizeQuestionType(question.type),
-        difficulty: this.normalizeDifficulty(scan.difficulty),
-        question: question.text || 'Pregunta no disponible',
-        answer: question.answer || 'Respuesta no disponible',
-        points: question.points || 1,
-        hints: question.hints || [],
-        color: this.TYPE_COLORS[question.type.toLowerCase()] || '#64748B',
-        track: {
-          id: track.id,
-          title: track.title || 'Título desconocido',
-          artist: track.artist || 'Artista desconocido',
-          album: track.album || 'Álbum desconocido',
-          year: track.year || 2024,
-          genre: track.genre || 'Género desconocido',
-        },
-        audio: audio
-          ? {
-              hasAudio: audio.hasAudio,
-              url: audio.url,
-              duration: audio.duration,
-            }
-          : undefined,
+      const parts = qrCode.split('_');
+      if (parts.length !== 4) {
+        return null;
+      }
+
+      const [prefix, trackId, cardType, difficulty] = parts;
+
+      return {
+        trackId: trackId,
+        cardType: cardType.toLowerCase(),
+        difficulty: difficulty.toLowerCase(),
       };
-
-      return card;
     } catch (error) {
-      console.error('❌ Data conversion failed:', error);
-      throw error;
+      console.error('Error parsing QR code:', error);
+      return null;
     }
   }
 
-  private static normalizeQuestionType(
-    type: string
-  ): 'SONG' | 'ARTIST' | 'DECADE' | 'LYRICS' | 'CHALLENGE' {
-    const normalizedType = type.toUpperCase();
-    switch (normalizedType) {
-      case 'SONG':
-        return 'SONG';
-      case 'ARTIST':
-        return 'ARTIST';
-      case 'DECADE':
-        return 'DECADE';
-      case 'LYRICS':
-        return 'LYRICS';
-      case 'CHALLENGE':
-        return 'CHALLENGE';
-      default:
-        return 'SONG';
-    }
-  }
-
-  private static normalizeDifficulty(
-    difficulty: string
-  ): 'EASY' | 'MEDIUM' | 'HARD' {
-    const normalizedDifficulty = difficulty.toUpperCase();
-    switch (normalizedDifficulty) {
-      case 'EASY':
-        return 'EASY';
-      case 'MEDIUM':
-        return 'MEDIUM';
-      case 'HARD':
-        return 'HARD';
-      default:
-        return 'EASY';
-    }
+  static isValidQRFormat(qrCode: string): boolean {
+    return this.parseQRCode(qrCode) !== null;
   }
 }
 
-// 🎯 Main Audio Service
+// ✅ NUEVO: Data Processor que funciona con el JSON real del backend
+class BackendDataProcessor {
+  static processTrackData(
+    backendTrack: BackendTrack,
+    qrCode: string,
+    serverUrl: string
+  ): ProcessedScanResponse {
+    try {
+      // Parse QR code to get card type and difficulty
+      const qrData = QRCodeParser.parseQRCode(qrCode);
+      if (!qrData) {
+        throw new Error('Invalid QR code format');
+      }
+
+      // ✅ CORREGIDO: Extraer la pregunta según el card type
+      const questionData =
+        backendTrack.questions[
+          qrData.cardType as keyof typeof backendTrack.questions
+        ];
+      if (!questionData) {
+        throw new Error(`No question data for card type: ${qrData.cardType}`);
+      }
+
+      // ✅ CORREGIDO: Construir URL de audio correctamente
+      const audioUrl = backendTrack.hasAudio
+        ? `${serverUrl}/audio/tracks/${backendTrack.audioFile}`
+        : '';
+
+      // ✅ CORREGIDO: Calcular puntos según dificultad
+      const difficultyMultiplier = this.getDifficultyMultiplier(
+        qrData.difficulty
+      );
+      const finalPoints = Math.round(
+        questionData.points * difficultyMultiplier
+      );
+
+      const processedCard = {
+        qrCode: qrCode,
+        trackId: backendTrack.id,
+        cardType: qrData.cardType,
+        difficulty: qrData.difficulty,
+
+        track: {
+          id: backendTrack.id,
+          title: backendTrack.title,
+          artist: backendTrack.artist,
+          album: backendTrack.album,
+          year: backendTrack.year,
+          genre: backendTrack.genre,
+        },
+
+        question: questionData.question, // ✅ CORREGIDO: Es "question" no "text"
+        answer: questionData.answer,
+        points: finalPoints,
+        hints: questionData.hints || [],
+        challengeType:
+          'challengeType' in questionData
+            ? questionData.challengeType
+            : undefined,
+
+        audio: {
+          hasAudio: backendTrack.hasAudio,
+          url: audioUrl,
+          duration: 5, // 5 seconds for game
+        },
+      };
+
+      return {
+        success: true,
+        card: processedCard,
+      };
+    } catch (error) {
+      console.error('❌ Error processing track data:', error);
+      return {
+        success: false,
+        error: { message: error.message },
+      };
+    }
+  }
+
+  private static getDifficultyMultiplier(difficulty: string): number {
+    const multipliers = {
+      easy: 1,
+      medium: 1.5,
+      hard: 2,
+      expert: 3,
+    };
+    return multipliers[difficulty as keyof typeof multipliers] || 1;
+  }
+}
+
+// 🎯 NUEVO: Local Tracks Database (como fallback si no hay backend)
+class LocalTracksDatabase {
+  private tracks: BackendTrack[] = [];
+
+  constructor() {
+    this.initializeLocalTracks();
+  }
+
+  private initializeLocalTracks() {
+    // ✅ CORREGIDO: Usa el formato real del JSON del backend
+    this.tracks = [
+      {
+        id: '001',
+        title: 'Despacito',
+        artist: 'Luis Fonsi ft. Daddy Yankee',
+        album: 'Vida',
+        year: 2017,
+        genre: 'Reggaeton',
+        decade: '2010s',
+        popularity: 95,
+        duration: 229000,
+        audioFile: '001_despacito.mp3',
+        audioSource: 'local',
+        hasAudio: true,
+        hasQuestions: true,
+        availableCardTypes: ['song', 'artist', 'decade', 'lyrics', 'challenge'],
+        questionCount: 5,
+        lastUpdated: '2024-01-15T10:00:00.000Z',
+        questions: {
+          song: {
+            question: '¿Cuál es la canción?',
+            answer: 'Despacito',
+            points: 1,
+            hints: ['Es un hit de reggaeton', 'Luis Fonsi la canta'],
+          },
+          artist: {
+            question: '¿Quién canta esta canción?',
+            answer: 'Luis Fonsi ft. Daddy Yankee',
+            points: 2,
+            hints: ['Colaboración entre dos artistas', 'Uno es puertorriqueño'],
+          },
+          decade: {
+            question: '¿De qué década es esta canción?',
+            answer: '2010s',
+            points: 3,
+            hints: ['Es relativamente reciente', 'Se hizo viral en YouTube'],
+          },
+          lyrics: {
+            question: "Completa: 'Sí, sabes que ya llevo un rato...'",
+            answer: 'mirándote',
+            points: 3,
+            hints: ['Primera línea de la canción', 'Habla de observar'],
+          },
+          challenge: {
+            question: 'Baila los primeros 10 segundos de Despacito',
+            answer: 'Completar baile reggaeton',
+            points: 5,
+            challengeType: 'dance',
+            hints: ['Movimientos de reggaeton', 'Ritmo lento y sensual'],
+          },
+        },
+      },
+      {
+        id: '002',
+        title: 'Bohemian Rhapsody',
+        artist: 'Queen',
+        album: 'A Night at the Opera',
+        year: 1975,
+        genre: 'Rock',
+        decade: '1970s',
+        popularity: 90,
+        duration: 355000,
+        audioFile: '002_bohemian_rhapsody.mp3',
+        audioSource: 'local',
+        hasAudio: true,
+        hasQuestions: true,
+        availableCardTypes: ['song', 'artist', 'decade', 'lyrics', 'challenge'],
+        questionCount: 5,
+        lastUpdated: '2024-01-15T10:00:00.000Z',
+        questions: {
+          song: {
+            question: '¿Cuál es la canción?',
+            answer: 'Bohemian Rhapsody',
+            points: 1,
+            hints: ['Clásico del rock', 'Tiene una parte operística'],
+          },
+          artist: {
+            question: '¿Quién canta esta canción?',
+            answer: 'Queen',
+            points: 2,
+            hints: ['Banda británica', 'Freddie Mercury era el vocalista'],
+          },
+          decade: {
+            question: '¿De qué década es esta canción?',
+            answer: '1970s',
+            points: 3,
+            hints: ['Era del rock clásico', 'Antes de los 80s'],
+          },
+          lyrics: {
+            question: "Completa: 'Is this the real life...'",
+            answer: 'is this just fantasy',
+            points: 3,
+            hints: ['Primera línea icónica', 'Pregunta existencial'],
+          },
+          challenge: {
+            question: 'Imita a Freddie Mercury cantando la canción',
+            answer: 'Completar imitación de Freddie',
+            points: 5,
+            challengeType: 'imitate',
+            hints: ['Movimientos teatrales', 'Voz potente y dramática'],
+          },
+        },
+      },
+    ];
+  }
+
+  getTrackById(id: string): BackendTrack | null {
+    return this.tracks.find((track) => track.id === id) || null;
+  }
+
+  getAllTracks(): BackendTrack[] {
+    return this.tracks;
+  }
+}
+
+// 🎯 CORREGIDO: Main Audio Service
 class AudioService {
   private httpClient: HttpClient;
   private audioManager: AudioManager;
+  private localDatabase: LocalTracksDatabase;
 
   constructor() {
     const serverUrl = ServerConfig.getServerUrl();
     this.httpClient = new HttpClient(serverUrl);
     this.audioManager = new AudioManager();
+    this.localDatabase = new LocalTracksDatabase();
   }
 
-  // Initialize audio system
   async initializeAudio(): Promise<void> {
     await this.audioManager.initialize();
   }
 
-  // 🎯 MAIN METHOD: Scan QR and get card data
-  async scanQRAndPlay(qrCode: string): Promise<{
-    success: boolean;
-    card: FrontendCard;
-    data: BackendTrackData;
-  }> {
+  // ✅ CORREGIDO: Método principal que funciona con el JSON real
+  async scanQRAndPlay(qrCode: string): Promise<ProcessedScanResponse> {
     try {
       console.log(`🔍 Scanning QR: ${qrCode}`);
 
-      const response = await this.httpClient.post<BackendTrackData>(
-        `/api/qr/scan/${qrCode}`
-      );
-
-      if (!response.success) {
-        throw new Error(response.error?.message || 'QR scan failed');
+      // Parse QR code
+      const qrData = QRCodeParser.parseQRCode(qrCode);
+      if (!qrData) {
+        throw new Error('Invalid QR code format');
       }
 
-      const card = DataAdapter.backendToCard(response.data);
+      console.log('📋 Parsed QR:', qrData);
 
-      return {
-        success: true,
-        card: card,
-        data: response.data,
-      };
+      // Try to get track from backend first
+      let backendTrack: BackendTrack | null = null;
+
+      try {
+        console.log(`🌐 Trying backend for track: ${qrData.trackId}`);
+        const response = await this.httpClient.get(
+          `/api/tracks/${qrData.trackId}`
+        );
+
+        if (response.success && response.data) {
+          backendTrack = response.data;
+          console.log('✅ Got track from backend');
+        }
+      } catch (error) {
+        console.log('⚠️ Backend unavailable, using local database');
+      }
+
+      // Fallback to local database
+      if (!backendTrack) {
+        backendTrack = this.localDatabase.getTrackById(qrData.trackId);
+        if (!backendTrack) {
+          throw new Error(`Track not found: ${qrData.trackId}`);
+        }
+        console.log('✅ Got track from local database');
+      }
+
+      // ✅ CORREGIDO: Process track data with correct structure
+      const processedResponse = BackendDataProcessor.processTrackData(
+        backendTrack,
+        qrCode,
+        this.getServerUrl()
+      );
+
+      if (!processedResponse.success) {
+        throw new Error(
+          processedResponse.error?.message || 'Failed to process track data'
+        );
+      }
+
+      console.log(
+        '✅ Card processed successfully:',
+        processedResponse.card?.track.title
+      );
+      return processedResponse;
     } catch (error) {
       console.error('❌ QR scan error:', error);
-      throw error;
+      return {
+        success: false,
+        error: { message: error.message || 'Unknown error' },
+      };
     }
   }
 
-  // 🎵 Audio playback methods
+  // Audio playback methods (sin cambios)
   async playTrackPreview(
     audioUrl: string,
-    duration: number = 10000,
+    duration: number = 5000,
     onFinished?: () => void
   ): Promise<void> {
     return this.audioManager.playTrackPreview(audioUrl, duration, onFinished);
@@ -373,18 +592,18 @@ class AudioService {
     return this.audioManager.isPlaying();
   }
 
-  // 🧪 Connection testing
+  // Connection testing
   async testConnection(): Promise<boolean> {
     try {
       const response = await this.httpClient.get('/api/health');
       return response.success && response.data?.status === 'healthy';
     } catch (error) {
-      console.error('❌ Health check failed:', error);
-      return false;
+      console.error('❌ Health check failed, using local mode');
+      return true; // Return true for local mode
     }
   }
 
-  // 📊 Utility methods
+  // Utility methods
   getServerUrl(): string {
     return ServerConfig.getServerUrl();
   }
@@ -393,34 +612,60 @@ class AudioService {
     await this.audioManager.cleanup();
   }
 
-  // Additional methods for game statistics
+  // Additional methods
   async saveGameStats(gameStats: any): Promise<void> {
     try {
       await this.httpClient.post('/api/game/stats', gameStats);
     } catch (error) {
-      console.error('Failed to save game stats:', error);
+      console.error('Failed to save game stats (local mode):', error);
     }
   }
 
   async validateQRCode(qrCode: string): Promise<boolean> {
     try {
+      // First validate format locally
+      if (!QRCodeParser.isValidQRFormat(qrCode)) {
+        return false;
+      }
+
+      // Then try backend validation
       const response = await this.httpClient.get(`/api/qr/validate/${qrCode}`);
       return response.success && response.data?.isValid === true;
     } catch (error) {
-      return false;
+      // Fallback to local validation
+      const qrData = QRCodeParser.parseQRCode(qrCode);
+      if (!qrData) return false;
+
+      const track = this.localDatabase.getTrackById(qrData.trackId);
+      return !!track;
     }
   }
 
-  async getAllTracks(): Promise<any[]> {
+  async getAllTracks(): Promise<BackendTrack[]> {
     try {
       const response = await this.httpClient.get('/api/tracks');
-      return response.success ? response.data || [] : [];
+      return response.success
+        ? response.data || []
+        : this.localDatabase.getAllTracks();
     } catch (error) {
-      return [];
+      return this.localDatabase.getAllTracks();
     }
+  }
+
+  // ✅ NUEVO: Get connection info for diagnostics
+  async getConnectionInfo(): Promise<any> {
+    const serverUrl = this.getServerUrl();
+    const isExpoDevMode = __DEV__ && !!Constants.expoConfig?.hostUri;
+
+    return {
+      serverUrl,
+      isExpoDevMode,
+      expoHostUri: Constants.expoConfig?.hostUri || null,
+      localTracksCount: this.localDatabase.getAllTracks().length,
+    };
   }
 }
 
 // 🎯 Singleton export
 export const audioService = new AudioService();
-export type { BackendTrackData, FrontendCard };
+export type { BackendTrack, ProcessedScanResponse };

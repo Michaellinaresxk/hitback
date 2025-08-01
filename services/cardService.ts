@@ -1,6 +1,7 @@
-import { audioService } from './audioService';
+// services/cardService.ts - CORREGIDO para trabajar con el JSON real del backend
+import { audioService, ProcessedScanResponse } from './audioService';
 
-// 🎮 Game Card Interface - Aligned with Backend Response
+// ✅ CORREGIDO: GameCard interface que coincide con la respuesta procesada
 interface GameCard {
   // QR and scan info
   qrCode: string;
@@ -12,7 +13,7 @@ interface GameCard {
   // Question data
   question: string;
   answer: string;
-  challengeType?: string | null;
+  challengeType?: string;
   hints: string[];
 
   // Track info
@@ -20,7 +21,7 @@ interface GameCard {
     id: string;
     title: string;
     artist: string;
-    album?: string;
+    album: string;
     year: number;
     genre: string;
     decade: string;
@@ -28,7 +29,7 @@ interface GameCard {
 
   // Audio info
   audio: {
-    url: string | null;
+    url: string;
     hasAudio: boolean;
     duration: number; // in seconds
     source: 'local' | 'none';
@@ -39,15 +40,13 @@ interface GameCard {
 }
 
 /**
- * 🎵 Card Service - Backend-First Architecture
+ * 🎵 Card Service - CORREGIDO para trabajar con el backend real
  *
- * Simplified service that works directly with the backend
- * through audioService, providing a clean interface for the game logic.
+ * Este servicio ahora funciona correctamente con la estructura JSON real del backend
  */
 class CardService {
   /**
-   * 🔍 Get card by QR code - Main method for the game
-   * This is the primary method your game components should use
+   * 🔍 CORREGIDO: Get card by QR code - Funciona con estructura real
    */
   async getCardByQR(qrCode: string): Promise<GameCard | null> {
     try {
@@ -59,18 +58,18 @@ class CardService {
         return null;
       }
 
-      // Get data from backend via audioService
-      const backendResponse = await audioService.scanQRAndPlay(qrCode);
+      // ✅ CORREGIDO: Get data from backend via audioService
+      const scanResponse = await audioService.scanQRAndPlay(qrCode);
 
-      if (!backendResponse.success) {
-        console.error('❌ Backend returned error:', backendResponse.error);
+      if (!scanResponse.success || !scanResponse.card) {
+        console.error('❌ Scan failed:', scanResponse.error?.message);
         return null;
       }
 
-      // Transform backend response to GameCard format
-      const gameCard = this.transformBackendResponse(backendResponse.data);
+      // ✅ CORREGIDO: Transform to GameCard format
+      const gameCard = this.transformScanResponse(scanResponse);
 
-      console.log('✅ CardService: Game card created:', gameCard);
+      console.log('✅ CardService: Game card created:', gameCard.track.title);
       return gameCard;
     } catch (error) {
       console.error('❌ CardService: Failed to get card:', error);
@@ -79,49 +78,46 @@ class CardService {
   }
 
   /**
-   * 🔄 Transform backend response to consistent GameCard format
+   * ✅ CORREGIDO: Transform scan response to GameCard format
    */
-  private transformBackendResponse(data: any): GameCard {
+  private transformScanResponse(scanResponse: ProcessedScanResponse): GameCard {
+    const card = scanResponse.card!;
+
     return {
       // QR and scan info
-      qrCode: data.qrCode,
-      trackId: data.scan.trackId,
-      cardType: data.scan.cardType,
-      difficulty: data.scan.difficulty,
-      points: data.scan.points,
+      qrCode: card.qrCode,
+      trackId: card.trackId,
+      cardType: card.cardType as any,
+      difficulty: card.difficulty as any,
+      points: card.points,
 
-      // Question data
-      question: data.question.text,
-      answer: data.question.answer,
-      challengeType: data.question.challengeType,
-      hints: data.question.hints || [],
+      // Question data - ✅ Ya viene procesado correctamente
+      question: card.question,
+      answer: card.answer,
+      challengeType: card.challengeType,
+      hints: card.hints,
 
       // Track info
       track: {
-        id: data.track.id,
-        title: data.track.title,
-        artist: data.track.artist,
-        album: data.track.album || '',
-        year: data.track.year,
-        genre: data.track.genre,
-        decade: data.track.decade,
+        ...card.track,
+        decade: this.calculateDecade(card.track.year),
       },
 
-      // Audio info
+      // Audio info - ✅ Ya viene con URL construida
       audio: {
-        url: data.audio.url,
-        hasAudio: data.audio.hasAudio,
-        duration: data.audio.duration, // Already in seconds from backend
-        source: data.audio.source as 'local' | 'none',
+        url: card.audio.url,
+        hasAudio: card.audio.hasAudio,
+        duration: card.audio.duration,
+        source: card.audio.hasAudio ? 'local' : 'none',
       },
 
       // Metadata
-      timestamp: data.game.timestamp,
+      timestamp: new Date().toISOString(),
     };
   }
 
   /**
-   * 🔍 Validate QR code format locally (quick check)
+   * 🔍 CORREGIDO: Validate QR code format locally (quick check)
    */
   isValidQRFormat(qrCode: string): boolean {
     try {
@@ -206,8 +202,7 @@ class CardService {
   }
 
   /**
-   * 📊 Calculate points based on card type and difficulty
-   * (Should match backend calculation)
+   * 📊 CORREGIDO: Calculate points based on card type and difficulty
    */
   calculatePoints(cardType: string, difficulty: string): number {
     const basePoints: Record<string, number> = {
@@ -301,6 +296,78 @@ class CardService {
    */
   async testBackendConnection(): Promise<boolean> {
     return await audioService.testConnection();
+  }
+
+  /**
+   * ✅ NUEVO: Get all available tracks for management
+   */
+  async getAllTracks(): Promise<any[]> {
+    try {
+      return await audioService.getAllTracks();
+    } catch (error) {
+      console.error('Failed to get tracks:', error);
+      return [];
+    }
+  }
+
+  /**
+   * ✅ NUEVO: Search tracks by title/artist
+   */
+  searchTracks(query: string): any[] {
+    // This would search through available tracks
+    // For now, return empty array as this requires backend implementation
+    return [];
+  }
+
+  /**
+   * ✅ NUEVO: Generate test QR codes for development
+   */
+  generateTestQRCodes(): { qrCode: string; description: string }[] {
+    const testCodes = [];
+
+    // Generate QR codes for available tracks
+    const cardTypes = ['song', 'artist', 'decade', 'lyrics', 'challenge'];
+    const difficulties = ['easy', 'medium', 'hard', 'expert'];
+    const trackIds = ['001', '002', '004']; // From the JSON
+
+    trackIds.forEach((trackId) => {
+      cardTypes.forEach((cardType) => {
+        difficulties.forEach((difficulty) => {
+          const qrCode = this.generateQRCode(trackId, cardType, difficulty);
+          testCodes.push({
+            qrCode,
+            description: `Track ${trackId} - ${cardType} - ${difficulty}`,
+          });
+        });
+      });
+    });
+
+    return testCodes;
+  }
+
+  /**
+   * ✅ NUEVO: Validate track has questions for card type
+   */
+  validateTrackCardType(track: any, cardType: string): boolean {
+    return track.questions && track.questions[cardType];
+  }
+
+  /**
+   * ✅ NUEVO: Get question preview without revealing answer
+   */
+  getQuestionPreview(
+    track: any,
+    cardType: string
+  ): { question: string; points: number } | null {
+    if (!this.validateTrackCardType(track, cardType)) {
+      return null;
+    }
+
+    const questionData = track.questions[cardType];
+    return {
+      question: questionData.question,
+      points: questionData.points,
+    };
   }
 }
 
