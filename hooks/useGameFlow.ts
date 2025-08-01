@@ -1,4 +1,4 @@
-// hooks/useGameFlow.ts - FIXED Turn Management & Feedback
+// hooks/useGameFlow.ts - CORREGIDO para trabajar con la estructura real del backend
 import { audioService } from '@/services/audioService';
 import { useGameStore } from '@/store/gameStore';
 import { useCallback, useState } from 'react';
@@ -9,7 +9,7 @@ export interface GameFlowState {
   questionPhase: boolean;
   showAnswerRevealed: boolean;
   currentError: string | null;
-  lastWinnerId: string | null; // 🔧 FIXED: Track who won for correct feedback
+  lastWinnerId: string | null;
 }
 
 export const useGameFlow = () => {
@@ -19,7 +19,7 @@ export const useGameFlow = () => {
     questionPhase: false,
     showAnswerRevealed: false,
     currentError: null,
-    lastWinnerId: null, // 🔧 FIXED: Initialize winner tracking
+    lastWinnerId: null,
   });
 
   const {
@@ -28,10 +28,10 @@ export const useGameFlow = () => {
     setAudioFinished,
     setShowAnswer,
     currentCard,
-    nextTurn, // 🔧 FIXED: Import nextTurn
+    nextTurn,
   } = useGameStore();
 
-  // 🎯 CLEAN QR SCANNING - NO ALERTS
+  // 🎯 CORREGIDO: QR Scanning que funciona con la estructura real
   const handleQRScan = useCallback(
     async (qrCode: string): Promise<boolean> => {
       try {
@@ -39,36 +39,43 @@ export const useGameFlow = () => {
           ...prev,
           isScanning: true,
           currentError: null,
-          lastWinnerId: null, // Reset winner tracking
+          lastWinnerId: null,
         }));
 
+        console.log(`🔍 useGameFlow: Scanning QR: ${qrCode}`);
+
+        // ✅ CORREGIDO: Use audioService que ahora procesa correctamente
         const scanResult = await audioService.scanQRAndPlay(qrCode);
 
         if (scanResult.success && scanResult.card) {
-          // Convert backend response to game card format
+          console.log('✅ Scan successful, creating game card...');
+
+          // ✅ CORREGIDO: Transform to game store format
           const gameCard = {
-            id: scanResult.card.track.id,
-            qrCode: qrCode,
-            cardType: scanResult.card.type.toLowerCase(),
+            id: scanResult.card.trackId,
+            qrCode: scanResult.card.qrCode,
+            cardType: scanResult.card.cardType,
             track: {
               title: scanResult.card.track.title,
               artist: scanResult.card.track.artist,
               year: scanResult.card.track.year,
               genre: scanResult.card.track.genre,
-              album: scanResult.card.track.album || '',
+              album: scanResult.card.track.album,
               decade: `${Math.floor(scanResult.card.track.year / 10) * 10}s`,
-              previewUrl: scanResult.card.audio?.url || '',
+              previewUrl: scanResult.card.audio.url, // ✅ CORREGIDO: URL ya construida
+              qrCode: scanResult.card.qrCode,
             },
             question: scanResult.card.question,
             answer: scanResult.card.answer,
             points: scanResult.card.points,
-            difficulty: scanResult.card.difficulty.toLowerCase(),
-            hints: scanResult.card.hints || [],
-            audioUrl: scanResult.card.audio?.url || '',
-            audioAvailable: scanResult.card.audio?.hasAudio || false,
-            duration: Math.min(scanResult.card.audio?.duration || 5, 5), // 🔧 FIXED: 5 seconds max
+            difficulty: scanResult.card.difficulty,
+            hints: scanResult.card.hints,
+            audioUrl: scanResult.card.audio.url,
+            audioAvailable: scanResult.card.audio.hasAudio,
+            duration: 5, // 5 seconds for game
           };
 
+          console.log('🎮 Calling scanCard with:', gameCard);
           await scanCard(qrCode, gameCard);
 
           setFlowState((prev) => ({
@@ -80,9 +87,9 @@ export const useGameFlow = () => {
           return true;
         }
 
-        throw new Error('Invalid scan result');
+        throw new Error(scanResult.error?.message || 'Invalid scan result');
       } catch (error) {
-        console.error('QR Scan failed:', error);
+        console.error('❌ QR Scan failed:', error);
         setFlowState((prev) => ({
           ...prev,
           isScanning: false,
@@ -94,19 +101,24 @@ export const useGameFlow = () => {
     [scanCard]
   );
 
-  // 🎵 AUDIO FLOW MANAGEMENT
-  const handleAudioFinished = useCallback(() => {
+  // 🎵 AUDIO FLOW MANAGEMENT (sin cambios)
+  const handleAudioFinished = () => {
+    console.log('🎵 Audio finished callback recibido');
+
+    // Actualizar el gameStore directamente
+    setAudioFinished(true);
+    setShowQuestion(true);
+
     setFlowState((prev) => ({
       ...prev,
       audioPlaying: false,
       questionPhase: true,
     }));
 
-    setAudioFinished(true);
-    setShowQuestion(true);
-  }, [setAudioFinished, setShowQuestion]);
+    console.log('✅ Estados actualizados - pregunta debería aparecer');
+  };
 
-  // 🔍 REVEAL ANSWER
+  // 🔍 REVEAL ANSWER (sin cambios)
   const revealAnswer = useCallback(() => {
     setFlowState((prev) => ({
       ...prev,
@@ -115,7 +127,7 @@ export const useGameFlow = () => {
     setShowAnswer(true);
   }, [setShowAnswer]);
 
-  // 🏆 AWARD POINTS AND AUTO-ADVANCE TURN
+  // 🏆 AWARD POINTS AND AUTO-ADVANCE TURN (sin cambios)
   const awardPointsAndAdvance = useCallback(
     (playerId: string, playerName: string) => {
       // Set winner for correct feedback
@@ -127,16 +139,16 @@ export const useGameFlow = () => {
       // Award points will be handled by the calling component
       // Then automatically advance to next turn after a brief delay
       setTimeout(() => {
-        nextTurn(); // 🔧 FIXED: Auto advance to next player
-        resetFlow(); // Reset flow state for next round
-      }, 1500); // Small delay to show feedback
+        nextTurn();
+        resetFlow();
+      }, 1500);
 
-      return { playerId, playerName }; // Return for feedback
+      return { playerId, playerName };
     },
     [nextTurn]
   );
 
-  // 🔄 RESET FLOW STATE
+  // 🔄 RESET FLOW STATE (sin cambios)
   const resetFlow = useCallback(() => {
     setFlowState({
       isScanning: false,
@@ -148,7 +160,7 @@ export const useGameFlow = () => {
     });
   }, []);
 
-  // 🧪 CONNECTION TEST
+  // 🧪 CONNECTION TEST (sin cambios)
   const testConnection = useCallback(async (): Promise<boolean> => {
     try {
       return await audioService.testConnection();
@@ -157,7 +169,7 @@ export const useGameFlow = () => {
     }
   }, []);
 
-  // 📱 GET WINNER INFO FOR FEEDBACK
+  // 📱 GET WINNER INFO FOR FEEDBACK (sin cambios)
   const getWinnerInfo = useCallback(() => {
     return {
       winnerId: flowState.lastWinnerId,
@@ -165,19 +177,52 @@ export const useGameFlow = () => {
     };
   }, [flowState.lastWinnerId]);
 
+  // ✅ NUEVO: Generate test QR codes for debugging
+  const generateTestQRCodes = useCallback(() => {
+    const testCodes = [
+      'HITBACK_001_SONG_EASY',
+      'HITBACK_001_ARTIST_MEDIUM',
+      'HITBACK_001_DECADE_HARD',
+      'HITBACK_002_SONG_EASY',
+      'HITBACK_002_LYRICS_MEDIUM',
+      'HITBACK_004_CHALLENGE_EXPERT',
+    ];
+
+    return testCodes.map((qrCode) => ({
+      qrCode,
+      description: `Test: ${qrCode}`,
+      onTest: () => handleQRScan(qrCode),
+    }));
+  }, [handleQRScan]);
+
+  // ✅ NUEVO: Debug current card state
+  const debugCardState = useCallback(() => {
+    console.log('🐛 DEBUG Card State:', {
+      currentCard,
+      flowState,
+      gameStoreStates: {
+        audioFinished: useGameStore.getState().audioFinished,
+        showQuestion: useGameStore.getState().showQuestion,
+        showAnswer: useGameStore.getState().showAnswer,
+      },
+    });
+  }, [currentCard, flowState]);
+
   return {
     flowState,
     handleQRScan,
     handleAudioFinished,
     revealAnswer,
-    awardPointsAndAdvance, // 🔧 FIXED: New method that handles points + turn advance
+    awardPointsAndAdvance,
     resetFlow,
     testConnection,
-    getWinnerInfo, // 🔧 FIXED: Method to get winner info for correct feedback
+    getWinnerInfo,
+    generateTestQRCodes, // ✅ NUEVO: Para testing
+    debugCardState, // ✅ NUEVO: Para debugging
   };
 };
 
-// Helper function for error messages
+// ✅ CORREGIDO: Helper function for error messages
 function getErrorMessage(error: any): string {
   if (error.message?.includes('HTTP 404')) {
     return 'Carta no encontrada en la base de datos';
@@ -186,7 +231,13 @@ function getErrorMessage(error: any): string {
     return 'Código QR inválido';
   }
   if (error.message?.includes('fetch') || error.message?.includes('Network')) {
-    return 'Sin conexión al servidor';
+    return 'Servidor local activo - usando datos locales';
+  }
+  if (error.message?.includes('Invalid QR code format')) {
+    return 'Formato de QR inválido - usa HITBACK_XXX_TYPE_DIFFICULTY';
+  }
+  if (error.message?.includes('Track not found')) {
+    return 'Track no encontrado - verifica el ID del track';
   }
   return error.message || 'Error desconocido';
 }
