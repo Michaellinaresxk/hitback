@@ -1,9 +1,8 @@
+// store/gameStore.ts - LIMPIO: Solo Backend Integration
 import { audioService } from '@/services/audioService';
-import { cardService } from '@/services/cardService';
-import { rewardsService } from '@/services/RewardsService';
 import { create } from 'zustand';
 
-// Tipos básicos actualizados - manteniendo compatibilidad
+// 🎮 INTERFACES SIMPLIFICADAS - Solo lo que necesita el frontend
 export interface Player {
   id: string;
   name: string;
@@ -28,7 +27,7 @@ export interface Card {
     title: string;
     artist: string;
     year: number;
-    previewUrl: string;
+    previewUrl: string; // URL del backend
   };
   question: string;
   answer: string;
@@ -68,6 +67,10 @@ interface GameState {
   battleModeActive: boolean;
   speedRoundActive: boolean;
   selectedBattlePlayers: { player1Id: string; player2Id: string } | null;
+
+  // Backend Connection State
+  backendConnected: boolean;
+  lastBackendCheck: string | null;
 }
 
 interface GameActions {
@@ -79,13 +82,12 @@ interface GameActions {
   createNewGame: () => void;
   nextTurn: () => void;
 
-  // Card & Audio
+  // Card & Audio - Backend Integration
   scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;
-  playCardAudio: () => Promise<void>;
-  stopAudio: () => Promise<void>;
   setAudioFinished: (finished: boolean) => void;
   setShowQuestion: (show: boolean) => void;
   setShowAnswer: (show: boolean) => void;
+  setShowGameEndModal: (show: boolean) => void;
 
   // Scoring
   awardPoints: (playerId: string, points?: number, answerTime?: number) => void;
@@ -98,25 +100,25 @@ interface GameActions {
   startTimer: (duration: number) => void;
   stopTimer: () => void;
 
-  // Betting System - ✅ IMPLEMENTED
+  // Betting System
   placeBet: (playerId: string, amount: number) => void;
   clearBets: () => void;
 
-  // Power Cards - ✅ IMPLEMENTED
+  // Power Cards
   usePowerCard: (
     playerId: string,
     powerCardId: string,
     targetPlayerId?: string
   ) => void;
-  addPowerCardToPlayer: (playerId: string, powerCard: any) => void;
 
-  // Special Modes - ✅ IMPLEMENTED
+  // Special Modes
   startBattleMode: (player1Id: string, player2Id: string) => void;
   startSpeedRound: () => void;
   startViralMoment: () => void;
 
-  // Testing Functions
-  addTestingButtons: () => void;
+  // Backend Integration
+  checkBackendConnection: () => Promise<boolean>;
+  syncWithBackend: () => Promise<void>;
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -153,7 +155,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   speedRoundActive: false,
   selectedBattlePlayers: null,
 
-  // Player Management
+  // Backend Connection State
+  backendConnected: false,
+  lastBackendCheck: null,
+
+  // 👥 PLAYER MANAGEMENT
   addPlayer: (name: string) => {
     const { players } = get();
 
@@ -172,7 +178,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     const newPlayer: Player = {
-      id: `player_${Date.now()}`,
+      id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
       score: 0,
       isCurrentTurn: false,
@@ -191,10 +197,13 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       players: [...state.players, newPlayer],
       error: null,
     }));
+
+    console.log(`✅ Player added: ${newPlayer.name}`);
   },
 
   removePlayer: (id: string) => {
     set((state) => {
+      const removedPlayer = state.players.find((p) => p.id === id);
       const newPlayers = state.players.filter((p) => p.id !== id);
       const currentPlayerIndex = state.players.findIndex((p) => p.id === id);
 
@@ -203,6 +212,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newCurrentTurn = Math.max(0, state.currentTurn - 1);
       }
 
+      console.log(`❌ Player removed: ${removedPlayer?.name}`);
+
       return {
         players: newPlayers,
         currentTurn: newCurrentTurn,
@@ -210,7 +221,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
   },
 
+  // 🎮 GAME MANAGEMENT
   createNewGame: () => {
+    console.log('🎮 Creating new game...');
+
+    // Stop any running audio/timers
     audioService.stopAudio();
     const { timerInterval } = get();
     if (timerInterval) {
@@ -234,10 +249,15 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       audioFinished: false,
       showQuestion: false,
       showAnswer: false,
+      showGameEndModal: false,
+      backendConnected: false,
+      lastBackendCheck: null,
     });
+
+    console.log('✅ New game created');
   },
 
-  startGame: () => {
+  startGame: async () => {
     const { players } = get();
 
     if (players.length < 2) {
@@ -245,8 +265,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     try {
-      audioService.initializeAudio().catch(console.error);
+      console.log('🎮 Starting game...');
 
+      // ✅ CHECK BACKEND CONNECTION FIRST
+      const backendConnected = await get().checkBackendConnection();
+      if (!backendConnected) {
+        console.warn('⚠️ Backend not connected - some features may not work');
+      }
+
+      // Initialize audio
+      await audioService.initializeAudio();
+
+      // Setup players
       const updatedPlayers = players.map((player, index) => ({
         ...player,
         isCurrentTurn: index === 0,
@@ -267,6 +297,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         gameMode: 'normal',
         round: 1,
         error: null,
+        backendConnected,
       });
 
       get().startTimer(1200);
@@ -277,25 +308,43 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
   },
 
-  endGame: () => {
-    audioService.stopAudio();
+  endGame: async () => {
+    console.log('🏁 Ending game...');
+
+    await audioService.stopAudio();
     get().stopTimer();
 
-    // Save game stats to backend
-    const { players, id, timeLeft } = get();
+    // ✅ SAVE GAME STATS TO BACKEND
+    const { players, id, timeLeft, round } = get();
     const winner = players.reduce((max, player) =>
       player.score > max.score ? player : max
     );
 
-    audioService
-      .saveGameStats({
+    try {
+      await audioService.saveGameStats({
         gameId: id,
-        players: players,
-        duration: 1200 - timeLeft, // Time elapsed
-        winner: winner.name,
-        totalRounds: get().round,
-      })
-      .catch(console.error);
+        players: players.map((p) => ({
+          id: p.id,
+          name: p.name,
+          score: p.score,
+          tokensLeft: p.tokens,
+        })),
+        winner: {
+          id: winner.id,
+          name: winner.name,
+          score: winner.score,
+        },
+        gameStats: {
+          duration: 1200 - timeLeft,
+          totalRounds: round,
+          gameMode: get().gameMode,
+        },
+        timestamp: new Date().toISOString(),
+      });
+      console.log('✅ Game stats saved to backend');
+    } catch (error) {
+      console.error('❌ Failed to save game stats:', error);
+    }
 
     set({
       isActive: false,
@@ -305,13 +354,19 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       audioFinished: false,
       showQuestion: false,
       showAnswer: false,
-      showGameEndModal: true, // ✅ Show end game modal
+      showGameEndModal: true,
     });
+
+    console.log(
+      `🏆 Game ended - Winner: ${winner.name} with ${winner.score} points`
+    );
   },
 
-  // Card & Audio System
+  // 🎯 CARD SCANNING - Backend Integration
   scanCard: async (qrCode: string, gameCard?: Card) => {
     try {
+      console.log(`🔍 Scanning card: ${qrCode}`);
+
       set({
         isScanning: true,
         error: null,
@@ -323,74 +378,51 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       let card: Card;
 
       if (gameCard) {
-        // Use card from backend
+        // Use card from useGameFlow (already processed from backend)
         card = gameCard;
+        console.log('✅ Using card from backend:', card.track.title);
       } else {
-        // Fallback to local card service
-        const localCard = await cardService.getCardByQR(qrCode);
-        if (!localCard) {
-          throw new Error('Carta no encontrada o código QR inválido');
-        }
-        card = localCard;
+        // Fallback: try to get from backend directly
+        console.log('⚠️ No gameCard provided, trying direct backend call...');
+        throw new Error('Card data not provided - use scanQRAndPlay first');
       }
 
       set({
         currentCard: card,
         isScanning: false,
+        backendConnected: true,
+        lastBackendCheck: new Date().toISOString(),
       });
 
-      // Audio will be handled by AudioPlayer component with autoPlay
-      console.log('✅ Card scanned successfully:', card.track.title);
+      console.log(
+        `✅ Card ready for play: ${card.track.title} by ${card.track.artist}`
+      );
     } catch (error) {
-      console.error('Error scanning card:', error);
+      console.error('❌ Error in scanCard:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
+
       set({
         isScanning: false,
         error: errorMessage,
+        backendConnected: false,
       });
     }
   },
 
-  playCardAudio: async () => {
-    const { currentCard } = get();
-    if (!currentCard?.track.previewUrl) {
-      set({ error: 'No hay URL de audio disponible' });
-      return;
-    }
-
-    try {
-      await audioService.playTrackPreview(
-        currentCard.track.previewUrl,
-        5000,
-        () => {
-          set({ audioFinished: true, showQuestion: true });
-          console.log('Audio preview finished');
-        }
-      );
-    } catch (error) {
-      console.error('Error playing audio:', error);
-      set({
-        error: 'No se pudo reproducir el audio',
-        audioFinished: true,
-        showQuestion: true,
-      });
-    }
-  },
-
-  stopAudio: async () => {
-    await audioService.stopAudio();
-  },
-
+  // 🎵 AUDIO STATE MANAGEMENT
   setAudioFinished: (finished: boolean) => {
+    console.log(`🎵 Audio finished: ${finished}`);
     set({ audioFinished: finished });
   },
 
   setShowQuestion: (show: boolean) => {
+    console.log(`❓ Show question: ${show}`);
     set({ showQuestion: show });
   },
 
   setShowAnswer: (show: boolean) => {
+    console.log(`✅ Show answer: ${show}`);
     set({ showAnswer: show });
   },
 
@@ -398,25 +430,134 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({ showGameEndModal: show });
   },
 
-  // ✅ BETTING SYSTEM - FULLY IMPLEMENTED
+  // 🏆 SCORING SYSTEM
+  awardPoints: (playerId: string, points?: number, answerTime?: number) => {
+    const { currentCard, players } = get();
+    const player = players.find((p) => p.id === playerId);
+
+    if (!player || !currentCard) {
+      console.error('❌ Cannot award points: player or card not found');
+      return;
+    }
+
+    let basePoints = points || currentCard.points || 0;
+
+    // Apply betting multiplier
+    if (player.currentBet > 0) {
+      const multiplier = getBettingMultiplier(player.currentBet);
+      basePoints = basePoints * multiplier;
+      console.log(
+        `💰 Betting multiplier applied: ${player.currentBet} tokens = ${multiplier}x`
+      );
+    }
+
+    // Apply boost power card
+    if (player.boostActive) {
+      basePoints = basePoints * 2;
+      console.log(`⚡ Boost multiplier applied: 2x`);
+    }
+
+    set((state) => ({
+      players: state.players.map((p) => {
+        if (p.id === playerId) {
+          const newPlayer = {
+            ...p,
+            score: p.score + basePoints,
+            consecutiveWins: p.consecutiveWins + 1,
+            currentBet: 0, // Clear bet after use
+            boostActive: false, // Clear boost after use
+            cardTypeStreaks: {
+              ...p.cardTypeStreaks,
+              [currentCard.cardType]:
+                (p.cardTypeStreaks[currentCard.cardType] || 0) + 1,
+            },
+            difficultyStreaks: {
+              ...p.difficultyStreaks,
+              [currentCard.difficulty]:
+                (p.difficultyStreaks[currentCard.difficulty] || 0) + 1,
+            },
+          };
+
+          console.log(
+            `🏆 Points awarded: ${player.name} +${basePoints} pts (total: ${newPlayer.score})`
+          );
+          return newPlayer;
+        } else {
+          // Reset streaks for other players
+          return {
+            ...p,
+            consecutiveWins: 0,
+            cardTypeStreaks: {},
+            difficultyStreaks: {},
+          };
+        }
+      }),
+    }));
+
+    // Auto advance to next turn
+    get().nextTurn();
+  },
+
+  // ⏭️ NEXT TURN
+  nextTurn: () => {
+    const { players, currentTurn } = get();
+    const nextTurnIndex = (currentTurn + 1) % players.length;
+
+    const updatedPlayers = players.map((player, index) => ({
+      ...player,
+      isCurrentTurn: index === nextTurnIndex,
+      isImmune: player.isImmune && Math.random() > 0.5, // 50% chance to lose immunity
+      peekUsed: false, // Reset peek
+    }));
+
+    const nextPlayer = updatedPlayers[nextTurnIndex];
+
+    set({
+      players: updatedPlayers,
+      currentTurn: nextTurnIndex,
+      currentCard: null,
+      round: get().round + 1,
+      audioFinished: false,
+      showQuestion: false,
+      showAnswer: false,
+    });
+
+    console.log(`⏭️ Next turn: ${nextPlayer.name} (Round ${get().round})`);
+
+    // Clear all bets
+    get().clearBets();
+
+    // Check win condition (15 points)
+    const winner = updatedPlayers.find((p) => p.score >= 15);
+    if (winner) {
+      console.log(
+        `🏆 Winner found: ${winner.name} with ${winner.score} points!`
+      );
+      get().endGame();
+    }
+  },
+
+  // 💰 BETTING SYSTEM
   placeBet: (playerId: string, amount: number) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
 
       if (!player) {
-        console.error('Player not found');
-        return state;
+        console.error('❌ Player not found for betting');
+        return { ...state, error: 'Jugador no encontrado' };
       }
 
       if (player.tokens < amount) {
-        console.error('Not enough tokens');
+        console.error('❌ Not enough tokens for bet');
         return { ...state, error: 'No tienes suficientes tokens' };
       }
 
       if (amount < 1 || amount > 3) {
-        console.error('Invalid bet amount');
+        console.error('❌ Invalid bet amount');
         return { ...state, error: 'Apuesta debe ser entre 1 y 3 tokens' };
       }
+
+      console.log(`💰 Player ${player.name} bet ${amount} tokens`);
 
       return {
         ...state,
@@ -432,17 +573,16 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         error: null,
       };
     });
-
-    console.log(`✅ Player ${playerId} bet ${amount} tokens`);
   },
 
   clearBets: () => {
     set((state) => ({
       players: state.players.map((p) => ({ ...p, currentBet: 0 })),
     }));
+    console.log('🧹 All bets cleared');
   },
 
-  // ✅ POWER CARDS SYSTEM - FULLY IMPLEMENTED
+  // ⚡ POWER CARDS
   usePowerCard: (
     playerId: string,
     powerCardId: string,
@@ -462,7 +602,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
       let newPlayers = [...state.players];
 
-      // Apply power card effect
+      // Apply power card effects
       switch (powerCard.type) {
         case 'robo': // Steal 1 token
           if (targetPlayerId) {
@@ -518,22 +658,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           );
           break;
 
-        case 'refresh': // Recover 1 token
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  tokens: p.tokens + 1,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
-
         case 'peek': // See answer early
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
@@ -550,22 +674,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           );
           set({ showAnswer: true }); // Show answer immediately
           break;
-
-        case 'precision': // +2 points for exact year
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
-          break;
       }
+
+      console.log(`⚡ Power card used: ${powerCard.name} by ${player.name}`);
 
       return {
         ...state,
@@ -573,138 +684,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         error: null,
       };
     });
-
-    console.log(`✅ Power card ${powerCardId} used by player ${playerId}`);
   },
 
-  addPowerCardToPlayer: (playerId: string, powerCard: any) => {
-    set((state) => ({
-      players: state.players.map((p) =>
-        p.id === playerId
-          ? { ...p, powerCards: [...(p.powerCards || []), powerCard] }
-          : p
-      ),
-    }));
-  },
-
-  // Scoring System with Rewards
-  awardPoints: (playerId: string, points?: number, answerTime?: number) => {
-    const { currentCard, gameMode, players } = get();
-    const player = players.find((p) => p.id === playerId);
-
-    if (!player || !currentCard) return;
-
-    let basePoints = points || currentCard.points || 0;
-
-    // Apply betting multiplier
-    if (player.currentBet > 0) {
-      const multiplier = rewardsService.getBettingMultiplier(player.currentBet);
-      basePoints = basePoints * multiplier;
-    }
-
-    // Apply boost power card
-    if (player.boostActive) {
-      basePoints = basePoints * 2;
-    }
-
-    // Apply game mode multipliers
-    if (gameMode === 'viral') {
-      basePoints = basePoints * 2;
-    }
-
-    // Calculate rewards
-    const rewards = rewardsService.calculateRewards(
-      currentCard.difficulty as any,
-      answerTime || 3000,
-      player.consecutiveWins,
-      player.cardTypeStreaks[currentCard.cardType] || 0,
-      player.difficultyStreaks[currentCard.difficulty] || 0
-    );
-
-    set((state) => ({
-      players: state.players.map((p) => {
-        if (p.id === playerId) {
-          const newPlayer = {
-            ...p,
-            score: p.score + basePoints + rewards.totalPoints,
-            tokens: (p.tokens || 0) + rewards.bonusTokens,
-            consecutiveWins: p.consecutiveWins + 1,
-            currentBet: 0, // Clear bet after use
-            boostActive: false, // Clear boost after use
-            cardTypeStreaks: {
-              ...p.cardTypeStreaks,
-              [currentCard.cardType]:
-                (p.cardTypeStreaks[currentCard.cardType] || 0) + 1,
-            },
-            difficultyStreaks: {
-              ...p.difficultyStreaks,
-              [currentCard.difficulty]:
-                (p.difficultyStreaks[currentCard.difficulty] || 0) + 1,
-            },
-          };
-
-          // Add power card reward
-          if (rewards.powerCard) {
-            newPlayer.powerCards = [
-              ...(newPlayer.powerCards || []),
-              rewards.powerCard,
-            ];
-          }
-
-          return newPlayer;
-        } else {
-          // Reset streaks for other players
-          return {
-            ...p,
-            consecutiveWins: 0,
-            cardTypeStreaks: {},
-            difficultyStreaks: {},
-          };
-        }
-      }),
-    }));
+  // 🎯 SPECIAL GAME MODES
+  startBattleMode: (player1Id: string, player2Id: string) => {
+    const player1 = get().players.find((p) => p.id === player1Id);
+    const player2 = get().players.find((p) => p.id === player2Id);
 
     console.log(
-      `✅ Awarded ${basePoints + rewards.totalPoints} points to ${player.name}`
+      `⚔️ Starting Battle Mode: ${player1?.name} vs ${player2?.name}`
     );
-    get().nextTurn();
-  },
 
-  nextTurn: () => {
-    const { players, currentTurn } = get();
-    const nextTurnIndex = (currentTurn + 1) % players.length;
-
-    const updatedPlayers = players.map((player, index) => ({
-      ...player,
-      isCurrentTurn: index === nextTurnIndex,
-      // Reduce immunity duration
-      isImmune: player.isImmune && Math.random() > 0.5, // 50% chance to lose immunity each turn
-      peekUsed: false, // Reset peek
-    }));
-
-    set({
-      players: updatedPlayers,
-      currentTurn: nextTurnIndex,
-      currentCard: null,
-      round: get().round + 1,
-      audioFinished: false,
-      showQuestion: false,
-      showAnswer: false,
-    });
-
-    // Clear all bets
-    get().clearBets();
-
-    // Check win condition (15 points)
-    const winner = updatedPlayers.find((p) => p.score >= 15);
-    if (winner) {
-      get().endGame();
-    }
-  },
-
-  // ✅ SPECIAL GAME MODES - IMPLEMENTED
-  startBattleMode: (player1Id: string, player2Id: string) => {
-    console.log(`🥊 Starting Battle Mode: ${player1Id} vs ${player2Id}`);
     set({
       gameMode: 'battle',
       battleModeActive: true,
@@ -732,11 +722,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
   },
 
-  setBattlePlayers: (player1Id: string, player2Id: string) => {
-    set({ selectedBattlePlayers: { player1Id, player2Id } });
-  },
-
-  // Timer Management
+  // ⏰ TIMER MANAGEMENT
   startTimer: (duration: number) => {
     const { timerInterval } = get();
     if (timerInterval) {
@@ -751,6 +737,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       if (!isActive || timeLeft <= 0) {
         get().stopTimer();
         if (timeLeft <= 0) {
+          console.log('⏰ Game time expired');
           get().endGame();
         }
         return;
@@ -760,6 +747,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }, 1000);
 
     set({ timerInterval: newInterval });
+    console.log(`⏰ Timer started: ${duration} seconds`);
   },
 
   stopTimer: () => {
@@ -767,10 +755,65 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (timerInterval) {
       clearInterval(timerInterval);
       set({ timerInterval: null });
+      console.log('⏰ Timer stopped');
     }
   },
 
-  // UI States
+  // 🌐 BACKEND INTEGRATION
+  checkBackendConnection: async (): Promise<boolean> => {
+    try {
+      console.log('🔗 Checking backend connection...');
+
+      const isConnected = await audioService.testConnection();
+      const timestamp = new Date().toISOString();
+
+      set({
+        backendConnected: isConnected,
+        lastBackendCheck: timestamp,
+      });
+
+      console.log(`🔗 Backend connection: ${isConnected ? 'OK' : 'FAILED'}`);
+      return isConnected;
+    } catch (error) {
+      console.error('❌ Backend connection check failed:', error);
+
+      set({
+        backendConnected: false,
+        lastBackendCheck: new Date().toISOString(),
+        error: 'No se puede conectar al servidor',
+      });
+
+      return false;
+    }
+  },
+
+  syncWithBackend: async () => {
+    try {
+      console.log('🔄 Syncing with backend...');
+
+      const [connectionInfo, tracks] = await Promise.all([
+        audioService.getConnectionInfo(),
+        audioService.getAllTracks(),
+      ]);
+
+      console.log(
+        `✅ Backend sync complete: ${tracks.length} tracks available`
+      );
+
+      set({
+        backendConnected: connectionInfo.backendConnected,
+        lastBackendCheck: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('❌ Backend sync failed:', error);
+      set({
+        backendConnected: false,
+        error: 'Error sincronizando con servidor',
+      });
+    }
+  },
+
+  // 🔧 UI STATES
   setScanning: (scanning: boolean) => {
     set({ isScanning: scanning });
   },
@@ -778,9 +821,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   setError: (error: string | null) => {
     set({ error });
   },
-
-  // ✅ TESTING FUNCTIONS FOR DEVELOPMENT
-  addTestingButtons: () => {
-    console.log('🧪 Adding testing functions to game store');
-  },
 }));
+
+// 🔧 Helper Functions
+function getBettingMultiplier(betAmount: number): number {
+  if (betAmount === 1) return 2;
+  if (betAmount === 2) return 3;
+  if (betAmount >= 3) return 4;
+  return 1;
+}

@@ -1,51 +1,17 @@
+// services/audioService.ts - LIMPIO: Solo Backend Integration
 import { Audio } from 'expo-av';
 import Constants from 'expo-constants';
 
-interface BackendTrack {
-  id: string;
-  title: string;
-  artist: string;
-  album: string;
-  year: number;
-  genre: string;
-  decade: string;
-  popularity: number;
-  duration: number;
-  audioFile: string;
-  audioSource: 'local' | 'none';
-  hasAudio: boolean;
-  hasQuestions: boolean;
-  availableCardTypes: string[];
-  questionCount: number;
-  lastUpdated: string;
-  questions: {
-    song: QuestionDetails;
-    artist: QuestionDetails;
-    decade: QuestionDetails;
-    lyrics: QuestionDetails;
-    challenge: ChallengeQuestionDetails;
-  };
-}
-
-interface QuestionDetails {
-  question: string;
-  answer: string;
-  points: number;
-  hints: string[];
-}
-
-interface ChallengeQuestionDetails extends QuestionDetails {
-  challengeType: 'dance' | 'sing' | 'imitate' | 'performance';
-}
-
-interface ProcessedScanResponse {
+// 🔧 SOLO INTERFACES - Sin datos hardcodeados
+interface BackendScanResponse {
   success: boolean;
-  card?: {
-    // QR info (generado por nosotros)
-    qrCode: string;
-    trackId: string;
-    cardType: string;
-    difficulty: string;
+  data?: {
+    scan: {
+      qrCode: string;
+      points: number;
+      difficulty: string;
+      timestamp: string;
+    };
     track: {
       id: string;
       title: string;
@@ -54,11 +20,13 @@ interface ProcessedScanResponse {
       year: number;
       genre: string;
     };
-    question: string;
-    answer: string;
-    points: number;
-    hints: string[];
-    challengeType?: string;
+    question: {
+      type: string;
+      question: string;
+      answer: string;
+      points: number;
+      hints: string[];
+    };
     audio: {
       hasAudio: boolean;
       url: string;
@@ -67,6 +35,8 @@ interface ProcessedScanResponse {
   };
   error?: { message: string };
 }
+
+// 🎵 Audio Manager - Solo para reproducción
 class AudioManager {
   private sound: Audio.Sound | null = null;
   private isInitialized: boolean = false;
@@ -84,7 +54,7 @@ class AudioManager {
       });
 
       this.isInitialized = true;
-      console.log('✅ AudioManager initialized successfully');
+      console.log('✅ AudioManager initialized');
     } catch (error) {
       console.error('❌ AudioManager initialization failed:', error);
       throw error;
@@ -102,7 +72,7 @@ class AudioManager {
       }
 
       await this.stop();
-      console.log(`🎵 Playing preview: ${audioUrl} (max ${maxDuration}ms)`);
+      console.log(`🎵 Playing: ${audioUrl} (${maxDuration}ms)`);
 
       const { sound } = await Audio.Sound.createAsync(
         { uri: audioUrl },
@@ -117,13 +87,11 @@ class AudioManager {
 
       this.sound = sound;
 
+      // Auto-stop after duration
       setTimeout(async () => {
         await this.stop();
-        console.log('⏹️ Audio stopped after max duration');
         onFinished?.();
       }, maxDuration);
-
-      console.log('✅ Audio preview started successfully');
     } catch (error) {
       console.error('❌ Audio playback failed:', error);
       throw new Error(`Audio playback failed: ${error.message}`);
@@ -152,31 +120,34 @@ class AudioManager {
   }
 }
 
-class HttpClient {
+// 🌐 HTTP Client para Backend
+class BackendClient {
   private readonly baseUrl: string;
   private readonly defaultHeaders: Record<string, string>;
 
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
+  constructor() {
+    this.baseUrl = this.getServerUrl();
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     };
   }
 
-  async get<T>(endpoint: string, options?: RequestInit) {
-    return this.request<T>(endpoint, { method: 'GET', ...options });
+  private getServerUrl(): string {
+    // 🔧 CONFIGURACIÓN DINÁMICA IP
+    const YOUR_IP = '192.168.1.10'; // Cambia por tu IP local
+    const PORT = '3000';
+
+    if (__DEV__ && Constants.expoConfig?.hostUri) {
+      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
+      if (hostUri && hostUri !== 'localhost' && !hostUri.startsWith('127.')) {
+        return `http://${hostUri}:${PORT}`;
+      }
+    }
+    return `http://${YOUR_IP}:${PORT}`;
   }
 
-  async post<T>(endpoint: string, body?: any, options?: RequestInit) {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
-  }
-
-  private async request<T>(endpoint: string, options: RequestInit) {
+  private async request<T>(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
@@ -196,8 +167,7 @@ class HttpClient {
         throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
       if (error.name === 'AbortError') {
         throw new Error('Request timeout');
@@ -208,345 +178,75 @@ class HttpClient {
       throw error;
     }
   }
-}
 
-class ServerConfig {
-  private static readonly YOUR_IP = '192.168.1.10';
-  private static readonly PORT = '3000';
+  async get<T>(endpoint: string, options?: RequestInit) {
+    return this.request<T>(endpoint, { method: 'GET', ...options });
+  }
 
-  static getServerUrl(): string {
-    if (__DEV__ && Constants.expoConfig?.hostUri) {
-      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
-      if (hostUri && hostUri !== 'localhost' && !hostUri.startsWith('127.')) {
-        return `http://${hostUri}:${this.PORT}`;
-      }
-    }
-    return `http://${this.YOUR_IP}:${this.PORT}`;
+  async post<T>(endpoint: string, body?: any, options?: RequestInit) {
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: body ? JSON.stringify(body) : undefined,
+      ...options,
+    });
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 }
 
-class QRCodeParser {
-  static parseQRCode(qrCode: string): {
-    trackId: string;
-    cardType: string;
-    difficulty: string;
-  } | null {
-    try {
-      if (!qrCode.startsWith('HITBACK_')) {
-        return null;
-      }
-
-      const parts = qrCode.split('_');
-      if (parts.length !== 4) {
-        return null;
-      }
-
-      const [prefix, trackId, cardType, difficulty] = parts;
-
-      return {
-        trackId: trackId,
-        cardType: cardType.toLowerCase(),
-        difficulty: difficulty.toLowerCase(),
-      };
-    } catch (error) {
-      console.error('Error parsing QR code:', error);
-      return null;
-    }
-  }
-
-  static isValidQRFormat(qrCode: string): boolean {
-    return this.parseQRCode(qrCode) !== null;
-  }
-}
-
-class BackendDataProcessor {
-  static processTrackData(
-    backendTrack: BackendTrack,
-    qrCode: string,
-    serverUrl: string
-  ): ProcessedScanResponse {
-    try {
-      const qrData = QRCodeParser.parseQRCode(qrCode);
-      if (!qrData) {
-        throw new Error('Invalid QR code format');
-      }
-
-      const questionData =
-        backendTrack.questions[
-          qrData.cardType as keyof typeof backendTrack.questions
-        ];
-      if (!questionData) {
-        throw new Error(`No question data for card type: ${qrData.cardType}`);
-      }
-
-      const audioUrl = backendTrack.hasAudio
-        ? `${serverUrl}/audio/tracks/${backendTrack.audioFile}`
-        : '';
-      const difficultyMultiplier = this.getDifficultyMultiplier(
-        qrData.difficulty
-      );
-      const finalPoints = Math.round(
-        questionData.points * difficultyMultiplier
-      );
-
-      const processedCard = {
-        qrCode: qrCode,
-        trackId: backendTrack.id,
-        cardType: qrData.cardType,
-        difficulty: qrData.difficulty,
-
-        track: {
-          id: backendTrack.id,
-          title: backendTrack.title,
-          artist: backendTrack.artist,
-          album: backendTrack.album,
-          year: backendTrack.year,
-          genre: backendTrack.genre,
-        },
-
-        question: questionData.question,
-        answer: questionData.answer,
-        points: finalPoints,
-        hints: questionData.hints || [],
-        challengeType:
-          'challengeType' in questionData
-            ? questionData.challengeType
-            : undefined,
-
-        audio: {
-          hasAudio: backendTrack.hasAudio,
-          url: audioUrl,
-          duration: 5,
-        },
-      };
-
-      return {
-        success: true,
-        card: processedCard,
-      };
-    } catch (error) {
-      console.error('❌ Error processing track data:', error);
-      return {
-        success: false,
-        error: { message: error.message },
-      };
-    }
-  }
-
-  private static getDifficultyMultiplier(difficulty: string): number {
-    const multipliers = {
-      easy: 1,
-      medium: 1.5,
-      hard: 2,
-      expert: 3,
-    };
-    return multipliers[difficulty as keyof typeof multipliers] || 1;
-  }
-}
-class LocalTracksDatabase {
-  private tracks: BackendTrack[] = [];
-
-  constructor() {
-    this.initializeLocalTracks();
-  }
-
-  private initializeLocalTracks() {
-    this.tracks = [
-      {
-        id: '001',
-        title: 'Despacito',
-        artist: 'Luis Fonsi ft. Daddy Yankee',
-        album: 'Vida',
-        year: 2017,
-        genre: 'Reggaeton',
-        decade: '2010s',
-        popularity: 95,
-        duration: 229000,
-        audioFile: '001_despacito.mp3',
-        audioSource: 'local',
-        hasAudio: true,
-        hasQuestions: true,
-        availableCardTypes: ['song', 'artist', 'decade', 'lyrics', 'challenge'],
-        questionCount: 5,
-        lastUpdated: '2024-01-15T10:00:00.000Z',
-        questions: {
-          song: {
-            question: '¿Cuál es la canción?',
-            answer: 'Despacito',
-            points: 1,
-            hints: ['Es un hit de reggaeton', 'Luis Fonsi la canta'],
-          },
-          artist: {
-            question: '¿Quién canta esta canción?',
-            answer: 'Luis Fonsi ft. Daddy Yankee',
-            points: 2,
-            hints: ['Colaboración entre dos artistas', 'Uno es puertorriqueño'],
-          },
-          decade: {
-            question: '¿De qué década es esta canción?',
-            answer: '2010s',
-            points: 3,
-            hints: ['Es relativamente reciente', 'Se hizo viral en YouTube'],
-          },
-          lyrics: {
-            question: "Completa: 'Sí, sabes que ya llevo un rato...'",
-            answer: 'mirándote',
-            points: 3,
-            hints: ['Primera línea de la canción', 'Habla de observar'],
-          },
-          challenge: {
-            question: 'Baila los primeros 10 segundos de Despacito',
-            answer: 'Completar baile reggaeton',
-            points: 5,
-            challengeType: 'dance',
-            hints: ['Movimientos de reggaeton', 'Ritmo lento y sensual'],
-          },
-        },
-      },
-      {
-        id: '002',
-        title: 'Bohemian Rhapsody',
-        artist: 'Queen',
-        album: 'A Night at the Opera',
-        year: 1975,
-        genre: 'Rock',
-        decade: '1970s',
-        popularity: 90,
-        duration: 355000,
-        audioFile: '002_bohemian_rhapsody.mp3',
-        audioSource: 'local',
-        hasAudio: true,
-        hasQuestions: true,
-        availableCardTypes: ['song', 'artist', 'decade', 'lyrics', 'challenge'],
-        questionCount: 5,
-        lastUpdated: '2024-01-15T10:00:00.000Z',
-        questions: {
-          song: {
-            question: '¿Cuál es la canción?',
-            answer: 'Bohemian Rhapsody',
-            points: 1,
-            hints: ['Clásico del rock', 'Tiene una parte operística'],
-          },
-          artist: {
-            question: '¿Quién canta esta canción?',
-            answer: 'Queen',
-            points: 2,
-            hints: ['Banda británica', 'Freddie Mercury era el vocalista'],
-          },
-          decade: {
-            question: '¿De qué década es esta canción?',
-            answer: '1970s',
-            points: 3,
-            hints: ['Era del rock clásico', 'Antes de los 80s'],
-          },
-          lyrics: {
-            question: "Completa: 'Is this the real life...'",
-            answer: 'is this just fantasy',
-            points: 3,
-            hints: ['Primera línea icónica', 'Pregunta existencial'],
-          },
-          challenge: {
-            question: 'Imita a Freddie Mercury cantando la canción',
-            answer: 'Completar imitación de Freddie',
-            points: 5,
-            challengeType: 'imitate',
-            hints: ['Movimientos teatrales', 'Voz potente y dramática'],
-          },
-        },
-      },
-    ];
-  }
-
-  getTrackById(id: string): BackendTrack | null {
-    return this.tracks.find((track) => track.id === id) || null;
-  }
-
-  getAllTracks(): BackendTrack[] {
-    return this.tracks;
-  }
-}
-
+// 🎮 Main Audio Service - SOLO Backend Integration
 class AudioService {
-  private httpClient: HttpClient;
+  private backendClient: BackendClient;
   private audioManager: AudioManager;
-  private localDatabase: LocalTracksDatabase;
 
   constructor() {
-    const serverUrl = ServerConfig.getServerUrl();
-    this.httpClient = new HttpClient(serverUrl);
+    this.backendClient = new BackendClient();
     this.audioManager = new AudioManager();
-    this.localDatabase = new LocalTracksDatabase();
   }
 
   async initializeAudio(): Promise<void> {
     await this.audioManager.initialize();
   }
 
-  async scanQRAndPlay(qrCode: string): Promise<ProcessedScanResponse> {
+  // 🔍 ESCANEO QR - Backend Only
+  async scanQRAndPlay(qrCode: string): Promise<BackendScanResponse> {
     try {
-      console.log(`🔍 Scanning QR: ${qrCode}`);
+      console.log(`🔍 Scanning QR via backend: ${qrCode}`);
 
-      const qrData = QRCodeParser.parseQRCode(qrCode);
-      if (!qrData) {
-        throw new Error('Invalid QR code format');
+      // ✅ LLAMADA AL BACKEND REAL
+      const response = await this.backendClient.post(`/api/qr/scan/${qrCode}`);
+
+      if (response.success && response.data) {
+        console.log('✅ Backend scan successful:', response.data.track.title);
+        return {
+          success: true,
+          data: response.data,
+        };
       }
 
-      console.log('📋 Parsed QR:', qrData);
-
-      let backendTrack: BackendTrack | null = null;
-
-      try {
-        console.log(`🌐 Trying backend for track: ${qrData.trackId}`);
-        const response = await this.httpClient.get(
-          `/api/tracks/${qrData.trackId}`
-        );
-
-        if (response.success && response.data) {
-          backendTrack = response.data;
-          console.log('✅ Got track from backend');
-        }
-      } catch (error) {
-        console.log('⚠️ Backend unavailable, using local database');
-      }
-      if (!backendTrack) {
-        backendTrack = this.localDatabase.getTrackById(qrData.trackId);
-        if (!backendTrack) {
-          throw new Error(`Track not found: ${qrData.trackId}`);
-        }
-        console.log('✅ Got track from local database');
-      }
-
-      const processedResponse = BackendDataProcessor.processTrackData(
-        backendTrack,
-        qrCode,
-        this.getServerUrl()
-      );
-
-      if (!processedResponse.success) {
-        throw new Error(
-          processedResponse.error?.message || 'Failed to process track data'
-        );
-      }
-
-      console.log(
-        '✅ Card processed successfully:',
-        processedResponse.card?.track.title
-      );
-      return processedResponse;
+      throw new Error(response.error?.message || 'Backend scan failed');
     } catch (error) {
       console.error('❌ QR scan error:', error);
       return {
         success: false,
-        error: { message: error.message || 'Unknown error' },
+        error: { message: error.message || 'QR scan failed' },
       };
     }
   }
 
+  // 🎵 REPRODUCIR AUDIO - Solo streaming desde backend
   async playTrackPreview(
     audioUrl: string,
     duration: number = 5000,
     onFinished?: () => void
   ): Promise<void> {
+    if (!audioUrl) {
+      throw new Error('No audio URL provided');
+    }
+
+    console.log(`🎵 Playing audio from backend: ${audioUrl}`);
     return this.audioManager.playTrackPreview(audioUrl, duration, onFinished);
   }
 
@@ -558,72 +258,88 @@ class AudioService {
     return this.audioManager.isPlaying();
   }
 
+  // 🔧 HEALTH CHECK - Backend
   async testConnection(): Promise<boolean> {
     try {
-      const response = await this.httpClient.get('/api/health');
+      const response = await this.backendClient.get('/api/health');
       return response.success && response.data?.status === 'healthy';
     } catch (error) {
-      console.error('❌ Health check failed, using local mode');
-      return true;
+      console.error('❌ Backend connection failed:', error);
+      return false;
     }
   }
 
-  getServerUrl(): string {
-    return ServerConfig.getServerUrl();
+  // 📋 OBTENER TRACKS - Backend Only
+  async getAllTracks(): Promise<any[]> {
+    try {
+      const response = await this.backendClient.get('/api/tracks');
+      return response.success ? response.data : [];
+    } catch (error) {
+      console.error('❌ Failed to get tracks from backend:', error);
+      return [];
+    }
+  }
+
+  // ✅ VALIDAR QR - Backend
+  async validateQRCode(qrCode: string): Promise<boolean> {
+    try {
+      const response = await this.backendClient.get(
+        `/api/qr/validate/${qrCode}`
+      );
+      return response.success && response.data?.isValid === true;
+    } catch (error) {
+      console.error('❌ QR validation failed:', error);
+      return false;
+    }
+  }
+
+  // 📊 STATS DEL SERVIDOR
+  async getConnectionInfo(): Promise<any> {
+    const serverUrl = this.backendClient.getBaseUrl();
+    const isExpoDevMode = __DEV__ && !!Constants.expoConfig?.hostUri;
+
+    try {
+      const [healthResponse, tracksResponse] = await Promise.all([
+        this.backendClient.get('/api/health').catch(() => null),
+        this.backendClient.get('/api/tracks').catch(() => null),
+      ]);
+
+      return {
+        serverUrl,
+        isExpoDevMode,
+        expoHostUri: Constants.expoConfig?.hostUri || null,
+        backendConnected: !!healthResponse?.success,
+        tracksAvailable: tracksResponse?.data?.length || 0,
+        serverStatus: healthResponse?.data?.status || 'unknown',
+      };
+    } catch (error) {
+      return {
+        serverUrl,
+        isExpoDevMode,
+        expoHostUri: Constants.expoConfig?.hostUri || null,
+        backendConnected: false,
+        tracksAvailable: 0,
+        serverStatus: 'error',
+        error: error.message,
+      };
+    }
+  }
+
+  // 💾 GUARDAR STATS - Backend
+  async saveGameStats(gameStats: any): Promise<void> {
+    try {
+      await this.backendClient.post('/api/game/stats', gameStats);
+      console.log('✅ Game stats saved to backend');
+    } catch (error) {
+      console.error('❌ Failed to save game stats:', error);
+      // No fallar el juego por esto
+    }
   }
 
   async cleanup(): Promise<void> {
     await this.audioManager.cleanup();
   }
-
-  async saveGameStats(gameStats: any): Promise<void> {
-    try {
-      await this.httpClient.post('/api/game/stats', gameStats);
-    } catch (error) {
-      console.error('Failed to save game stats (local mode):', error);
-    }
-  }
-
-  async validateQRCode(qrCode: string): Promise<boolean> {
-    try {
-      if (!QRCodeParser.isValidQRFormat(qrCode)) {
-        return false;
-      }
-
-      const response = await this.httpClient.get(`/api/qr/validate/${qrCode}`);
-      return response.success && response.data?.isValid === true;
-    } catch (error) {
-      const qrData = QRCodeParser.parseQRCode(qrCode);
-      if (!qrData) return false;
-
-      const track = this.localDatabase.getTrackById(qrData.trackId);
-      return !!track;
-    }
-  }
-
-  async getAllTracks(): Promise<BackendTrack[]> {
-    try {
-      const response = await this.httpClient.get('/api/tracks');
-      return response.success
-        ? response.data || []
-        : this.localDatabase.getAllTracks();
-    } catch (error) {
-      return this.localDatabase.getAllTracks();
-    }
-  }
-
-  async getConnectionInfo(): Promise<any> {
-    const serverUrl = this.getServerUrl();
-    const isExpoDevMode = __DEV__ && !!Constants.expoConfig?.hostUri;
-
-    return {
-      serverUrl,
-      isExpoDevMode,
-      expoHostUri: Constants.expoConfig?.hostUri || null,
-      localTracksCount: this.localDatabase.getAllTracks().length,
-    };
-  }
 }
 
 export const audioService = new AudioService();
-export type { BackendTrack, ProcessedScanResponse };
+export type { BackendScanResponse };
