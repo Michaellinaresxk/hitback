@@ -1,13 +1,7 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Animated,
-} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { GameCard, Difficulty } from '@/types/game.types';
+import { Difficulty, GameCard } from '@/types/game.types';
+import React from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface CardDisplayProps {
   card: GameCard | null;

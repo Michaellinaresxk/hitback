@@ -1,31 +1,30 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
-  Platform,
-  Dimensions,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  interpolate,
-  runOnJS,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { Tabs } from 'expo-router';
+import React from 'react';
+import {
+  Dimensions,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
 
-// Floating Tab Button with Morphing Animation
 function FloatingTabButton({
   children,
   onPress,
@@ -40,13 +39,11 @@ function FloatingTabButton({
   const rotateZ = useSharedValue(0);
   const glowOpacity = useSharedValue(0);
 
-  // Magnetic effect values
   const magneticX = useSharedValue(0);
   const magneticY = useSharedValue(0);
 
   React.useEffect(() => {
     if (isSelected) {
-      // Active state animations
       scale.value = withSpring(1.2, { damping: 12, stiffness: 200 });
       translateY.value = withSpring(-8, { damping: 15 });
       glowOpacity.value = withTiming(1, { duration: 300 });
@@ -56,7 +53,6 @@ function FloatingTabButton({
         withTiming(0, { duration: 150 })
       );
     } else {
-      // Inactive state
       scale.value = withSpring(1, { damping: 15 });
       translateY.value = withSpring(0, { damping: 15 });
       glowOpacity.value = withTiming(0, { duration: 200 });
@@ -111,7 +107,6 @@ function FloatingTabButton({
   );
 }
 
-// Particle Animation Component
 function ParticleEffect({ isVisible }) {
   const particles = Array.from({ length: 6 }, (_, i) => {
     const opacity = useSharedValue(0);
@@ -174,7 +169,6 @@ function ParticleEffect({ isVisible }) {
   return <View style={styles.particleContainer}>{particles}</View>;
 }
 
-// Main Custom Tab Bar
 function FloatingDockTabBar({ state, descriptors, navigation }) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -183,7 +177,6 @@ function FloatingDockTabBar({ state, descriptors, navigation }) {
   const dockOpacity = useSharedValue(1);
 
   React.useEffect(() => {
-    // Entrance animation
     dockScale.value = withSpring(1, { damping: 20, stiffness: 300 });
     dockOpacity.value = withTiming(1, { duration: 500 });
   }, []);
@@ -440,7 +433,6 @@ const styles = StyleSheet.create({
   },
 
   activeTabButtonContent: {
-    // borderWidth: 2,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 
@@ -484,7 +476,6 @@ const styles = StyleSheet.create({
     height: 2,
   },
 
-  // Particle Effects
   particleContainer: {
     position: 'absolute',
     top: 0,
