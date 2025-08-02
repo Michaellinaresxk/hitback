@@ -1,4 +1,3 @@
-// components/game/PlayerScoreboard.tsx - FIXED Text Component Error
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
 import React from 'react';
@@ -25,7 +24,6 @@ export default function PlayerScoreboard({
   showDetailedStats = true,
   highlightWinner = false,
 }: PlayerScoreboardProps) {
-  // Sort players by score (highest first)
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = highlightWinner ? sortedPlayers[0] : null;
 
