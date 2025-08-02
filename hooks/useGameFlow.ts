@@ -1,7 +1,8 @@
-// hooks/useGameFlow.ts - LIMPIO: Solo Backend Integration
+// hooks/useGameFlow.ts - FIXED: Using YOUR original QR scanning logic + betting phase
 import { audioService } from '@/services/audioService';
+import { cardService } from '@/services/cardService';
 import { useGameStore } from '@/store/gameStore';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface GameFlowState {
   isScanning: boolean;
@@ -10,7 +11,11 @@ export interface GameFlowState {
   showAnswerRevealed: boolean;
   currentError: string | null;
   lastWinnerId: string | null;
-  backendConnected: boolean;
+
+  // ✅ NEW: Only betting phase additions
+  bettingPhase: boolean;
+  bettingTimeLeft: number;
+  bettingStarted: boolean;
 }
 
 export const useGameFlow = () => {
@@ -21,8 +26,15 @@ export const useGameFlow = () => {
     showAnswerRevealed: false,
     currentError: null,
     lastWinnerId: null,
-    backendConnected: false,
+
+    // ✅ NEW: Betting phase state
+    bettingPhase: false,
+    bettingTimeLeft: 30,
+    bettingStarted: false,
   });
+
+  // ✅ NEW: Betting timer ref
+  const bettingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const {
     scanCard,
@@ -33,7 +45,7 @@ export const useGameFlow = () => {
     nextTurn,
   } = useGameStore();
 
-  // 🔍 QR SCANNING - Solo Backend
+  // ✅ USING YOUR ORIGINAL QR SCANNING - DON'T CHANGE THIS!
   const handleQRScan = useCallback(
     async (qrCode: string): Promise<boolean> => {
       try {
@@ -42,119 +54,127 @@ export const useGameFlow = () => {
           isScanning: true,
           currentError: null,
           lastWinnerId: null,
+          // ✅ Reset betting phase on new scan
+          bettingPhase: false,
+          bettingStarted: false,
+          bettingTimeLeft: 30,
         }));
 
-        console.log(`🔍 useGameFlow: Scanning QR via backend: ${qrCode}`);
+        console.log(`🔍 useGameFlow: Scanning QR: ${qrCode}`);
 
-        // ✅ ESCANEO COMPLETO VIA BACKEND
-        const scanResult = await audioService.scanQRAndPlay(qrCode);
+        // ✅ USE YOUR ORIGINAL cardService method - NOT audioService
+        const gameCard = await cardService.getCardByQR(qrCode);
 
-        if (scanResult.success && scanResult.data) {
-          console.log('✅ Backend scan successful, creating game card...');
-
-          // ✅ TRANSFORMAR RESPUESTA DEL BACKEND AL FORMATO DEL STORE
-          const gameCard = {
-            id: scanResult.data.track.id,
-            qrCode: scanResult.data.scan.qrCode,
-            cardType: scanResult.data.question.type,
-
-            track: {
-              title: scanResult.data.track.title,
-              artist: scanResult.data.track.artist,
-              year: scanResult.data.track.year,
-              genre: scanResult.data.track.genre,
-              album: scanResult.data.track.album,
-              decade: `${Math.floor(scanResult.data.track.year / 10) * 10}s`,
-              previewUrl: scanResult.data.audio.url, // ✅ URL directa del backend
-              qrCode: scanResult.data.scan.qrCode,
-            },
-
-            question: scanResult.data.question.question,
-            answer: scanResult.data.question.answer,
-            points: scanResult.data.scan.points,
-            difficulty: scanResult.data.scan.difficulty,
-            hints: scanResult.data.question.hints,
-
-            audioUrl: scanResult.data.audio.url,
-            audioAvailable: scanResult.data.audio.hasAudio,
-            duration: 5, // 5 seconds for game
-          };
-
-          console.log('🎮 Sending card to game store:', gameCard.track.title);
-
-          // ✅ USAR EL STORE PARA PROCESAR LA CARTA
-          await scanCard(qrCode, gameCard);
-
-          setFlowState((prev) => ({
-            ...prev,
-            isScanning: false,
-            audioPlaying: true,
-            backendConnected: true,
-          }));
-
-          return true;
+        if (!gameCard) {
+          throw new Error('Carta no encontrada o código QR inválido');
         }
 
-        throw new Error(scanResult.error?.message || 'Backend scan failed');
-      } catch (error) {
-        console.error('❌ QR Scan failed:', error);
+        console.log('🎮 Calling scanCard with:', gameCard);
+        await scanCard(qrCode, gameCard);
 
         setFlowState((prev) => ({
           ...prev,
           isScanning: false,
-          currentError: getErrorMessage(error),
-          backendConnected: false,
+          audioPlaying: true,
         }));
 
+        console.log('✅ Card scanned successfully:', gameCard.track.title);
+        return true;
+      } catch (error) {
+        console.error('❌ QR Scan failed:', error);
+        const errorMessage =
+          error instanceof Error ? error.message : 'Error desconocido';
+        setFlowState((prev) => ({
+          ...prev,
+          isScanning: false,
+          currentError: errorMessage,
+        }));
         return false;
       }
     },
     [scanCard]
   );
 
-  // 🎵 AUDIO FLOW MANAGEMENT
-  const handleAudioFinished = useCallback(() => {
-    console.log('🎵 Audio finished - enabling question phase');
+  // ✅ ENHANCED: Audio finished + start betting phase
+  const handleAudioFinished = () => {
+    console.log('🎵 Audio finished callback recibido');
 
-    // Update game store
+    // ✅ YOUR ORIGINAL game store updates
     setAudioFinished(true);
     setShowQuestion(true);
 
-    // Update flow state
+    // ✅ NEW: Start betting phase after audio
     setFlowState((prev) => ({
       ...prev,
       audioPlaying: false,
       questionPhase: true,
+      bettingPhase: true, // ✅ Start betting
+      bettingStarted: true,
+      bettingTimeLeft: 30,
     }));
 
-    console.log('✅ Question phase enabled');
-  }, [setAudioFinished, setShowQuestion]);
+    // ✅ NEW: Start betting countdown
+    startBettingTimer();
 
-  // 🔍 REVEAL ANSWER
+    console.log('✅ Estados actualizados - pregunta + betting phase activo');
+  };
+
+  // ✅ NEW: Betting timer function
+  const startBettingTimer = useCallback(() => {
+    if (bettingTimerRef.current) {
+      clearInterval(bettingTimerRef.current);
+    }
+
+    let timeLeft = 30;
+
+    bettingTimerRef.current = setInterval(() => {
+      timeLeft -= 1;
+
+      setFlowState((prev) => ({
+        ...prev,
+        bettingTimeLeft: timeLeft,
+      }));
+
+      if (timeLeft <= 0) {
+        console.log('⏰ Betting time finished automatically');
+        endBettingPhase();
+      }
+    }, 1000);
+  }, []);
+
+  // ✅ NEW: End betting phase
+  const endBettingPhase = useCallback(() => {
+    if (bettingTimerRef.current) {
+      clearInterval(bettingTimerRef.current);
+      bettingTimerRef.current = null;
+    }
+
+    setFlowState((prev) => ({
+      ...prev,
+      bettingPhase: false,
+      bettingTimeLeft: 0,
+    }));
+
+    console.log('🎲 Betting phase ended');
+  }, []);
+
+  // ✅ ORIGINAL: Your working reveal answer
   const revealAnswer = useCallback(() => {
-    console.log('👁️ Revealing answer');
-
     setFlowState((prev) => ({
       ...prev,
       showAnswerRevealed: true,
     }));
-
     setShowAnswer(true);
   }, [setShowAnswer]);
 
-  // 🏆 AWARD POINTS AND AUTO-ADVANCE
+  // ✅ ORIGINAL: Your working award points
   const awardPointsAndAdvance = useCallback(
     (playerId: string, playerName: string) => {
-      console.log(`🏆 Awarding points to ${playerName} and advancing turn`);
-
-      // Set winner for feedback
       setFlowState((prev) => ({
         ...prev,
         lastWinnerId: playerId,
       }));
 
-      // Points will be awarded by calling component
-      // Auto-advance turn after delay
       setTimeout(() => {
         nextTurn();
         resetFlow();
@@ -165,9 +185,13 @@ export const useGameFlow = () => {
     [nextTurn]
   );
 
-  // 🔄 RESET FLOW STATE
+  // ✅ ENHANCED: Reset flow with betting cleanup
   const resetFlow = useCallback(() => {
-    console.log('🔄 Resetting game flow state');
+    // ✅ NEW: Cleanup betting timer
+    if (bettingTimerRef.current) {
+      clearInterval(bettingTimerRef.current);
+      bettingTimerRef.current = null;
+    }
 
     setFlowState({
       isScanning: false,
@@ -176,47 +200,24 @@ export const useGameFlow = () => {
       showAnswerRevealed: false,
       currentError: null,
       lastWinnerId: null,
-      backendConnected: flowState.backendConnected, // Preserve connection status
-    });
-  }, [flowState.backendConnected]);
 
-  // 🧪 CONNECTION TEST
+      // ✅ NEW: Reset betting state
+      bettingPhase: false,
+      bettingTimeLeft: 30,
+      bettingStarted: false,
+    });
+  }, []);
+
+  // ✅ ORIGINAL: Your working connection test
   const testConnection = useCallback(async (): Promise<boolean> => {
     try {
-      console.log('🧪 Testing backend connection...');
-
-      const isConnected = await audioService.testConnection();
-
-      setFlowState((prev) => ({
-        ...prev,
-        backendConnected: isConnected,
-      }));
-
-      console.log(`🔗 Backend connection: ${isConnected ? 'OK' : 'FAILED'}`);
-      return isConnected;
-    } catch (error) {
-      console.error('❌ Connection test failed:', error);
-
-      setFlowState((prev) => ({
-        ...prev,
-        backendConnected: false,
-      }));
-
+      return await audioService.testConnection();
+    } catch {
       return false;
     }
   }, []);
 
-  // 📊 GET CONNECTION INFO
-  const getConnectionInfo = useCallback(async () => {
-    try {
-      return await audioService.getConnectionInfo();
-    } catch (error) {
-      console.error('❌ Failed to get connection info:', error);
-      return { error: error.message };
-    }
-  }, []);
-
-  // 📱 GET WINNER INFO FOR FEEDBACK
+  // ✅ ORIGINAL: Your working winner info
   const getWinnerInfo = useCallback(() => {
     return {
       winnerId: flowState.lastWinnerId,
@@ -224,99 +225,51 @@ export const useGameFlow = () => {
     };
   }, [flowState.lastWinnerId]);
 
-  // 🧪 GENERATE TEST QR CODES (development only)
-  const generateTestQRCodes = useCallback(() => {
-    const testCodes = [
-      'HITBACK_001_SONG_EASY',
-      'HITBACK_001_ARTIST_MEDIUM',
-      'HITBACK_002_SONG_EASY',
-      'HITBACK_002_LYRICS_MEDIUM',
-      'HITBACK_003_CHALLENGE_HARD',
-      'HITBACK_004_DECADE_EXPERT',
-    ];
+  // ✅ NEW: Betting status helper
+  const getBettingStatus = useCallback(() => {
+    return {
+      isActive: flowState.bettingPhase,
+      timeLeft: flowState.bettingTimeLeft,
+      hasStarted: flowState.bettingStarted,
+      canBet: flowState.bettingPhase && flowState.bettingTimeLeft > 0,
+      urgentTime: flowState.bettingTimeLeft <= 10,
+    };
+  }, [flowState]);
 
-    return testCodes.map((qrCode) => ({
-      qrCode,
-      description: `Test: ${qrCode.split('_').slice(1).join(' - ')}`,
-      onTest: () => handleQRScan(qrCode),
-    }));
-  }, [handleQRScan]);
+  // ✅ NEW: Current phase helper
+  const getCurrentPhase = useCallback(() => {
+    if (flowState.isScanning) return 'scanning';
+    if (flowState.audioPlaying) return 'audio';
+    if (flowState.bettingPhase) return 'betting';
+    if (flowState.questionPhase && !flowState.showAnswerRevealed)
+      return 'question';
+    if (flowState.showAnswerRevealed) return 'answer';
+    return 'idle';
+  }, [flowState]);
 
-  // 🐛 DEBUG HELPERS
-  const debugGameState = useCallback(() => {
-    console.log('🐛 DEBUG Game Flow State:', {
-      flowState,
-      currentCard,
-      gameStoreStates: {
-        audioFinished: useGameStore.getState().audioFinished,
-        showQuestion: useGameStore.getState().showQuestion,
-        showAnswer: useGameStore.getState().showAnswer,
-        isActive: useGameStore.getState().isActive,
-      },
-    });
-  }, [flowState, currentCard]);
+  // ✅ CLEANUP on unmount
+  useEffect(() => {
+    return () => {
+      if (bettingTimerRef.current) {
+        clearInterval(bettingTimerRef.current);
+      }
+    };
+  }, []);
 
-  // 🏥 BACKEND HEALTH CHECK
-  const checkBackendHealth = useCallback(async () => {
-    try {
-      const isHealthy = await testConnection();
-      const connectionInfo = await getConnectionInfo();
-
-      return {
-        isHealthy,
-        connectionInfo,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      console.error('❌ Backend health check failed:', error);
-      return {
-        isHealthy: false,
-        error: error.message,
-        timestamp: new Date().toISOString(),
-      };
-    }
-  }, [testConnection, getConnectionInfo]);
-
+  // ✅ ORIGINAL: Your working methods + new betting methods
   return {
-    // State
     flowState,
-
-    // Main actions
     handleQRScan,
     handleAudioFinished,
     revealAnswer,
     awardPointsAndAdvance,
     resetFlow,
-
-    // Connection management
     testConnection,
-    getConnectionInfo,
-    checkBackendHealth,
-
-    // Helpers
     getWinnerInfo,
-    generateTestQRCodes,
-    debugGameState,
+
+    // ✅ NEW: Betting phase methods
+    endBettingPhase,
+    getBettingStatus,
+    getCurrentPhase,
   };
 };
-
-// 🔧 Helper function for user-friendly error messages
-function getErrorMessage(error: any): string {
-  if (error.message?.includes('HTTP 404')) {
-    return 'Carta no encontrada en el servidor';
-  }
-  if (error.message?.includes('HTTP 400')) {
-    return 'Código QR inválido';
-  }
-  if (
-    error.message?.includes('Network request failed') ||
-    error.message?.includes('timeout')
-  ) {
-    return 'No se puede conectar al servidor - verifica la conexión';
-  }
-  if (error.message?.includes('Invalid QR code format')) {
-    return 'Formato de QR inválido - debe ser HITBACK_XXX_TYPE_DIFFICULTY';
-  }
-
-  return error.message || 'Error de conexión con el servidor';
-}

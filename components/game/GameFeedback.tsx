@@ -60,7 +60,6 @@ function FeedbackToast({ message, onDismiss }: FeedbackToastProps) {
       }),
     ]).start();
 
-    // Auto dismiss
     const timer = setTimeout(() => {
       handleDismiss();
     }, message.duration || 3000);

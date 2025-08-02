@@ -1,10 +1,10 @@
-// app/(tabs)/game.tsx - FIXED Turns & Feedback
 import AudioPlayer from '@/components/game/AudioPlayer';
 import CardDisplay from '@/components/game/CardDisplay';
 import GameEndModal from '@/components/game/GameEndModal';
 import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import RealQRScanner from '@/components/game/QRScanner';
+import BettingModal from '@/components/modal/BettingModal';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameFlow } from '@/hooks/useGameFlow';
 import { useGameStore } from '@/store/gameStore';
@@ -22,8 +22,16 @@ import {
 
 const { width } = Dimensions.get('window');
 
+interface BettingModalProps {
+  visible: boolean;
+  onClose: () => void;
+  players: any[];
+  currentCard: any;
+  onPlaceBet: (playerId: string, amount: number) => void;
+  bettingTimeLeft?: number;
+}
+
 export default function GameScreen() {
-  // 🎮 Game Store
   const {
     players,
     currentCard,
@@ -52,19 +60,24 @@ export default function GameScreen() {
     setShowGameEndModal,
     createNewGame,
     nextTurn,
+    clearBets,
   } = useGameStore();
 
-  // 🎯 Custom Hooks
+  // 🎯 Custom Hooks - ✅ UPDATED with betting methods
   const {
     flowState,
     handleQRScan,
     handleAudioFinished,
     revealAnswer,
-    awardPointsAndAdvance, // 🔧 FIXED: Use new method
+    awardPointsAndAdvance,
     resetFlow,
     testConnection,
-    getWinnerInfo, // 🔧 FIXED: Get winner info for correct feedback
+    getWinnerInfo,
+    endBettingPhase, // ✅ NEW
+    getBettingStatus, // ✅ NEW
+    getCurrentPhase, // ✅ NEW
   } = useGameFlow();
+
   const {
     messages,
     dismissFeedback,
@@ -84,10 +97,12 @@ export default function GameScreen() {
     'battle' | 'speed' | 'viral' | null
   >(null);
 
-  // 🎯 Computed Values
+  // 🎯 Computed Values - ✅ UPDATED with betting status
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = players.find((p) => p.score >= 15);
+  const bettingStatus = getBettingStatus(); // ✅ NEW
+  const currentPhase = getCurrentPhase(); // ✅ NEW
 
   // 🔄 Effects
   useEffect(() => {
@@ -109,12 +124,17 @@ export default function GameScreen() {
     }
   }, [flowState.currentError]);
 
-  // Show points modal when audio finishes
+  // ✅ UPDATED: Show points modal only after betting phase ends
   useEffect(() => {
-    if (audioFinished && showQuestion && currentCard) {
+    if (
+      audioFinished &&
+      showQuestion &&
+      currentCard &&
+      !bettingStatus.isActive
+    ) {
       setShowPointsModal(true);
     }
-  }, [audioFinished, showQuestion, currentCard]);
+  }, [audioFinished, showQuestion, currentCard, bettingStatus.isActive]);
 
   // 🧪 Backend Connection Check
   const checkBackendConnection = async () => {
@@ -140,6 +160,91 @@ export default function GameScreen() {
     }
   };
 
+  // ✅ UPDATED: Betting Modal Handler with Phase Control
+  const handleOpenBetting = () => {
+    console.log('🎲 Opening betting modal...', {
+      currentCard: !!currentCard,
+      bettingStatus,
+      currentPhase,
+    });
+
+    if (!currentCard) {
+      showWarning('Error', 'Necesitas una carta activa para apostar');
+      return;
+    }
+
+    if (!bettingStatus.canBet) {
+      if (currentPhase === 'audio') {
+        showWarning('Espera', 'Espera a que termine el audio');
+      } else if (currentPhase === 'betting' && bettingStatus.timeLeft <= 0) {
+        showWarning('Error', 'El tiempo de apuestas ha terminado');
+      } else {
+        showWarning('Error', 'No es momento de apostar');
+      }
+      return;
+    }
+
+    setShowBettingModal(true);
+  };
+
+  // ✅ BETTING HANDLER with Enhanced Feedback
+  const handlePlaceBet = (playerId: string, amount: number) => {
+    const player = players.find((p) => p.id === playerId);
+
+    if (!player) {
+      showError('Error', 'Jugador no encontrado');
+      return;
+    }
+
+    if (player.tokens < amount) {
+      showError('Error', 'No tienes suficientes tokens');
+      return;
+    }
+
+    if (player.currentBet > 0) {
+      showWarning('Error', 'Ya apostaste en esta ronda');
+      return;
+    }
+
+    // Place bet
+    placeBet(playerId, amount);
+
+    // Enhanced feedback
+    const multiplier = getBettingMultiplier(amount);
+    showSuccess(
+      'Apuesta Realizada',
+      `${player.name} apostó ${amount} token${
+        amount > 1 ? 's' : ''
+      } (${multiplier}x multiplicador)`
+    );
+
+    setShowBettingModal(false);
+  };
+
+  // ✅ WRONG ANSWER HANDLER
+  const handleWrongAnswer = () => {
+    const playersWithBets = players.filter((p) => p.currentBet > 0);
+
+    if (playersWithBets.length > 0) {
+      const totalLostTokens = playersWithBets.reduce(
+        (sum, p) => sum + p.currentBet,
+        0
+      );
+      showInfo(
+        'Tokens Perdidos',
+        `${totalLostTokens} tokens perdidos por apuestas fallidas`
+      );
+    }
+
+    clearBets();
+    setShowPointsModal(false);
+
+    setTimeout(() => {
+      nextTurn();
+      resetFlow();
+    }, 1500);
+  };
+
   // 🏆 Points Award Handler - FIXED with auto turn advance
   const handleAwardPoints = (playerId: string) => {
     if (!currentCard) return;
@@ -150,33 +255,21 @@ export default function GameScreen() {
     // Award points through game store
     awardPoints(playerId, undefined, 2000);
 
-    // Handle turn advance and feedback through game flow
-    const winnerInfo = awardPointsAndAdvance(playerId, player.name);
-
     setShowPointsModal(false);
 
-    // 🔧 FIXED: Show feedback to correct player
+    // Enhanced feedback with multiplier info
+    const multiplier =
+      player.currentBet > 0 ? getBettingMultiplier(player.currentBet) : 1;
+    const finalPoints = currentCard.points * multiplier;
+
     showSuccess(
-      'Punto Otorgado',
-      `${player.name} gana ${currentCard.points} punto${
-        currentCard.points > 1 ? 's' : ''
-      }`
+      player.currentBet > 0 ? '🎲 Apuesta Ganada!' : '🏆 Punto Otorgado',
+      player.currentBet > 0
+        ? `${player.name} gana ${finalPoints} puntos (${currentCard.points} × ${multiplier})`
+        : `${player.name} gana ${finalPoints} punto${
+            finalPoints > 1 ? 's' : ''
+          }`
     );
-  };
-
-  // 🎰 Betting Handler
-  const handlePlaceBet = (playerId: string, amount: number) => {
-    placeBet(playerId, amount);
-    const player = players.find((p) => p.id === playerId);
-
-    if (player) {
-      showInfo(
-        'Apuesta Realizada',
-        `${player.name} apostó ${amount} token${
-          amount > 1 ? 's' : ''
-        } (${getBettingMultiplier(amount)}x)`
-      );
-    }
   };
 
   // ⚡ Power Card Handler
@@ -259,6 +352,42 @@ export default function GameScreen() {
     }
   };
 
+  // ✅ NEW: Phase styling helper
+  const getPhaseStyle = () => {
+    switch (currentPhase) {
+      case 'scanning':
+        return { backgroundColor: '#3B82F6', borderColor: '#2563EB' };
+      case 'audio':
+        return { backgroundColor: '#10B981', borderColor: '#059669' };
+      case 'betting':
+        return { backgroundColor: '#EF4444', borderColor: '#DC2626' };
+      case 'question':
+        return { backgroundColor: '#F59E0B', borderColor: '#D97706' };
+      case 'answer':
+        return { backgroundColor: '#8B5CF6', borderColor: '#7C3AED' };
+      default:
+        return { backgroundColor: '#64748B', borderColor: '#475569' };
+    }
+  };
+
+  // ✅ NEW: Phase label helper
+  const getPhaseLabel = () => {
+    switch (currentPhase) {
+      case 'scanning':
+        return 'ESCANEANDO';
+      case 'audio':
+        return 'AUDIO';
+      case 'betting':
+        return 'APUESTAS';
+      case 'question':
+        return 'PREGUNTA';
+      case 'answer':
+        return 'RESPUESTA';
+      default:
+        return gameMode.toUpperCase();
+    }
+  };
+
   // 🎮 Setup Screen
   if (!isActive) {
     return (
@@ -290,13 +419,13 @@ export default function GameScreen() {
       {/* Feedback System - Replaces Alerts */}
       <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
 
-      {/* Header */}
+      {/* Header - ✅ UPDATED with phase indicator */}
       <View style={styles.header}>
         <View style={styles.gameInfo}>
           <Text style={styles.gameTitle}>HITBACK</Text>
-          <View style={[styles.gameModeIndicator, getGameModeStyle()]}>
+          <View style={[styles.gameModeIndicator, getPhaseStyle()]}>
             <Text style={styles.gameModeText}>
-              {gameMode.toUpperCase()}
+              {getPhaseLabel()}
               {viralMomentActive && ' - VIRAL'}
             </Text>
           </View>
@@ -307,10 +436,65 @@ export default function GameScreen() {
         </View>
       </View>
 
+      {/* ✅ NEW: Betting Phase Indicator */}
+      {bettingStatus.isActive && (
+        <View
+          style={[
+            styles.bettingPhaseContainer,
+            bettingStatus.urgentTime && styles.bettingPhaseUrgent,
+          ]}
+        >
+          <View style={styles.bettingPhaseHeader}>
+            <Text style={styles.bettingPhaseTitle}>🎲 TIEMPO DE APUESTAS</Text>
+            <Text
+              style={[
+                styles.bettingPhaseTimer,
+                bettingStatus.urgentTime && styles.timerUrgent,
+              ]}
+            >
+              {bettingStatus.timeLeft}s
+            </Text>
+          </View>
+
+          <Text style={styles.bettingPhaseInstructions}>
+            Los jugadores pueden poner sus tokens en la mesa
+          </Text>
+
+          <View style={styles.bettingPhaseActions}>
+            <TouchableOpacity
+              style={styles.registerBetsButton}
+              onPress={handleOpenBetting}
+            >
+              <IconSymbol name='dice.fill' size={18} color='#FFFFFF' />
+              <Text style={styles.registerBetsText}>Registrar Apuestas</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.endBettingButton}
+              onPress={() => endBettingPhase()}
+            >
+              <IconSymbol name='checkmark.circle' size={18} color='#FFFFFF' />
+              <Text style={styles.endBettingText}>Terminar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ✅ Betting Progress Bar */}
+          <View style={styles.bettingProgressContainer}>
+            <View
+              style={[
+                styles.bettingProgress,
+                { width: `${(bettingStatus.timeLeft / 30) * 100}%` },
+                bettingStatus.urgentTime && styles.progressUrgent,
+              ]}
+            />
+          </View>
+        </View>
+      )}
+
       {/* Game Pot */}
       {gamePot?.tokens > 0 && (
         <View style={styles.potContainer}>
-          <Text style={styles.potLabel}>ACUMULADO</Text>
+          <Text style={styles.potLabel}>POT DEL JUEGO</Text>
           <View style={styles.potValue}>
             <IconSymbol
               name='bitcoinsign.circle.fill'
@@ -319,6 +503,7 @@ export default function GameScreen() {
             />
             <Text style={styles.potCount}>{gamePot.tokens} tokens</Text>
           </View>
+          <Text style={styles.potSubtext}>Tokens perdidos en apuestas</Text>
         </View>
       )}
 
@@ -351,6 +536,7 @@ export default function GameScreen() {
         <Text style={styles.currentTurnName}>
           {currentPlayer?.name || 'No one'} • Ronda {round}
         </Text>
+        <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
       </View>
 
       {/* Main Actions */}
@@ -376,12 +562,18 @@ export default function GameScreen() {
 
         <View style={styles.actionButtonsRow}>
           <TouchableOpacity
-            style={styles.bettingButton}
-            onPress={() => setShowBettingModal(true)}
+            style={[
+              styles.bettingButton,
+              !bettingStatus.canBet && styles.bettingButtonDisabled,
+            ]}
+            onPress={handleOpenBetting}
             activeOpacity={0.9}
+            disabled={!bettingStatus.canBet}
           >
             <IconSymbol name='dice.fill' size={20} color='#FFFFFF' />
-            <Text style={styles.actionButtonText}>Apostar</Text>
+            <Text style={styles.actionButtonText}>
+              {bettingStatus.isActive ? 'Apostar' : 'Sin Apuestas'}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -494,14 +686,7 @@ export default function GameScreen() {
 
                 <TouchableOpacity
                   style={styles.noWinnerButton}
-                  onPress={() => {
-                    setShowPointsModal(false);
-                    // 🔧 FIXED: Auto advance turn even when no winner
-                    setTimeout(() => {
-                      nextTurn();
-                      resetFlow();
-                    }, 500);
-                  }}
+                  onPress={handleWrongAnswer}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.noWinnerText}>Nadie acertó</Text>
@@ -511,6 +696,16 @@ export default function GameScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ✅ Betting Modal */}
+      <BettingModal
+        visible={showBettingModal}
+        onClose={() => setShowBettingModal(false)}
+        players={players}
+        currentCard={currentCard}
+        onPlaceBet={handlePlaceBet}
+        bettingTimeLeft={bettingStatus.timeLeft}
+      />
 
       {/* Game End Modal */}
       <GameEndModal
@@ -533,6 +728,182 @@ function getBettingMultiplier(betAmount: number): number {
   return 1;
 }
 
+// ✅ BETTING MODAL STYLES
+const bettingStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  container: {
+    backgroundColor: '#1E293B',
+    width: width * 0.9,
+    maxHeight: '85%',
+    borderRadius: 20,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#F8FAFC',
+  },
+  timeLeft: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  cardInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginBottom: 4,
+  },
+  cardArtist: {
+    fontSize: 14,
+    color: '#94A3B8',
+    marginBottom: 8,
+  },
+  cardPoints: {
+    fontSize: 12,
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  instructions: {
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  instructionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginBottom: 8,
+  },
+  instructionText: {
+    fontSize: 12,
+    color: '#CBD5E1',
+    marginBottom: 2,
+  },
+  multipliers: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 20,
+  },
+  multipliersTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#F59E0B',
+    marginBottom: 8,
+  },
+  multiplierRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  multiplierText: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    fontWeight: '500',
+  },
+  playersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F8FAFC',
+    marginBottom: 16,
+  },
+  playersList: {
+    maxHeight: 200,
+    marginBottom: 20,
+  },
+  playerItem: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  playerInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  playerName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#F8FAFC',
+  },
+  playerTokens: {
+    fontSize: 12,
+    color: '#94A3B8',
+    fontWeight: '500',
+  },
+  alreadyBet: {
+    fontSize: 14,
+    color: '#10B981',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  bettingOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  betButton: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    minWidth: 60,
+  },
+  betButtonDisabled: {
+    backgroundColor: '#64748B',
+    opacity: 0.5,
+  },
+  betAmount: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  betMultiplier: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  cancelButton: {
+    backgroundColor: '#64748B',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  cancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+});
+
+// ✅ MAIN COMPONENT STYLES
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -612,6 +983,107 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F8FAFC',
   },
+
+  // ✅ NEW: Betting Phase Styles
+  bettingPhaseContainer: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    margin: 20,
+    padding: 20,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    alignItems: 'center',
+  },
+  bettingPhaseUrgent: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: '#DC2626',
+  },
+  bettingPhaseHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 12,
+  },
+  bettingPhaseTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#EF4444',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  bettingPhaseTimer: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#F8FAFC',
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  timerUrgent: {
+    backgroundColor: '#DC2626',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  bettingPhaseInstructions: {
+    fontSize: 14,
+    color: '#F8FAFC',
+    textAlign: 'center',
+    marginBottom: 16,
+    opacity: 0.9,
+  },
+  bettingPhaseActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginBottom: 12,
+  },
+  registerBetsButton: {
+    flex: 2,
+    backgroundColor: '#EF4444',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+  registerBetsText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 6,
+  },
+  endBettingButton: {
+    flex: 1,
+    backgroundColor: '#64748B',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    borderRadius: 12,
+  },
+  endBettingText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 4,
+  },
+  bettingProgressContainer: {
+    width: '100%',
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  bettingProgress: {
+    height: '100%',
+    backgroundColor: '#EF4444',
+  },
+  progressUrgent: {
+    backgroundColor: '#DC2626',
+  },
+
   potContainer: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     margin: 20,
@@ -639,6 +1111,11 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F8FAFC',
   },
+  potSubtext: {
+    fontSize: 10,
+    color: '#94A3B8',
+    marginTop: 4,
+  },
   currentTurnContainer: {
     alignItems: 'center',
     marginVertical: 16,
@@ -654,6 +1131,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#F8FAFC',
+  },
+  phaseInfo: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 4,
   },
   mainActions: {
     paddingHorizontal: 24,
@@ -694,6 +1176,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     borderRadius: 12,
+  },
+  bettingButtonDisabled: {
+    opacity: 0.5,
   },
   powerButton: {
     flex: 1,
