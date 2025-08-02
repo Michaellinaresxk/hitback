@@ -13,6 +13,7 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -21,15 +22,6 @@ import {
 } from 'react-native';
 
 const { width } = Dimensions.get('window');
-
-interface BettingModalProps {
-  visible: boolean;
-  onClose: () => void;
-  players: any[];
-  currentCard: any;
-  onPlaceBet: (playerId: string, amount: number) => void;
-  bettingTimeLeft?: number;
-}
 
 export default function GameScreen() {
   const {
@@ -63,7 +55,6 @@ export default function GameScreen() {
     clearBets,
   } = useGameStore();
 
-  // 🎯 Custom Hooks - ✅ UPDATED with betting methods
   const {
     flowState,
     handleQRScan,
@@ -87,7 +78,9 @@ export default function GameScreen() {
     showWarning,
   } = useFeedback();
 
-  // 🎮 Modal States
+  {
+    /* 🎮 Modal States */
+  }
   const [showScanner, setShowScanner] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
@@ -97,14 +90,12 @@ export default function GameScreen() {
     'battle' | 'speed' | 'viral' | null
   >(null);
 
-  // 🎯 Computed Values - ✅ UPDATED with betting status
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = players.find((p) => p.score >= 15);
-  const bettingStatus = getBettingStatus(); // ✅ NEW
-  const currentPhase = getCurrentPhase(); // ✅ NEW
+  const bettingStatus = getBettingStatus();
+  const currentPhase = getCurrentPhase();
 
-  // 🔄 Effects
   useEffect(() => {
     if (isActive) {
       checkBackendConnection();
@@ -124,7 +115,9 @@ export default function GameScreen() {
     }
   }, [flowState.currentError]);
 
-  // ✅ UPDATED: Show points modal only after betting phase ends
+  {
+    /*  ✅ UPDATED: Show points modal only after betting phase ends */
+  }
   useEffect(() => {
     if (
       audioFinished &&
@@ -136,7 +129,6 @@ export default function GameScreen() {
     }
   }, [audioFinished, showQuestion, currentCard, bettingStatus.isActive]);
 
-  // 🧪 Backend Connection Check
   const checkBackendConnection = async () => {
     const isConnected = await testConnection();
     if (!isConnected) {
@@ -147,7 +139,9 @@ export default function GameScreen() {
     }
   };
 
-  // 🎯 QR Scanning Handler
+  {
+    /* 🎯 QR Scanning Handler */
+  }
   const handleScanCard = async (qrData: string) => {
     setShowScanner(false);
 
@@ -160,7 +154,6 @@ export default function GameScreen() {
     }
   };
 
-  // ✅ UPDATED: Betting Modal Handler with Phase Control
   const handleOpenBetting = () => {
     console.log('🎲 Opening betting modal...', {
       currentCard: !!currentCard,
@@ -187,7 +180,6 @@ export default function GameScreen() {
     setShowBettingModal(true);
   };
 
-  // ✅ BETTING HANDLER with Enhanced Feedback
   const handlePlaceBet = (playerId: string, amount: number) => {
     const player = players.find((p) => p.id === playerId);
 
@@ -221,7 +213,6 @@ export default function GameScreen() {
     setShowBettingModal(false);
   };
 
-  // ✅ WRONG ANSWER HANDLER
   const handleWrongAnswer = () => {
     const playersWithBets = players.filter((p) => p.currentBet > 0);
 
@@ -245,19 +236,15 @@ export default function GameScreen() {
     }, 1500);
   };
 
-  // 🏆 Points Award Handler - FIXED with auto turn advance
   const handleAwardPoints = (playerId: string) => {
     if (!currentCard) return;
 
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
-    // Award points through game store
     awardPoints(playerId, undefined, 2000);
 
     setShowPointsModal(false);
-
-    // Enhanced feedback with multiplier info
     const multiplier =
       player.currentBet > 0 ? getBettingMultiplier(player.currentBet) : 1;
     const finalPoints = currentCard.points * multiplier;
@@ -272,7 +259,6 @@ export default function GameScreen() {
     );
   };
 
-  // ⚡ Power Card Handler
   const handleUsePowerCard = (
     playerId: string,
     powerCardId: string,
@@ -288,7 +274,6 @@ export default function GameScreen() {
     showInfo('Poder Activado', `${player.name} usó: ${powerCard.name}`);
   };
 
-  // 🎮 Special Modes
   const handleSpecialMode = (modeType: 'battle' | 'speed' | 'viral') => {
     if (modeType === 'battle') {
       if (players.length < 2) {
@@ -319,7 +304,6 @@ export default function GameScreen() {
     setPendingModeType(null);
   };
 
-  // 🎮 Game End Handlers
   const handleNewGame = () => {
     setShowGameEndModal(false);
     resetFlow();
@@ -332,7 +316,9 @@ export default function GameScreen() {
     createNewGame();
   };
 
-  // 🎨 Utility Functions
+  {
+    /* 🎨 Utility Functions */
+  }
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -352,7 +338,6 @@ export default function GameScreen() {
     }
   };
 
-  // ✅ NEW: Phase styling helper
   const getPhaseStyle = () => {
     switch (currentPhase) {
       case 'scanning':
@@ -370,7 +355,6 @@ export default function GameScreen() {
     }
   };
 
-  // ✅ NEW: Phase label helper
   const getPhaseLabel = () => {
     switch (currentPhase) {
       case 'scanning':
@@ -388,7 +372,9 @@ export default function GameScreen() {
     }
   };
 
-  // 🎮 Setup Screen
+  {
+    /* 🎮 Setup Screen */
+  }
   if (!isActive) {
     return (
       <View style={styles.setupContainer}>
@@ -414,181 +400,181 @@ export default function GameScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+      <ScrollView>
+        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
 
-      {/* Feedback System - Replaces Alerts */}
-      <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
+        <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
 
-      {/* Header - ✅ UPDATED with phase indicator */}
-      <View style={styles.header}>
-        <View style={styles.gameInfo}>
-          <Text style={styles.gameTitle}>HITBACK</Text>
-          <View style={[styles.gameModeIndicator, getPhaseStyle()]}>
-            <Text style={styles.gameModeText}>
-              {getPhaseLabel()}
-              {viralMomentActive && ' - VIRAL'}
+        <View style={styles.header}>
+          <View style={styles.gameInfo}>
+            <Text style={styles.gameTitle}>HITBACK</Text>
+            <View style={[styles.gameModeIndicator, getPhaseStyle()]}>
+              <Text style={styles.gameModeText}>
+                {getPhaseLabel()}
+                {viralMomentActive && ' - VIRAL'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.timerContainer}>
+            <IconSymbol name='clock' size={16} color='#F8FAFC' />
+            <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+          </View>
+        </View>
+
+        {bettingStatus.isActive && (
+          <View
+            style={[
+              styles.bettingPhaseContainer,
+              bettingStatus.urgentTime && styles.bettingPhaseUrgent,
+            ]}
+          >
+            <View style={styles.bettingPhaseHeader}>
+              <Text style={styles.bettingPhaseTitle}>
+                🎲 TIEMPO DE APUESTAS
+              </Text>
+              <Text
+                style={[
+                  styles.bettingPhaseTimer,
+                  bettingStatus.urgentTime && styles.timerUrgent,
+                ]}
+              >
+                {bettingStatus.timeLeft}s
+              </Text>
+            </View>
+
+            <Text style={styles.bettingPhaseInstructions}>
+              Los jugadores pueden poner sus tokens en la mesa
             </Text>
+
+            <View style={styles.bettingPhaseActions}>
+              <TouchableOpacity
+                style={styles.registerBetsButton}
+                onPress={handleOpenBetting}
+              >
+                <IconSymbol name='dice.fill' size={18} color='#FFFFFF' />
+                <Text style={styles.registerBetsText}>Registrar Apuestas</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.endBettingButton}
+                onPress={() => endBettingPhase()}
+              >
+                <IconSymbol name='checkmark.circle' size={18} color='#FFFFFF' />
+                <Text style={styles.endBettingText}>Terminar</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* ✅ Betting Progress Bar */}
+            <View style={styles.bettingProgressContainer}>
+              <View
+                style={[
+                  styles.bettingProgress,
+                  { width: `${(bettingStatus.timeLeft / 30) * 100}%` },
+                  bettingStatus.urgentTime && styles.progressUrgent,
+                ]}
+              />
+            </View>
           </View>
-        </View>
-        <View style={styles.timerContainer}>
-          <IconSymbol name='clock' size={16} color='#F8FAFC' />
-          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
-        </View>
-      </View>
+        )}
 
-      {/* ✅ NEW: Betting Phase Indicator */}
-      {bettingStatus.isActive && (
-        <View
-          style={[
-            styles.bettingPhaseContainer,
-            bettingStatus.urgentTime && styles.bettingPhaseUrgent,
-          ]}
-        >
-          <View style={styles.bettingPhaseHeader}>
-            <Text style={styles.bettingPhaseTitle}>🎲 TIEMPO DE APUESTAS</Text>
-            <Text
-              style={[
-                styles.bettingPhaseTimer,
-                bettingStatus.urgentTime && styles.timerUrgent,
-              ]}
-            >
-              {bettingStatus.timeLeft}s
-            </Text>
+        {/* Game Pot */}
+        {gamePot?.tokens > 0 && (
+          <View style={styles.potContainer}>
+            <Text style={styles.potLabel}>POT DEL JUEGO</Text>
+            <View style={styles.potValue}>
+              <IconSymbol
+                name='bitcoinsign.circle.fill'
+                size={20}
+                color='#F59E0B'
+              />
+              <Text style={styles.potCount}>{gamePot.tokens} tokens</Text>
+            </View>
+            <Text style={styles.potSubtext}>Tokens perdidos en apuestas</Text>
           </View>
+        )}
 
-          <Text style={styles.bettingPhaseInstructions}>
-            Los jugadores pueden poner sus tokens en la mesa
-          </Text>
-
-          <View style={styles.bettingPhaseActions}>
-            <TouchableOpacity
-              style={styles.registerBetsButton}
-              onPress={handleOpenBetting}
-            >
-              <IconSymbol name='dice.fill' size={18} color='#FFFFFF' />
-              <Text style={styles.registerBetsText}>Registrar Apuestas</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.endBettingButton}
-              onPress={() => endBettingPhase()}
-            >
-              <IconSymbol name='checkmark.circle' size={18} color='#FFFFFF' />
-              <Text style={styles.endBettingText}>Terminar</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* ✅ Betting Progress Bar */}
-          <View style={styles.bettingProgressContainer}>
-            <View
-              style={[
-                styles.bettingProgress,
-                { width: `${(bettingStatus.timeLeft / 30) * 100}%` },
-                bettingStatus.urgentTime && styles.progressUrgent,
-              ]}
-            />
-          </View>
-        </View>
-      )}
-
-      {/* Game Pot */}
-      {gamePot?.tokens > 0 && (
-        <View style={styles.potContainer}>
-          <Text style={styles.potLabel}>POT DEL JUEGO</Text>
-          <View style={styles.potValue}>
-            <IconSymbol
-              name='bitcoinsign.circle.fill'
-              size={20}
-              color='#F59E0B'
-            />
-            <Text style={styles.potCount}>{gamePot.tokens} tokens</Text>
-          </View>
-          <Text style={styles.potSubtext}>Tokens perdidos en apuestas</Text>
-        </View>
-      )}
-
-      {/* Current Card Display */}
-      {currentCard && (
-        <CardDisplay
-          card={currentCard}
-          showAnswer={showAnswer}
-          showQuestion={showQuestion}
-          onRevealAnswer={revealAnswer}
-          audioFinished={audioFinished}
-        />
-      )}
-
-      {/* Audio Player - 5 seconds */}
-      {currentCard && (
-        <AudioPlayer
-          previewUrl={currentCard.track.previewUrl}
-          trackTitle={currentCard.track.title}
-          artist={currentCard.track.artist}
-          duration={5000} // 🔧 FIXED: 5 seconds
-          autoPlay={true}
-          onAudioFinished={handleAudioFinished}
-        />
-      )}
-
-      {/* Current Turn Info */}
-      <View style={styles.currentTurnContainer}>
-        <Text style={styles.turnLabel}>Turno Actual</Text>
-        <Text style={styles.currentTurnName}>
-          {currentPlayer?.name || 'No one'} • Ronda {round}
-        </Text>
-        <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
-      </View>
-
-      {/* Main Actions */}
-      <View style={styles.mainActions}>
-        <TouchableOpacity
-          style={[
-            styles.scanButton,
-            flowState.isScanning && styles.scanButtonLoading,
-          ]}
-          onPress={() => setShowScanner(true)}
-          activeOpacity={0.9}
-          disabled={flowState.isScanning}
-        >
-          <IconSymbol
-            name={flowState.isScanning ? 'clock' : 'qrcode.viewfinder'}
-            size={28}
-            color='#FFFFFF'
+        {/* Current Card Display */}
+        {currentCard && (
+          <CardDisplay
+            card={currentCard}
+            showAnswer={showAnswer}
+            showQuestion={showQuestion}
+            onRevealAnswer={revealAnswer}
+            audioFinished={audioFinished}
           />
-          <Text style={styles.scanButtonText}>
-            {flowState.isScanning ? 'Escaneando...' : 'Escanear Carta'}
-          </Text>
-        </TouchableOpacity>
+        )}
 
-        <View style={styles.actionButtonsRow}>
+        {/* Audio Player - 5 seconds */}
+        {currentCard && (
+          <AudioPlayer
+            previewUrl={currentCard.track.previewUrl}
+            trackTitle={currentCard.track.title}
+            artist={currentCard.track.artist}
+            duration={5000} // 🔧 FIXED: 5 seconds
+            autoPlay={true}
+            onAudioFinished={handleAudioFinished}
+          />
+        )}
+
+        {/* Current Turn Info */}
+        <View style={styles.currentTurnContainer}>
+          <Text style={styles.turnLabel}>Turno Actual</Text>
+          <Text style={styles.currentTurnName}>
+            {currentPlayer?.name || 'No one'} • Ronda {round}
+          </Text>
+          <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
+        </View>
+
+        {/* Main Actions */}
+        <View style={styles.mainActions}>
           <TouchableOpacity
             style={[
-              styles.bettingButton,
-              !bettingStatus.canBet && styles.bettingButtonDisabled,
+              styles.scanButton,
+              flowState.isScanning && styles.scanButtonLoading,
             ]}
-            onPress={handleOpenBetting}
+            onPress={() => setShowScanner(true)}
             activeOpacity={0.9}
-            disabled={!bettingStatus.canBet}
+            disabled={flowState.isScanning}
           >
-            <IconSymbol name='dice.fill' size={20} color='#FFFFFF' />
-            <Text style={styles.actionButtonText}>
-              {bettingStatus.isActive ? 'Apostar' : 'Sin Apuestas'}
+            <IconSymbol
+              name={flowState.isScanning ? 'clock' : 'qrcode.viewfinder'}
+              size={28}
+              color='#FFFFFF'
+            />
+            <Text style={styles.scanButtonText}>
+              {flowState.isScanning ? 'Escaneando...' : 'Escanear Carta'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.bettingButton,
+                !bettingStatus.canBet && styles.bettingButtonDisabled,
+              ]}
+              onPress={handleOpenBetting}
+              activeOpacity={0.9}
+              disabled={!bettingStatus.canBet}
+            >
+              <IconSymbol name='dice.fill' size={20} color='#FFFFFF' />
+              <Text style={styles.actionButtonText}>
+                {bettingStatus.isActive ? 'Apostar' : 'Sin Apuestas'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* <TouchableOpacity
             style={styles.powerButton}
             onPress={() => setShowPowerCardsModal(true)}
             activeOpacity={0.9}
           >
             <IconSymbol name='sparkles' size={20} color='#FFFFFF' />
             <Text style={styles.actionButtonText}>Poderes</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
+          </View>
         </View>
-      </View>
 
-      {/* Special Game Mode Buttons */}
-      <View style={styles.gameModeButtons}>
+        {/* Special Game Mode Buttons */}
+        {/* <View style={styles.gameModeButtons}>
         <TouchableOpacity
           style={[styles.modeButton, styles.battleButton]}
           onPress={() => handleSpecialMode('battle')}
@@ -616,111 +602,116 @@ export default function GameScreen() {
           <IconSymbol name='flame.fill' size={16} color='#FFFFFF' />
           <Text style={styles.modeButtonText}>Viral</Text>
         </TouchableOpacity>
-      </View>
+      </View> */}
 
-      {/* Players Scoreboard */}
-      <PlayerScoreboard
-        players={sortedPlayers}
-        showDetailedStats={true}
-        highlightWinner={!!winner}
-      />
-
-      {/* QR Scanner Modal */}
-      <Modal visible={showScanner} animationType='slide'>
-        <RealQRScanner
-          isVisible={showScanner}
-          onScanSuccess={handleScanCard}
-          onClose={() => setShowScanner(false)}
+        {/* Players Scoreboard */}
+        <PlayerScoreboard
+          players={sortedPlayers}
+          showDetailedStats={true}
+          highlightWinner={!!winner}
         />
-      </Modal>
 
-      {/* Points Award Modal */}
-      <Modal visible={showPointsModal} transparent animationType='fade'>
-        <View style={styles.modalOverlay}>
-          <View style={styles.pointsModal}>
-            {currentCard && (
-              <>
-                <View style={styles.modalHeader}>
-                  <Text style={styles.modalTitle}>
-                    {currentCard.track.title}
-                  </Text>
-                  <Text style={styles.modalSubtitle}>
-                    {currentCard.track.artist} • {currentCard.track.year}
-                  </Text>
-                </View>
+        {/* QR Scanner Modal */}
+        <Modal visible={showScanner} animationType='slide'>
+          <RealQRScanner
+            isVisible={showScanner}
+            onScanSuccess={handleScanCard}
+            onClose={() => setShowScanner(false)}
+          />
+        </Modal>
 
-                <View style={styles.questionContainer}>
-                  <Text style={styles.questionText}>
-                    {currentCard.question}
-                  </Text>
-                  {showAnswer && (
-                    <Text style={styles.answerText}>
-                      ✅ {currentCard.answer}
+        {/* Points Award Modal */}
+        <Modal visible={showPointsModal} transparent animationType='fade'>
+          <View style={styles.modalOverlay}>
+            <View style={styles.pointsModal}>
+              {currentCard && (
+                <>
+                  <View style={styles.modalHeader}>
+                    <Text style={styles.modalTitle}>
+                      {currentCard.track.title}
                     </Text>
-                  )}
-                </View>
+                    <Text style={styles.modalSubtitle}>
+                      {currentCard.track.artist} • {currentCard.track.year}
+                    </Text>
+                  </View>
 
-                <Text style={styles.pointsLabel}>
-                  ¿Quién respondió correctamente? ({currentCard.points} pts)
-                </Text>
+                  <View style={styles.questionContainer}>
+                    <Text style={styles.questionText}>
+                      {currentCard.question}
+                    </Text>
+                    {showAnswer && (
+                      <Text style={styles.answerText}>
+                        ✅ {currentCard.answer}
+                      </Text>
+                    )}
+                  </View>
 
-                <FlatList
-                  data={players}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item: player }) => (
-                    <TouchableOpacity
-                      style={styles.playerButton}
-                      onPress={() => handleAwardPoints(player.id)}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.playerButtonText}>{player.name}</Text>
-                      {player.currentBet > 0 && (
-                        <Text style={styles.playerBetIndicator}>
-                          Apuesta: {player.currentBet} →{' '}
-                          {getBettingMultiplier(player.currentBet)}x
+                  <Text style={styles.pointsLabel}>
+                    ¿Quién respondió correctamente? ({currentCard.points} pts)
+                  </Text>
+
+                  <FlatList
+                    data={players}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item: player }) => (
+                      <TouchableOpacity
+                        style={styles.playerButton}
+                        onPress={() => handleAwardPoints(player.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.playerButtonText}>
+                          {player.name}
                         </Text>
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
+                        {player.currentBet > 0 && (
+                          <Text style={styles.playerBetIndicator}>
+                            Apuesta: {player.currentBet} →{' '}
+                            {getBettingMultiplier(player.currentBet)}x
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  />
 
-                <TouchableOpacity
-                  style={styles.noWinnerButton}
-                  onPress={handleWrongAnswer}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.noWinnerText}>Nadie acertó</Text>
-                </TouchableOpacity>
-              </>
-            )}
+                  <TouchableOpacity
+                    style={styles.noWinnerButton}
+                    onPress={handleWrongAnswer}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.noWinnerText}>Nadie acertó</Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* ✅ Betting Modal */}
-      <BettingModal
-        visible={showBettingModal}
-        onClose={() => setShowBettingModal(false)}
-        players={players}
-        currentCard={currentCard}
-        onPlaceBet={handlePlaceBet}
-        bettingTimeLeft={bettingStatus.timeLeft}
-      />
+        {/* ✅ Betting Modal */}
+        <BettingModal
+          visible={showBettingModal}
+          onClose={() => setShowBettingModal(false)}
+          players={players}
+          currentCard={currentCard}
+          onPlaceBet={handlePlaceBet}
+          bettingTimeLeft={bettingStatus.timeLeft}
+        />
 
-      {/* Game End Modal */}
-      <GameEndModal
-        visible={showGameEndModal}
-        players={players}
-        gameTimeElapsed={1200 - timeLeft}
-        totalRounds={round}
-        onNewGame={handleNewGame}
-        onBackToMenu={handleBackToMenu}
-      />
+        {/* Game End Modal */}
+        <GameEndModal
+          visible={showGameEndModal}
+          players={players}
+          gameTimeElapsed={1200 - timeLeft}
+          totalRounds={round}
+          onNewGame={handleNewGame}
+          onBackToMenu={handleBackToMenu}
+        />
+      </ScrollView>
     </View>
   );
 }
 
-// Helper function
+{
+  /* Helper function */
+}
 function getBettingMultiplier(betAmount: number): number {
   if (betAmount === 1) return 2;
   if (betAmount === 2) return 3;
@@ -728,182 +719,6 @@ function getBettingMultiplier(betAmount: number): number {
   return 1;
 }
 
-// ✅ BETTING MODAL STYLES
-const bettingStyles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  container: {
-    backgroundColor: '#1E293B',
-    width: width * 0.9,
-    maxHeight: '85%',
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F8FAFC',
-  },
-  timeLeft: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#EF4444',
-  },
-  closeButton: {
-    padding: 8,
-  },
-  cardInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 4,
-  },
-  cardArtist: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 8,
-  },
-  cardPoints: {
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '600',
-  },
-  instructions: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  instructionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#3B82F6',
-    marginBottom: 8,
-  },
-  instructionText: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    marginBottom: 2,
-  },
-  multipliers: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  multipliersTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#F59E0B',
-    marginBottom: 8,
-  },
-  multiplierRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  multiplierText: {
-    fontSize: 11,
-    color: '#CBD5E1',
-    fontWeight: '500',
-  },
-  playersTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-    marginBottom: 16,
-  },
-  playersList: {
-    maxHeight: 200,
-    marginBottom: 20,
-  },
-  playerItem: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-  },
-  playerInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  playerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-  },
-  playerTokens: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '500',
-  },
-  alreadyBet: {
-    fontSize: 14,
-    color: '#10B981',
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  bettingOptions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  betButton: {
-    backgroundColor: '#EF4444',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    minWidth: 60,
-  },
-  betButtonDisabled: {
-    backgroundColor: '#64748B',
-    opacity: 0.5,
-  },
-  betAmount: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 2,
-  },
-  betMultiplier: {
-    fontSize: 10,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '600',
-  },
-  cancelButton: {
-    backgroundColor: '#64748B',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-});
-
-// ✅ MAIN COMPONENT STYLES
 const styles = StyleSheet.create({
   container: {
     flex: 1,
