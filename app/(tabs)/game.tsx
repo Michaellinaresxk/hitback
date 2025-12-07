@@ -1,5 +1,4 @@
 import AudioPlayer from '@/components/game/AudioPlayer';
-import CardDisplay from '@/components/game/CardDisplay';
 import GameEndModal from '@/components/game/GameEndModal';
 import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
@@ -491,17 +490,6 @@ export default function GameScreen() {
             </View>
             <Text style={styles.potSubtext}>Tokens perdidos en apuestas</Text>
           </View>
-        )}
-
-        {/* Current Card Display */}
-        {currentCard && (
-          <CardDisplay
-            card={currentCard}
-            showAnswer={showAnswer}
-            showQuestion={showQuestion}
-            onRevealAnswer={revealAnswer}
-            audioFinished={audioFinished}
-          />
         )}
 
         {/* Audio Player - 5 seconds */}
