@@ -1,4 +1,4 @@
-// services/cardService.ts - LIMPIO: Solo Backend Integration
+// services/cardService.ts - FIXED: New QR Format Support
 import { audioService, BackendScanResponse } from './audioService';
 
 // 🎮 INTERFACE PARA GAME CARD - Simplificada
@@ -42,9 +42,9 @@ interface GameCard {
 }
 
 /**
- * 🎯 Card Service - SOLO Backend Integration
+ * 🎯 Card Service - Backend Integration with NEW QR Format
  *
- * Este servicio elimina toda la duplicación de datos y solo consume el backend
+ * ✅ NUEVO FORMATO: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s
  */
 class CardService {
   /**
@@ -54,9 +54,12 @@ class CardService {
     try {
       console.log(`🔍 CardService: Getting card from backend: ${qrCode}`);
 
-      // ✅ VALIDACIÓN LOCAL RÁPIDA
+      // ✅ VALIDACIÓN LOCAL RÁPIDA - NUEVO FORMATO
       if (!this.isValidQRFormat(qrCode)) {
         console.error(`❌ Invalid QR format: ${qrCode}`);
+        console.error(
+          'Expected format: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s'
+        );
         return null;
       }
 
@@ -99,7 +102,7 @@ class CardService {
       question: data.question.question,
       answer: data.question.answer,
       hints: data.question.hints,
-      challengeType: undefined, // Se puede agregar al backend si es necesario
+      challengeType: undefined,
 
       // Track Info (directo del backend)
       track: {
@@ -109,7 +112,7 @@ class CardService {
         album: data.track.album,
         year: data.track.year,
         genre: data.track.genre,
-        decade: this.calculateDecade(data.track.year),
+        decade: data.track.decade || this.calculateDecade(data.track.year),
         previewUrl: data.audio.url, // ✅ URL del backend
         qrCode: data.scan.qrCode,
       },
@@ -128,30 +131,67 @@ class CardService {
   }
 
   /**
-   * 🔍 Quick local QR validation (no backend call needed)
+   * 🔍 Quick local QR validation - NEW FORMAT
+   *
+   * ✅ NUEVO FORMATO: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s
+   * ❌ FORMATO VIEJO: HITBACK_001_SONG_EASY (NO SOPORTADO)
    */
   isValidQRFormat(qrCode: string): boolean {
     try {
-      // Format: HITBACK_ID_TYPE_DIFFICULTY
-      if (!qrCode.startsWith('HITBACK_')) {
+      // ✅ Debe empezar con HITBACK_TYPE:
+      if (!qrCode.startsWith('HITBACK_TYPE:')) {
+        console.warn(
+          `❌ QR must start with HITBACK_TYPE:, got: ${qrCode.substring(
+            0,
+            20
+          )}...`
+        );
         return false;
       }
 
-      const parts = qrCode.split('_');
-      if (parts.length !== 4) {
+      // ✅ NUEVO FORMATO: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s
+      const pattern =
+        /^HITBACK_TYPE:([A-Z]+)_DIFF:([A-Z]+)_GENRE:([A-Z0-9_&]+)_DECADE:([A-Z0-9s]+)$/;
+      const match = qrCode.match(pattern);
+
+      if (!match) {
+        console.warn(`❌ QR doesn't match new format pattern`);
+        console.warn(
+          `Expected: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s`
+        );
+        console.warn(`Got: ${qrCode}`);
         return false;
       }
 
-      const [prefix, trackId, cardType, difficulty] = parts;
+      const [, cardType, difficulty, genre, decade] = match;
 
-      // Basic validation
-      if (prefix !== 'HITBACK') return false;
-      if (!/^[A-Za-z0-9]{3,10}$/.test(trackId)) return false;
-      if (!this.isValidCardType(cardType.toLowerCase())) return false;
-      if (!this.isValidDifficulty(difficulty.toLowerCase())) return false;
+      // Validar componentes
+      if (!this.isValidCardType(cardType.toLowerCase())) {
+        console.warn(`❌ Invalid card type: ${cardType}`);
+        return false;
+      }
 
+      if (!this.isValidDifficulty(difficulty.toLowerCase())) {
+        console.warn(`❌ Invalid difficulty: ${difficulty}`);
+        return false;
+      }
+
+      if (!this.isValidGenre(genre)) {
+        console.warn(`❌ Invalid genre: ${genre}`);
+        return false;
+      }
+
+      if (!this.isValidDecade(decade)) {
+        console.warn(`❌ Invalid decade: ${decade}`);
+        return false;
+      }
+
+      console.log(
+        `✅ QR format valid: ${cardType} | ${difficulty} | ${genre} | ${decade}`
+      );
       return true;
     } catch (error) {
+      console.error('❌ QR validation error:', error);
       return false;
     }
   }
@@ -186,8 +226,6 @@ class CardService {
    */
   async searchTracks(query: string): Promise<any[]> {
     try {
-      // En el futuro, el backend puede tener un endpoint de búsqueda
-      // Por ahora, traer todos y filtrar localmente
       const allTracks = await this.getAllTracks();
       const searchTerm = query.toLowerCase();
 
@@ -236,6 +274,44 @@ class CardService {
   }
 
   /**
+   * 🔍 Valid genres - NEW
+   */
+  private isValidGenre(genre: string): boolean {
+    const validGenres = [
+      'ANY',
+      'ROCK',
+      'POP',
+      'REGGAETON',
+      'HIP_HOP',
+      'HIP-HOP',
+      'ELECTRONIC',
+      'R&B',
+      'COUNTRY',
+      'JAZZ',
+      'LATIN',
+      'METAL',
+    ];
+    return validGenres.includes(genre.toUpperCase());
+  }
+
+  /**
+   * 🔍 Valid decades - NEW
+   */
+  private isValidDecade(decade: string): boolean {
+    const validDecades = [
+      'ANY',
+      '1960s',
+      '1970s',
+      '1980s',
+      '1990s',
+      '2000s',
+      '2010s',
+      '2020s',
+    ];
+    return validDecades.includes(decade);
+  }
+
+  /**
    * 🎨 UI Helpers (these can stay in frontend)
    */
   getCardTypeEmoji(cardType: string): string {
@@ -271,27 +347,31 @@ class CardService {
   }
 
   /**
-   * 🧪 Generate test QR codes (for development)
+   * 🧪 Generate test QR codes - NEW FORMAT
    */
   generateTestQRCodes(): { qrCode: string; description: string }[] {
     const testCodes = [];
-    const cardTypes = ['song', 'artist', 'decade', 'lyrics', 'challenge'];
-    const difficulties = ['easy', 'medium', 'hard', 'expert'];
-    const trackIds = ['001', '002', '003', '004', '005', '006']; // IDs del backend
+    const cardTypes = ['SONG', 'ARTIST', 'DECADE', 'LYRICS', 'CHALLENGE'];
+    const difficulties = ['EASY', 'MEDIUM', 'HARD'];
+    const genres = ['ANY', 'ROCK', 'POP', 'REGGAETON'];
+    const decades = ['ANY', '1980s', '1990s', '2010s'];
 
-    trackIds.forEach((trackId) => {
-      cardTypes.forEach((cardType) => {
-        difficulties.forEach((difficulty) => {
-          const qrCode = `HITBACK_${trackId}_${cardType.toUpperCase()}_${difficulty.toUpperCase()}`;
-          testCodes.push({
-            qrCode,
-            description: `Track ${trackId} - ${cardType} - ${difficulty}`,
+    // Generate sample QR codes with new format
+    cardTypes.forEach((cardType) => {
+      difficulties.forEach((difficulty) => {
+        genres.slice(0, 2).forEach((genre) => {
+          decades.slice(0, 2).forEach((decade) => {
+            const qrCode = `HITBACK_TYPE:${cardType}_DIFF:${difficulty}_GENRE:${genre}_DECADE:${decade}`;
+            testCodes.push({
+              qrCode,
+              description: `${cardType} - ${difficulty} - ${genre} - ${decade}`,
+            });
           });
         });
       });
     });
 
-    return testCodes;
+    return testCodes.slice(0, 20); // Return first 20 for testing
   }
 
   /**
@@ -311,6 +391,8 @@ class CardService {
           withAudio: tracks.filter((t) => t.audioFile).length,
           withQuestions: tracks.filter((t) => t.hasQuestions).length,
         },
+        qrFormat: 'NEW_SCALABLE',
+        expectedFormat: 'HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s',
         timestamp: new Date().toISOString(),
       };
     } catch (error) {
