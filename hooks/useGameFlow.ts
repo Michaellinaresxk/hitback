@@ -1,41 +1,59 @@
-// hooks/useGameFlow.ts - FIXED: Using YOUR original QR scanning logic + betting phase
-import { audioService } from '@/services/audioService';
-import { cardService } from '@/services/cardService';
-import { useGameStore } from '@/store/gameStore';
-import { useCallback, useEffect, useRef, useState } from 'react';
+// hooks/useGameFlow.ts - HITBACK Game Flow Hook
+// ✅ Usa cardService para escanear QR (siempre API)
+// ✅ Maneja fases: scanning → audio → betting → question → answer
+// ✅ NO reproduce audio - eso lo hace AudioPlayer.tsx
 
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { cardService, GameCard } from '@/services/cardService';
+import { useGameStore } from '@/store/gameStore';
+
+// 📋 TIPOS
 export interface GameFlowState {
+  // Fases del juego
   isScanning: boolean;
   audioPlaying: boolean;
   questionPhase: boolean;
   showAnswerRevealed: boolean;
-  currentError: string | null;
-  lastWinnerId: string | null;
 
-  // ✅ NEW: Only betting phase additions
+  // Betting
   bettingPhase: boolean;
   bettingTimeLeft: number;
   bettingStarted: boolean;
+
+  // Estado general
+  currentError: string | null;
+  lastWinnerId: string | null;
+  isLoading: boolean;
 }
 
+type GamePhase =
+  | 'idle'
+  | 'scanning'
+  | 'audio'
+  | 'betting'
+  | 'question'
+  | 'answer';
+
+// 🎮 HOOK PRINCIPAL
 export const useGameFlow = () => {
+  // Estado del flujo
   const [flowState, setFlowState] = useState<GameFlowState>({
     isScanning: false,
     audioPlaying: false,
     questionPhase: false,
     showAnswerRevealed: false,
-    currentError: null,
-    lastWinnerId: null,
-
-    // ✅ NEW: Betting phase state
     bettingPhase: false,
     bettingTimeLeft: 30,
     bettingStarted: false,
+    currentError: null,
+    lastWinnerId: null,
+    isLoading: false,
   });
 
-  // ✅ NEW: Betting timer ref
+  // Refs para timers
   const bettingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Store del juego
   const {
     scanCard,
     setShowQuestion,
@@ -45,82 +63,101 @@ export const useGameFlow = () => {
     nextTurn,
   } = useGameStore();
 
-  // ✅ USING YOUR ORIGINAL QR SCANNING - DON'T CHANGE THIS!
+  // 🎯 ESCANEAR QR CODE
+  // ✅ Solo obtiene datos y actualiza estado
+  // ✅ NO reproduce audio - AudioPlayer.tsx se encarga
   const handleQRScan = useCallback(
     async (qrCode: string): Promise<boolean> => {
+      console.log(`\n🔍 useGameFlow.handleQRScan`);
+      console.log(`   QR: ${qrCode}`);
+
       try {
+        // Actualizar estado: escaneando
         setFlowState((prev) => ({
           ...prev,
           isScanning: true,
+          isLoading: true,
           currentError: null,
           lastWinnerId: null,
-          // ✅ Reset betting phase on new scan
+          // Reset betting
           bettingPhase: false,
           bettingStarted: false,
           bettingTimeLeft: 30,
+          // Reset audio/question states
+          audioPlaying: false,
+          questionPhase: false,
+          showAnswerRevealed: false,
         }));
 
-        console.log(`🔍 useGameFlow: Scanning QR: ${qrCode}`);
-
-        // ✅ USE YOUR ORIGINAL cardService method - NOT audioService
+        // 🎯 Llamar al cardService (siempre usa la API)
         const gameCard = await cardService.getCardByQR(qrCode);
 
         if (!gameCard) {
-          throw new Error('Carta no encontrada o código QR inválido');
+          throw new Error('No se pudo obtener la carta');
         }
 
-        console.log('🎮 Calling scanCard with:', gameCard);
+        console.log(`✅ Card received: ${gameCard.track.title}`);
+        console.log(`   Audio: ${gameCard.audio.hasAudio ? '✅' : '❌'}`);
+
+        // Actualizar store del juego
         await scanCard(qrCode, gameCard);
 
+        // Actualizar estado: listo para audio
+        // ✅ AudioPlayer.tsx detectará currentCard y reproducirá
         setFlowState((prev) => ({
           ...prev,
           isScanning: false,
-          audioPlaying: true,
+          isLoading: false,
+          audioPlaying: true, // Indica que estamos en fase de audio
         }));
 
-        console.log('✅ Card scanned successfully:', gameCard.track.title);
         return true;
       } catch (error) {
-        console.error('❌ QR Scan failed:', error);
         const errorMessage =
           error instanceof Error ? error.message : 'Error desconocido';
+        console.error(`❌ QR Scan failed: ${errorMessage}`);
+
         setFlowState((prev) => ({
           ...prev,
           isScanning: false,
+          isLoading: false,
           currentError: errorMessage,
         }));
+
         return false;
       }
     },
     [scanCard]
   );
 
-  // ✅ ENHANCED: Audio finished + start betting phase
-  const handleAudioFinished = () => {
-    console.log('🎵 Audio finished callback recibido');
+  // 🎵 AUDIO TERMINADO
+  // ✅ Llamado por AudioPlayer.tsx cuando termina el audio
+  const handleAudioFinished = useCallback(() => {
+    console.log(`🎵 handleAudioFinished called`);
 
-    // ✅ YOUR ORIGINAL game store updates
+    // Actualizar store
     setAudioFinished(true);
     setShowQuestion(true);
 
-    // ✅ NEW: Start betting phase after audio
+    // Iniciar fase de apuestas
     setFlowState((prev) => ({
       ...prev,
       audioPlaying: false,
       questionPhase: true,
-      bettingPhase: true, // ✅ Start betting
+      bettingPhase: true,
       bettingStarted: true,
       bettingTimeLeft: 30,
     }));
 
-    // ✅ NEW: Start betting countdown
+    // Iniciar timer de apuestas
     startBettingTimer();
 
-    console.log('✅ Estados actualizados - pregunta + betting phase activo');
-  };
+    console.log(`✅ Betting phase started`);
+  }, [setAudioFinished, setShowQuestion]);
 
-  // ✅ NEW: Betting timer function
+  // ⏱️ TIMER DE APUESTAS
   const startBettingTimer = useCallback(() => {
+    // Limpiar timer anterior
     if (bettingTimerRef.current) {
       clearInterval(bettingTimerRef.current);
     }
@@ -136,13 +173,13 @@ export const useGameFlow = () => {
       }));
 
       if (timeLeft <= 0) {
-        console.log('⏰ Betting time finished automatically');
+        console.log(`⏰ Betting time expired`);
         endBettingPhase();
       }
     }, 1000);
   }, []);
 
-  // ✅ NEW: End betting phase
+  // 🛑 TERMINAR FASE DE APUESTAS
   const endBettingPhase = useCallback(() => {
     if (bettingTimerRef.current) {
       clearInterval(bettingTimerRef.current);
@@ -155,26 +192,35 @@ export const useGameFlow = () => {
       bettingTimeLeft: 0,
     }));
 
-    console.log('🎲 Betting phase ended');
+    console.log(`🎲 Betting phase ended`);
   }, []);
 
-  // ✅ ORIGINAL: Your working reveal answer
+  // 👁️ REVELAR RESPUESTA
   const revealAnswer = useCallback(() => {
+    console.log(`👁️ Revealing answer`);
+
+    // Terminar apuestas si aún están activas
+    endBettingPhase();
+
     setFlowState((prev) => ({
       ...prev,
       showAnswerRevealed: true,
     }));
-    setShowAnswer(true);
-  }, [setShowAnswer]);
 
-  // ✅ ORIGINAL: Your working award points
+    setShowAnswer(true);
+  }, [setShowAnswer, endBettingPhase]);
+
+  // 🏆 OTORGAR PUNTOS Y AVANZAR
   const awardPointsAndAdvance = useCallback(
     (playerId: string, playerName: string) => {
+      console.log(`🏆 Awarding points to: ${playerName}`);
+
       setFlowState((prev) => ({
         ...prev,
         lastWinnerId: playerId,
       }));
 
+      // Esperar un momento y avanzar al siguiente turno
       setTimeout(() => {
         nextTurn();
         resetFlow();
@@ -185,39 +231,41 @@ export const useGameFlow = () => {
     [nextTurn]
   );
 
-  // ✅ ENHANCED: Reset flow with betting cleanup
+  // 🔄 REINICIAR FLUJO
   const resetFlow = useCallback(() => {
-    // ✅ NEW: Cleanup betting timer
+    console.log(`🔄 Resetting game flow`);
+
+    // Limpiar timers
     if (bettingTimerRef.current) {
       clearInterval(bettingTimerRef.current);
       bettingTimerRef.current = null;
     }
 
+    // Reset estado
     setFlowState({
       isScanning: false,
       audioPlaying: false,
       questionPhase: false,
       showAnswerRevealed: false,
-      currentError: null,
-      lastWinnerId: null,
-
-      // ✅ NEW: Reset betting state
       bettingPhase: false,
       bettingTimeLeft: 30,
       bettingStarted: false,
+      currentError: null,
+      lastWinnerId: null,
+      isLoading: false,
     });
   }, []);
 
-  // ✅ ORIGINAL: Your working connection test
+  // 🧪 TEST DE CONEXIÓN
   const testConnection = useCallback(async (): Promise<boolean> => {
     try {
-      return await audioService.testConnection();
+      return await cardService.testConnection();
     } catch {
       return false;
     }
   }, []);
 
-  // ✅ ORIGINAL: Your working winner info
+  // 📊 HELPERS
   const getWinnerInfo = useCallback(() => {
     return {
       winnerId: flowState.lastWinnerId,
@@ -225,7 +273,6 @@ export const useGameFlow = () => {
     };
   }, [flowState.lastWinnerId]);
 
-  // ✅ NEW: Betting status helper
   const getBettingStatus = useCallback(() => {
     return {
       isActive: flowState.bettingPhase,
@@ -236,9 +283,8 @@ export const useGameFlow = () => {
     };
   }, [flowState]);
 
-  // ✅ NEW: Current phase helper
-  const getCurrentPhase = useCallback(() => {
-    if (flowState.isScanning) return 'scanning';
+  const getCurrentPhase = useCallback((): GamePhase => {
+    if (flowState.isScanning || flowState.isLoading) return 'scanning';
     if (flowState.audioPlaying) return 'audio';
     if (flowState.bettingPhase) return 'betting';
     if (flowState.questionPhase && !flowState.showAnswerRevealed)
@@ -247,7 +293,7 @@ export const useGameFlow = () => {
     return 'idle';
   }, [flowState]);
 
-  // ✅ CLEANUP on unmount
+  // 🧹 CLEANUP
   useEffect(() => {
     return () => {
       if (bettingTimerRef.current) {
@@ -256,20 +302,27 @@ export const useGameFlow = () => {
     };
   }, []);
 
-  // ✅ ORIGINAL: Your working methods + new betting methods
+  // 📤 RETURN
   return {
+    // Estado
     flowState,
+
+    // Acciones principales
     handleQRScan,
     handleAudioFinished,
     revealAnswer,
     awardPointsAndAdvance,
     resetFlow,
-    testConnection,
-    getWinnerInfo,
 
-    // ✅ NEW: Betting phase methods
+    // Betting
     endBettingPhase,
     getBettingStatus,
+
+    // Utils
+    testConnection,
+    getWinnerInfo,
     getCurrentPhase,
   };
 };
+
+export type { GamePhase };

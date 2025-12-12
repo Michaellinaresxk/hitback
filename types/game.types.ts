@@ -1,144 +1,175 @@
+// types/game.types.ts - HITBACK Game Types
+
+// 🎯 Card Types
+export type CardType = 'song' | 'artist' | 'decade' | 'lyrics' | 'challenge';
+
+// 🎮 Difficulty Levels
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
+
+// 🎵 Track
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  year?: number;
+  decade?: string;
+  genre?: string;
+  difficulty?: Difficulty;
+  previewUrl?: string;
+  duration?: number;
+  hasAudio?: boolean;
+  hasQuestions?: boolean;
+  availableCardTypes?: CardType[];
+  questions?: Record<CardType, QuestionData>;
+}
+
+// ❓ Question Data
+export interface QuestionData {
+  question: string;
+  answer: string;
+  points: number;
+  hints?: string[];
+  challengeType?: 'dance' | 'sing' | 'imitate' | 'performance' | 'rap' | 'pose';
+}
+
+// 👤 Player
 export interface Player {
   id: string;
   name: string;
   score: number;
   tokens: number;
   powerCards: PowerCard[];
-  isCurrentTurn: boolean;
-  activePowers: ActivePower[];
-  // Betting system
-  currentBet: number;
-  isImmune: boolean; // Shield power
-  boostActive: boolean; // Boost power
-  peekUsed: boolean; // Peek power
+  streak: number;
+  correctAnswers: number;
+  wrongAnswers: number;
+  totalBets: number;
+  avatar?: string;
+  color?: string;
+  isActive: boolean;
 }
 
+// ⚡ Power Card
 export interface PowerCard {
   id: string;
-  type: PowerType;
+  type: PowerCardType;
   name: string;
   description: string;
-  emoji: string;
-  usageLimit: number;
-  currentUses: number;
+  icon: string;
+  usesRemaining: number;
+  maxUses: number;
+  isActive: boolean;
 }
 
-export type PowerType =
-  | 'robo' // 🥷 Steal 1 token from another player
-  | 'escudo' // 🛡️ Immune to theft for 2 rounds
-  | 'boost' // ⚡ Next answer worth double points
-  | 'refresh' // 🔄 Recover 1 lost token
-  | 'peek' // 👁️ See answer 3 seconds early
-  | 'precision'; // 🎯 +2 extra points for exact year
+export type PowerCardType =
+  | 'THIEF'
+  | 'SHIELD'
+  | 'BOOST'
+  | 'REFRESH'
+  | 'PEEK'
+  | 'PRECISION';
 
-export interface ActivePower {
-  type: PowerType;
-  turnsLeft: number;
-  playerId: string;
-}
-
-export interface Track {
-  id: string;
+// 🃏 Current Card in Game
+export interface CurrentCard {
   qrCode: string;
-  title: string;
-  artist: string;
-  year: number;
-  decade: string;
-  genre: string;
-  previewUrl: string;
-  duration: number;
-  lyrics: string;
-  difficulty: Difficulty;
-  cardTypes: {
-    song: CardTypeDetails;
-    artist: CardTypeDetails;
-    decade: CardTypeDetails;
-    lyrics: CardTypeDetails;
-    challenge: ChallengeCardDetails;
+  track: {
+    id: string;
+    title: string;
+    artist: string;
+    album?: string;
+    year?: number;
+    genre?: string;
+    decade?: string;
   };
+  question: {
+    type: CardType;
+    text: string;
+    answer: string;
+    points: number;
+    hints: string[];
+    challengeType?: string;
+  };
+  audio: {
+    hasAudio: boolean;
+    url: string | null;
+    source: 'deezer' | 'local' | null;
+    duration: number;
+    albumArt?: string;
+  };
+  scan: {
+    points: number;
+    difficulty: string;
+    timestamp: string;
+    filters?: {
+      genre: string;
+      decade: string;
+      cardType: string;
+    };
+  };
+  bets: PlayerBet[];
+  revealed: boolean;
+  winnerId?: string;
 }
 
-export interface CardTypeDetails {
-  question: string;
-  answer: string;
-  points: number;
-}
-
-export interface ChallengeCardDetails extends CardTypeDetails {
-  challengeType: 'dance' | 'sing' | 'imitate' | 'performance';
-}
-
-export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
-
-export interface GameCard {
-  track: Track;
-  cardType: keyof Track['cardTypes'];
-  points: number;
-  question: string;
-  answer: string;
-  difficulty: Difficulty;
-}
-
-export interface BettingRound {
+// 💰 Player Bet
+export interface PlayerBet {
   playerId: string;
-  betAmount: number;
-  card: GameCard;
-  multiplier: number;
-}
-
-export interface GamePot {
+  playerName: string;
   tokens: number;
-  powerCards: PowerCard[];
-  contributors: string[]; // Player IDs who contributed
+  timestamp: number;
+  potentialPoints: number;
 }
 
-export interface Combo {
+// 🎮 Game State
+export interface GameState {
   id: string;
-  name: string;
-  description: string;
-  conditions: ComboCondition[];
-  reward: ComboReward;
-  emoji: string;
+  status: GameStatus;
+  phase: GamePhase;
+  players: Player[];
+  currentPlayerIndex: number;
+  currentCard: CurrentCard | null;
+  roundNumber: number;
+  timeLeft: number;
+  maxTime: number;
+  winnerId: string | null;
+  settings: GameSettings;
 }
 
-export interface ComboCondition {
-  type:
-    | 'consecutive_wins'
-    | 'card_type_streak'
-    | 'difficulty_streak'
-    | 'time_bonus';
-  value: number;
-  cardType?: keyof Track['cardTypes'];
-  difficulty?: Difficulty;
+export type GameStatus = 'setup' | 'playing' | 'paused' | 'finished';
+
+export type GamePhase =
+  | 'idle'
+  | 'scanning'
+  | 'audio'
+  | 'betting'
+  | 'question'
+  | 'answer'
+  | 'results';
+
+// ⚙️ Game Settings
+export interface GameSettings {
+  maxPlayers: number;
+  minPlayers: number;
+  initialTokens: number;
+  initialPowerCards: number;
+  pointsToWin: number;
+  maxTime: number;
+  bettingTime: number;
+  audioPreviewDuration: number;
+  allowPowerCards: boolean;
+  allowBetting: boolean;
 }
 
-export interface ComboReward {
-  type: 'tokens' | 'points' | 'power_card' | 'multiplier';
-  amount: number;
-  powerCardType?: PowerType;
-}
-
-export interface GameMode {
-  type: 'normal' | 'battle' | 'speed' | 'viral';
-  settings?: {
-    timeLimit?: number;
-    playerCount?: number;
-    cardCount?: number;
-  };
-}
-
-export interface GameStats {
-  totalGames: number;
-  totalWins: Record<string, number>;
-  averageGameTime: number;
-  favoriteCardType: Record<string, keyof Track['cardTypes']>;
-  highestStreak: Record<string, number>;
-  combosAchieved: Record<string, string[]>;
-}
-
-export interface AudioPlayback {
-  isPlaying: boolean;
-  currentTime: number;
+// 🏆 Game Result
+export interface GameResult {
+  winnerId: string;
+  winnerName: string;
+  finalScores: {
+    playerId: string;
+    playerName: string;
+    score: number;
+    tokens: number;
+  }[];
+  totalRounds: number;
   duration: number;
-  url: string | null;
 }
