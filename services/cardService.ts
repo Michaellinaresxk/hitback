@@ -1,324 +1,368 @@
-// services/cardService.ts - LIMPIO: Solo Backend Integration
-import { audioService, BackendScanResponse } from './audioService';
+// services/cardService.ts - HITBACK Card Service
+// ✅ Siempre usa la API del backend
+// ✅ Formato nuevo escalable: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s
+// ✅ Usa CurrentCard de game_types (tipo unificado)
 
-// 🎮 INTERFACE PARA GAME CARD - Simplificada
-interface GameCard {
-  // QR Info
-  qrCode: string;
-  trackId: string;
-  cardType: 'song' | 'artist' | 'decade' | 'lyrics' | 'challenge';
-  difficulty: 'easy' | 'medium' | 'hard' | 'expert';
-  points: number;
+import { Platform } from 'react-native';
+import type { CurrentCard, CardType } from '@/types/game_types';
 
-  // Question Data (from backend)
-  question: string;
-  answer: string;
-  hints: string[];
-  challengeType?: string;
+// ✅ Re-exportar CurrentCard como GameCard para compatibilidad
+export type GameCard = CurrentCard;
 
-  // Track Info (from backend)
-  track: {
-    id: string;
-    title: string;
-    artist: string;
-    album: string;
-    year: number;
-    genre: string;
-    decade: string;
-    previewUrl: string; // URL from backend
-    qrCode: string;
-  };
+// 🔧 CONFIGURACIÓN - AJUSTA TU IP AQUÍ
+const getBaseUrl = (): string => {
+  if (__DEV__) {
+    // ⚠️ CAMBIA ESTA IP POR LA DE TU COMPUTADORA
+    const LOCAL_IP = '192.168.1.10';
 
-  // Audio Info (from backend)
-  audio: {
-    url: string;
-    hasAudio: boolean;
-    duration: number;
-    source: 'backend';
-  };
+    if (Platform.OS === 'android') {
+      return `http://${LOCAL_IP}:3000`;
+    }
+    return `http://${LOCAL_IP}:3000`;
+  }
+  return 'https://api.hitback.com';
+};
 
-  // Metadata
-  timestamp: string;
+const API_CONFIG = {
+  get baseUrl() {
+    return getBaseUrl();
+  },
+  timeout: 15000,
+  retries: 3,
+};
+
+// 📋 TIPOS ADICIONALES
+export interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  year?: number;
+  genre?: string;
+  decade?: string;
+  difficulty?: string;
+  previewUrl?: string;
+  duration?: number;
 }
 
-/**
- * 🎯 Card Service - SOLO Backend Integration
- *
- * Este servicio elimina toda la duplicación de datos y solo consume el backend
- */
+interface BackendResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+  error?: {
+    message: string;
+    code: string;
+    help?: any;
+  };
+}
+
+// 🏭 CLASE PRINCIPAL
 class CardService {
-  /**
-   * 🔍 Get card by QR code - Solo Backend
-   */
-  async getCardByQR(qrCode: string): Promise<GameCard | null> {
-    try {
-      console.log(`🔍 CardService: Getting card from backend: ${qrCode}`);
+  private baseUrl: string;
+  private timeout: number;
+  private retries: number;
 
-      // ✅ VALIDACIÓN LOCAL RÁPIDA
-      if (!this.isValidQRFormat(qrCode)) {
-        console.error(`❌ Invalid QR format: ${qrCode}`);
-        return null;
-      }
+  constructor() {
+    this.baseUrl = API_CONFIG.baseUrl;
+    this.timeout = API_CONFIG.timeout;
+    this.retries = API_CONFIG.retries;
 
-      // ✅ ESCANEO COMPLETO VIA BACKEND
-      const scanResponse = await audioService.scanQRAndPlay(qrCode);
-
-      if (!scanResponse.success || !scanResponse.data) {
-        console.error('❌ Backend scan failed:', scanResponse.error?.message);
-        return null;
-      }
-
-      // ✅ TRANSFORMAR RESPUESTA DEL BACKEND A GAMECARD
-      const gameCard = this.transformBackendResponse(scanResponse);
-
-      console.log('✅ GameCard created from backend:', gameCard.track.title);
-      return gameCard;
-    } catch (error) {
-      console.error('❌ CardService: Failed to get card:', error);
-      return null;
-    }
+    console.log(`🎵 CardService initialized`);
+    console.log(`   Base URL: ${this.baseUrl}`);
   }
 
-  /**
-   * 🔄 Transform backend response to GameCard
-   */
-  private transformBackendResponse(
-    scanResponse: BackendScanResponse
-  ): GameCard {
-    const data = scanResponse.data!;
-
-    return {
-      // QR Info
-      qrCode: data.scan.qrCode,
-      trackId: data.track.id,
-      cardType: data.question.type as any,
-      difficulty: data.scan.difficulty as any,
-      points: data.scan.points,
-
-      // Question Data (directo del backend)
-      question: data.question.question,
-      answer: data.question.answer,
-      hints: data.question.hints,
-      challengeType: undefined, // Se puede agregar al backend si es necesario
-
-      // Track Info (directo del backend)
-      track: {
-        id: data.track.id,
-        title: data.track.title,
-        artist: data.track.artist,
-        album: data.track.album,
-        year: data.track.year,
-        genre: data.track.genre,
-        decade: this.calculateDecade(data.track.year),
-        previewUrl: data.audio.url, // ✅ URL del backend
-        qrCode: data.scan.qrCode,
-      },
-
-      // Audio Info (directo del backend)
-      audio: {
-        url: data.audio.url,
-        hasAudio: data.audio.hasAudio,
-        duration: data.audio.duration,
-        source: 'backend',
-      },
-
-      // Metadata
-      timestamp: data.scan.timestamp,
-    };
+  // 🔧 Actualizar URL base
+  setBaseUrl(url: string): void {
+    this.baseUrl = url;
+    console.log(`🔧 CardService URL updated: ${url}`);
   }
 
-  /**
-   * 🔍 Quick local QR validation (no backend call needed)
-   */
-  isValidQRFormat(qrCode: string): boolean {
-    try {
-      // Format: HITBACK_ID_TYPE_DIFFICULTY
-      if (!qrCode.startsWith('HITBACK_')) {
-        return false;
-      }
-
-      const parts = qrCode.split('_');
-      if (parts.length !== 4) {
-        return false;
-      }
-
-      const [prefix, trackId, cardType, difficulty] = parts;
-
-      // Basic validation
-      if (prefix !== 'HITBACK') return false;
-      if (!/^[A-Za-z0-9]{3,10}$/.test(trackId)) return false;
-      if (!this.isValidCardType(cardType.toLowerCase())) return false;
-      if (!this.isValidDifficulty(difficulty.toLowerCase())) return false;
-
-      return true;
-    } catch (error) {
-      return false;
-    }
+  getBaseUrl(): string {
+    return this.baseUrl;
   }
 
-  /**
-   * 🔍 Full QR validation with backend
-   */
-  async validateQRCode(qrCode: string): Promise<boolean> {
-    // Quick local check first
-    if (!this.isValidQRFormat(qrCode)) {
-      return false;
+  // 🌐 Fetch con retry y timeout
+  private async fetchWithRetry(
+    url: string,
+    options: RequestInit = {}
+  ): Promise<Response> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= this.retries; attempt++) {
+      try {
+        console.log(`🔄 Attempt ${attempt}/${this.retries}: ${url}`);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...options.headers,
+          },
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          console.log(`✅ Success on attempt ${attempt}`);
+          return response;
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+      } catch (error) {
+        lastError = error as Error;
+        console.warn(`⚠️ Attempt ${attempt} failed: ${lastError.message}`);
+
+        if (attempt < this.retries) {
+          await this.delay(attempt * 1000);
+        }
+      }
     }
 
-    // Backend validation
-    return await audioService.validateQRCode(qrCode);
+    throw lastError || new Error('Request failed after all retries');
   }
 
-  /**
-   * 📋 Get all tracks from backend
-   */
-  async getAllTracks(): Promise<any[]> {
-    try {
-      return await audioService.getAllTracks();
-    } catch (error) {
-      console.error('❌ Failed to get tracks from backend:', error);
-      return [];
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  // 🎯 MÉTODO PRINCIPAL: Escanear QR y obtener carta
+  async getCardByQR(qrCode: string): Promise<CurrentCard> {
+    console.log(`\n🔍 CardService.getCardByQR`);
+    console.log(`   QR: ${qrCode}`);
+    console.log(`   URL: ${this.baseUrl}`);
+
+    // Validación básica
+    if (!qrCode || typeof qrCode !== 'string') {
+      throw new Error('QR code inválido');
     }
-  }
 
-  /**
-   * 🔍 Search tracks (via backend)
-   */
-  async searchTracks(query: string): Promise<any[]> {
-    try {
-      // En el futuro, el backend puede tener un endpoint de búsqueda
-      // Por ahora, traer todos y filtrar localmente
-      const allTracks = await this.getAllTracks();
-      const searchTerm = query.toLowerCase();
+    // Validar formato
+    const isValidFormat =
+      qrCode.match(/^HITBACK_TYPE:\w+_DIFF:\w+_GENRE:\w+_DECADE:\w+$/) ||
+      qrCode.match(/^HITBACK_\d{3}_[A-Z]+_[A-Z]+$/);
 
-      return allTracks.filter(
-        (track) =>
-          track.title?.toLowerCase().includes(searchTerm) ||
-          track.artist?.toLowerCase().includes(searchTerm) ||
-          track.genre?.toLowerCase().includes(searchTerm)
+    if (!isValidFormat) {
+      throw new Error(
+        'Formato de QR no válido. ' +
+          'Esperado: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s'
       );
+    }
+
+    // Llamar al backend
+    const url = `${this.baseUrl}/api/qr/scan/${encodeURIComponent(qrCode)}`;
+
+    try {
+      const response = await this.fetchWithRetry(url, { method: 'POST' });
+      const data: BackendResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Error del servidor');
+      }
+
+      // Transformar respuesta a CurrentCard (tipo unificado)
+      const backendData = data.data;
+
+      const card: CurrentCard = {
+        qrCode: backendData.scan.qrCode || qrCode,
+        track: {
+          id: backendData.track.id,
+          title: backendData.track.title,
+          artist: backendData.track.artist,
+          album: backendData.track.album,
+          year: backendData.track.year,
+          genre: backendData.track.genre,
+          decade: backendData.track.decade,
+        },
+        question: {
+          type: backendData.question.type as CardType,
+          text: backendData.question.question,
+          answer: backendData.question.answer,
+          points: backendData.question.points,
+          hints: backendData.question.hints || [],
+          challengeType: backendData.question.challengeType,
+        },
+        audio: {
+          hasAudio: backendData.audio.hasAudio,
+          url: backendData.audio.url,
+          source: backendData.audio.source,
+          duration: backendData.audio.duration || 30,
+          albumArt: backendData.audio.metadata?.albumArt,
+        },
+        scan: {
+          points: backendData.scan.points,
+          difficulty: backendData.scan.difficulty,
+          timestamp: backendData.scan.timestamp,
+          filters: backendData.scan.filters,
+        },
+        // ✅ Campos adicionales requeridos por CurrentCard
+        bets: [],
+        revealed: false,
+      };
+
+      console.log(`✅ Card created: ${card.track.title}`);
+      console.log(
+        `   Audio: ${card.audio.hasAudio ? '✅' : '❌'} (${card.audio.source})`
+      );
+
+      return card;
     } catch (error) {
-      console.error('❌ Search tracks failed:', error);
+      console.error(`❌ getCardByQR failed:`, error);
+      throw error;
+    }
+  }
+
+  // 📚 Obtener todos los tracks
+  async getAllTracks(): Promise<Track[]> {
+    console.log(`📚 CardService.getAllTracks`);
+
+    const url = `${this.baseUrl}/api/tracks`;
+
+    try {
+      const response = await this.fetchWithRetry(url);
+      const data: BackendResponse = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error?.message || 'Error obteniendo tracks');
+      }
+
+      let tracks: Track[] = [];
+
+      if (data.data?.tracks) {
+        tracks = data.data.tracks;
+      } else if (Array.isArray(data.data)) {
+        tracks = data.data;
+      }
+
+      console.log(`✅ ${tracks.length} tracks obtenidos`);
+      return tracks;
+    } catch (error) {
+      console.error(`❌ getAllTracks failed:`, error);
+      throw error;
+    }
+  }
+
+  // 🔍 Buscar tracks
+  async searchTracks(query: string): Promise<Track[]> {
+    console.log(`🔍 CardService.searchTracks: "${query}"`);
+
+    const url = `${this.baseUrl}/api/tracks/search?q=${encodeURIComponent(
+      query
+    )}`;
+
+    try {
+      const response = await this.fetchWithRetry(url);
+      const data: BackendResponse = await response.json();
+
+      if (!data.success) {
+        return [];
+      }
+
+      return data.data || [];
+    } catch (error) {
+      console.error(`❌ searchTracks failed:`, error);
       return [];
     }
   }
 
-  /**
-   * 🧪 Test backend connection
-   */
-  async testBackendConnection(): Promise<boolean> {
-    return await audioService.testConnection();
+  // 🧪 Test de conexión
+  async testConnection(): Promise<boolean> {
+    console.log(`🧪 Testing connection to ${this.baseUrl}`);
+
+    try {
+      const url = `${this.baseUrl}/api/health`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log(`✅ Backend connection OK`);
+        return true;
+      }
+
+      console.warn(`⚠️ Backend responded with ${response.status}`);
+      return false;
+    } catch (error) {
+      console.error(`❌ Backend connection failed:`, error);
+      return false;
+    }
   }
 
-  /**
-   * 📅 Calculate decade from year
-   */
-  private calculateDecade(year: number): string {
-    if (!year || isNaN(year)) return 'Unknown';
-    const decade = Math.floor(year / 10) * 10;
-    return `${decade}s`;
+  // 📊 Validar QR sin hacer scan completo
+  async validateQR(
+    qrCode: string
+  ): Promise<{ isValid: boolean; error?: string }> {
+    try {
+      const url = `${this.baseUrl}/api/qr/validate/${encodeURIComponent(
+        qrCode
+      )}`;
+      const response = await this.fetchWithRetry(url);
+      const data = await response.json();
+
+      return {
+        isValid: data.data?.isValid || false,
+        error: data.data?.error,
+      };
+    } catch (error) {
+      return {
+        isValid: false,
+        error: (error as Error).message,
+      };
+    }
   }
 
-  /**
-   * 🔍 Valid card types
-   */
-  private isValidCardType(cardType: string): boolean {
-    const validTypes = ['song', 'artist', 'decade', 'lyrics', 'challenge'];
-    return validTypes.includes(cardType);
+  // 📈 Obtener estadísticas
+  async getStats(): Promise<any> {
+    try {
+      const url = `${this.baseUrl}/api/qr/stats`;
+      const response = await this.fetchWithRetry(url);
+      const data = await response.json();
+      return data.data || {};
+    } catch (error) {
+      console.error(`❌ getStats failed:`, error);
+      return {};
+    }
   }
 
-  /**
-   * 🔍 Valid difficulties
-   */
-  private isValidDifficulty(difficulty: string): boolean {
-    const validDifficulties = ['easy', 'medium', 'hard', 'expert'];
-    return validDifficulties.includes(difficulty);
-  }
-
-  /**
-   * 🎨 UI Helpers (these can stay in frontend)
-   */
-  getCardTypeEmoji(cardType: string): string {
-    const emojis: Record<string, string> = {
+  // 🎯 Obtener emoji por tipo de carta
+  getCardTypeEmoji(type: CardType): string {
+    const emojis: Record<CardType, string> = {
       song: '🎵',
       artist: '🎤',
       decade: '📅',
       lyrics: '📝',
       challenge: '🔥',
     };
-    return emojis[cardType] || '🎵';
+    return emojis[type] || '🎵';
   }
 
-  getCardTypeColor(cardType: string): string {
-    const colors: Record<string, string> = {
-      song: '#F59E0B', // Yellow
-      artist: '#EF4444', // Red
-      decade: '#3B82F6', // Blue
-      lyrics: '#10B981', // Green
-      challenge: '#8B5CF6', // Purple
+  // 📊 Obtener puntos por tipo de carta
+  getCardTypePoints(type: CardType): number {
+    const points: Record<CardType, number> = {
+      song: 1,
+      artist: 2,
+      decade: 3,
+      lyrics: 3,
+      challenge: 5,
     };
-    return colors[cardType] || '#6B7280';
-  }
-
-  getDifficultyColor(difficulty: string): string {
-    const colors: Record<string, string> = {
-      easy: '#10B981', // Green
-      medium: '#F59E0B', // Yellow
-      hard: '#EF4444', // Red
-      expert: '#8B5CF6', // Purple
-    };
-    return colors[difficulty] || '#6B7280';
-  }
-
-  /**
-   * 🧪 Generate test QR codes (for development)
-   */
-  generateTestQRCodes(): { qrCode: string; description: string }[] {
-    const testCodes = [];
-    const cardTypes = ['song', 'artist', 'decade', 'lyrics', 'challenge'];
-    const difficulties = ['easy', 'medium', 'hard', 'expert'];
-    const trackIds = ['001', '002', '003', '004', '005', '006']; // IDs del backend
-
-    trackIds.forEach((trackId) => {
-      cardTypes.forEach((cardType) => {
-        difficulties.forEach((difficulty) => {
-          const qrCode = `HITBACK_${trackId}_${cardType.toUpperCase()}_${difficulty.toUpperCase()}`;
-          testCodes.push({
-            qrCode,
-            description: `Track ${trackId} - ${cardType} - ${difficulty}`,
-          });
-        });
-      });
-    });
-
-    return testCodes;
-  }
-
-  /**
-   * 📊 Get backend stats
-   */
-  async getBackendStats(): Promise<any> {
-    try {
-      const [connectionInfo, tracks] = await Promise.all([
-        audioService.getConnectionInfo(),
-        this.getAllTracks(),
-      ]);
-
-      return {
-        connection: connectionInfo,
-        tracks: {
-          total: tracks.length,
-          withAudio: tracks.filter((t) => t.audioFile).length,
-          withQuestions: tracks.filter((t) => t.hasQuestions).length,
-        },
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      console.error('❌ Failed to get backend stats:', error);
-      return { error: error.message };
-    }
+    return points[type] || 1;
   }
 }
 
+// 🏭 Exportar instancia singleton
 export const cardService = new CardService();
-export type { GameCard };
+
+// También exportar la clase para testing
+export { CardService };

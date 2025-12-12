@@ -1,263 +1,278 @@
-// components/game/AudioPlayer.tsx - FIXED Audio Player
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Audio } from 'expo-av';
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, View, Animated } from 'react-native';
+import { Audio } from 'expo-av';
+import { IconSymbol } from '@/components/ui/IconSymbol';
 
 interface AudioPlayerProps {
-  previewUrl: string | null;
-  trackTitle?: string;
-  artist?: string;
-  duration?: number; // Max duration in milliseconds
-  onAudioFinished?: () => void;
+  previewUrl: string;
+  trackTitle: string;
+  artist: string;
+  duration?: number; // ms - default 5000 (5 segundos)
   autoPlay?: boolean;
+  onAudioFinished?: () => void;
 }
 
 export default function AudioPlayer({
   previewUrl,
-  trackTitle = 'Unknown Track',
-  artist = 'Unknown Artist',
-  duration = 5000, // 5 seconds default
+  trackTitle,
+  artist,
+  duration = 5000,
+  autoPlay = true,
   onAudioFinished,
-  autoPlay = false,
 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(Math.floor(duration / 1000));
-  const [progress] = useState(new Animated.Value(0));
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(Math.ceil(duration / 1000));
 
+  const soundRef = useRef<Audio.Sound | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const hasFinished = useRef(false);
+  const hasFinishedRef = useRef(false);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Initialize audio on mount
+  // 🎵 Configurar modo de audio
   useEffect(() => {
-    initializeAudio();
-    return () => cleanup();
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          playThroughEarpieceAndroid: false,
+        });
+      } catch (err) {
+        console.error('Error setting audio mode:', err);
+      }
+    };
+
+    setupAudio();
   }, []);
 
-  // Auto play when preview URL changes
+  // 🎵 Cargar y reproducir audio
   useEffect(() => {
-    if (autoPlay && previewUrl && !hasFinished.current) {
-      handlePlay();
-    }
-  }, [previewUrl, autoPlay]);
+    let isMounted = true;
+    hasFinishedRef.current = false;
 
-  const initializeAudio = async () => {
-    try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
-        // 🔧 FIXED: Removed problematic properties
-      });
-    } catch (error) {
-      console.warn('Audio initialization warning:', error);
-    }
-  };
-
-  const handlePlay = async () => {
-    if (!previewUrl || hasFinished.current) {
-      console.warn('No preview URL available or already finished');
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-
-      // Stop any existing sound
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+    const loadAndPlay = async () => {
+      // Limpiar audio anterior
+      if (soundRef.current) {
+        try {
+          await soundRef.current.stopAsync();
+          await soundRef.current.unloadAsync();
+        } catch {}
+        soundRef.current = null;
       }
 
-      console.log('🎵 Loading audio:', previewUrl);
+      if (!previewUrl) {
+        setError('No hay URL de audio');
+        setIsLoading(false);
+        // Aún así llamar onAudioFinished después de un delay
+        setTimeout(() => {
+          if (isMounted && onAudioFinished && !hasFinishedRef.current) {
+            hasFinishedRef.current = true;
+            onAudioFinished();
+          }
+        }, 2000);
+        return;
+      }
 
-      // Create and load new sound
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        { uri: previewUrl },
-        {
-          shouldPlay: true,
-          volume: 1.0,
-          rate: 1.0, // 🔧 FIXED: Ensure normal playback rate
-          isLooping: false,
-          isMuted: false,
-        },
-        onPlaybackStatusUpdate
-      );
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log(`🎵 AudioPlayer: Loading ${previewUrl}`);
 
-      setSound(newSound);
-      setIsPlaying(true);
-      setIsLoading(false);
-      setTimeLeft(Math.floor(duration / 1000));
-      hasFinished.current = false;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: previewUrl },
+          { shouldPlay: autoPlay, volume: 1.0 }
+        );
 
-      // Start progress animation
-      Animated.timing(progress, {
-        toValue: 1,
-        duration: duration,
-        useNativeDriver: false,
-      }).start();
-
-      // Start countdown timer
-      startCountdown();
-
-      console.log('✅ Audio started successfully');
-    } catch (error) {
-      console.error('❌ Error playing audio:', error);
-      setIsLoading(false);
-      setIsPlaying(false);
-      // Don't show alert, just handle gracefully
-      onAudioFinished?.();
-    }
-  };
-
-  const onPlaybackStatusUpdate = (status: any) => {
-    if (status.isLoaded && status.didJustFinish && !hasFinished.current) {
-      console.log('🎵 Audio finished naturally');
-      handleAudioEnd();
-    }
-  };
-
-  const startCountdown = () => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    timerRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          handleAudioEnd();
-          return 0;
+        if (!isMounted) {
+          await sound.unloadAsync();
+          return;
         }
-        return prev - 1;
-      });
-    }, 1000);
-  };
 
-  const handleAudioEnd = () => {
-    if (hasFinished.current) return;
+        soundRef.current = sound;
+        setIsPlaying(autoPlay);
+        setIsLoading(false);
+        setTimeLeft(Math.ceil(duration / 1000));
 
-    hasFinished.current = true;
-    setIsPlaying(false);
+        console.log(`✅ AudioPlayer: Playing for ${duration}ms`);
 
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
+        // Iniciar animación de pulso
+        startPulseAnimation();
+
+        // Iniciar countdown
+        timerRef.current = setInterval(() => {
+          setTimeLeft((prev) => {
+            if (prev <= 1) {
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+
+        // Detener después de duration
+        setTimeout(async () => {
+          if (!isMounted) return;
+
+          console.log(`⏰ AudioPlayer: Duration reached, stopping...`);
+
+          // Limpiar timer
+          if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+          }
+
+          // Detener audio
+          if (soundRef.current) {
+            try {
+              await soundRef.current.stopAsync();
+            } catch {}
+          }
+
+          setIsPlaying(false);
+          setTimeLeft(0);
+
+          // Llamar callback solo una vez
+          if (onAudioFinished && !hasFinishedRef.current) {
+            hasFinishedRef.current = true;
+            console.log(`✅ AudioPlayer: Calling onAudioFinished`);
+            onAudioFinished();
+          }
+        }, duration);
+      } catch (err) {
+        console.error('❌ AudioPlayer error:', err);
+        if (isMounted) {
+          setError('Error reproduciendo audio');
+          setIsLoading(false);
+
+          // Llamar onAudioFinished incluso si hay error
+          setTimeout(() => {
+            if (isMounted && onAudioFinished && !hasFinishedRef.current) {
+              hasFinishedRef.current = true;
+              onAudioFinished();
+            }
+          }, 2000);
+        }
+      }
+    };
+
+    if (autoPlay) {
+      loadAndPlay();
     }
 
-    cleanup().then(() => {
-      console.log('🎵 Audio ended, triggering callback');
-      onAudioFinished?.();
-    });
-  };
-
-  const handleStop = async () => {
-    try {
-      setIsPlaying(false);
+    // Cleanup
+    return () => {
+      isMounted = false;
 
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
 
-      await cleanup();
-
-      // Reset values
-      setTimeLeft(Math.floor(duration / 1000));
-      progress.setValue(0);
-      hasFinished.current = false;
-    } catch (error) {
-      console.error('❌ Error stopping audio:', error);
-    }
-  };
-
-  const cleanup = async () => {
-    try {
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
+      if (soundRef.current) {
+        soundRef.current.stopAsync().catch(() => {});
+        soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
       }
-    } catch (error) {
-      console.warn('Cleanup warning:', error);
-    }
+    };
+  }, [previewUrl]); // Solo depende de previewUrl para evitar múltiples reproducciones
+
+  // 🎨 Animación de pulso
+  const startPulseAnimation = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   };
-
-  const progressWidth = progress.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
-
-  if (!previewUrl) {
-    return (
-      <View style={styles.noAudioContainer}>
-        <IconSymbol name='speaker.slash' size={24} color='#64748B' />
-        <Text style={styles.noAudioText}>No hay audio disponible</Text>
-      </View>
-    );
-  }
 
   return (
     <View style={styles.container}>
-      {/* Track Info */}
-      <View style={styles.trackInfo}>
-        <Text style={styles.trackTitle} numberOfLines={1}>
-          {trackTitle}
-        </Text>
-        <Text style={styles.artist} numberOfLines={1}>
-          {artist}
-        </Text>
-      </View>
-
-      {/* Controls */}
-      <View style={styles.controls}>
-        <TouchableOpacity
-          style={[styles.playButton, isPlaying && styles.playingButton]}
-          onPress={isPlaying ? handleStop : handlePlay}
-          activeOpacity={0.8}
-          disabled={isLoading}
+      <Animated.View
+        style={[
+          styles.playerCard,
+          isPlaying && { transform: [{ scale: pulseAnim }] },
+        ]}
+      >
+        {/* Icono */}
+        <View
+          style={[
+            styles.iconContainer,
+            isPlaying && styles.iconPlaying,
+            error && styles.iconError,
+          ]}
         >
           {isLoading ? (
-            <IconSymbol name='clock' size={20} color='#FFFFFF' />
-          ) : (
+            <IconSymbol name='hourglass' size={32} color='#3B82F6' />
+          ) : error ? (
             <IconSymbol
-              name={isPlaying ? 'stop.fill' : 'play.fill'}
-              size={20}
-              color='#FFFFFF'
+              name='exclamationmark.triangle'
+              size={32}
+              color='#EF4444'
             />
+          ) : isPlaying ? (
+            <IconSymbol name='waveform' size={32} color='#10B981' />
+          ) : (
+            <IconSymbol name='checkmark.circle' size={32} color='#10B981' />
           )}
-        </TouchableOpacity>
+        </View>
 
-        <View style={styles.timeContainer}>
-          <Text style={styles.timeText}>
-            {isPlaying ? `${timeLeft}s` : `${Math.floor(duration / 1000)}s`}
+        {/* Info */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.title} numberOfLines={1}>
+            {trackTitle}
           </Text>
-        </View>
-      </View>
+          <Text style={styles.artist} numberOfLines={1}>
+            {artist}
+          </Text>
 
-      {/* Progress Bar */}
-      <View style={styles.progressContainer}>
-        <View style={styles.progressBackground}>
-          <Animated.View
-            style={[styles.progressFill, { width: progressWidth }]}
-          />
+          {/* Estado */}
+          <View style={styles.statusContainer}>
+            {isLoading ? (
+              <Text style={styles.statusText}>Cargando audio...</Text>
+            ) : error ? (
+              <Text style={[styles.statusText, styles.errorText]}>{error}</Text>
+            ) : isPlaying ? (
+              <Text style={styles.statusText}>
+                🎵 Reproduciendo... {timeLeft}s
+              </Text>
+            ) : (
+              <Text style={[styles.statusText, styles.finishedText]}>
+                ✅ Audio completado
+              </Text>
+            )}
+          </View>
         </View>
-      </View>
 
-      {/* Status Indicator */}
+        {/* Countdown */}
+        {isPlaying && (
+          <View style={styles.countdownContainer}>
+            <Text style={styles.countdownText}>{timeLeft}</Text>
+            <Text style={styles.countdownLabel}>seg</Text>
+          </View>
+        )}
+      </Animated.View>
+
+      {/* Barra de progreso */}
       {isPlaying && (
-        <View style={styles.statusContainer}>
-          <View style={styles.audioWave} />
-          <Text style={styles.statusText}>Reproduciendo...</Text>
+        <View style={styles.progressBarContainer}>
+          <View
+            style={[
+              styles.progressBar,
+              { width: `${(timeLeft / (duration / 1000)) * 100}%` },
+            ]}
+          />
         </View>
       )}
     </View>
@@ -266,32 +281,37 @@ export default function AudioPlayer({
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    marginHorizontal: 20,
+    marginVertical: 12,
+  },
+  playerCard: {
+    backgroundColor: '#1E293B',
     borderRadius: 16,
     padding: 16,
-    marginVertical: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.2)',
-  },
-  noAudioContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  iconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
     justifyContent: 'center',
-    padding: 16,
-    backgroundColor: 'rgba(100, 116, 139, 0.1)',
-    borderRadius: 12,
-    marginVertical: 8,
+    alignItems: 'center',
+    marginRight: 12,
   },
-  noAudioText: {
-    marginLeft: 8,
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
+  iconPlaying: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
   },
-  trackInfo: {
-    marginBottom: 12,
+  iconError: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
   },
-  trackTitle: {
+  infoContainer: {
+    flex: 1,
+  },
+  title: {
     fontSize: 16,
     fontWeight: '700',
     color: '#F8FAFC',
@@ -300,71 +320,49 @@ const styles = StyleSheet.create({
   artist: {
     fontSize: 14,
     color: '#94A3B8',
-    fontWeight: '500',
-  },
-  controls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  playButton: {
-    backgroundColor: '#3B82F6',
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  playingButton: {
-    backgroundColor: '#EF4444',
-  },
-  timeContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-  },
-  timeText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#3B82F6',
-  },
-  progressContainer: {
-    marginBottom: 8,
-  },
-  progressBackground: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 2,
+    marginBottom: 4,
   },
   statusContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-  },
-  audioWave: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#10B981',
-    marginRight: 8,
   },
   statusText: {
     fontSize: 12,
+    color: '#64748B',
+  },
+  errorText: {
+    color: '#EF4444',
+  },
+  finishedText: {
     color: '#10B981',
-    fontWeight: '600',
+  },
+  countdownContainer: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  countdownText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  countdownLabel: {
+    fontSize: 10,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: -2,
+  },
+  progressBarContainer: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
+    marginTop: 8,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#3B82F6',
+    borderRadius: 2,
   },
 });

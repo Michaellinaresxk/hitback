@@ -1,8 +1,9 @@
 // store/gameStore.ts - LIMPIO: Solo Backend Integration
 import { audioService } from '@/services/audioService';
 import { create } from 'zustand';
+import type { CurrentCard } from '@/types/game_types';
 
-// 🎮 INTERFACES SIMPLIFICADAS - Solo lo que necesita el frontend
+// 🎮 INTERFACES - Player se mantiene aquí, Card viene de game_types
 export interface Player {
   id: string;
   name: string;
@@ -19,21 +20,8 @@ export interface Player {
   difficultyStreaks: Record<string, number>;
 }
 
-export interface Card {
-  id: string;
-  qrCode: string;
-  cardType: string;
-  track: {
-    title: string;
-    artist: string;
-    year: number;
-    previewUrl: string; // URL del backend
-  };
-  question: string;
-  answer: string;
-  points: number;
-  difficulty: string;
-}
+// ✅ Re-exportar CurrentCard como Card para compatibilidad
+export type Card = CurrentCard;
 
 interface GameState {
   id: string;
@@ -119,6 +107,14 @@ interface GameActions {
   // Backend Integration
   checkBackendConnection: () => Promise<boolean>;
   syncWithBackend: () => Promise<void>;
+}
+
+// 🔧 Helper Functions
+function getBettingMultiplier(betAmount: number): number {
+  if (betAmount === 1) return 2;
+  if (betAmount === 2) return 3;
+  if (betAmount >= 3) return 4;
+  return 1;
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -440,7 +436,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       return;
     }
 
-    let basePoints = points || currentCard.points || 0;
+    // ✅ CORREGIDO: Usar currentCard.question.points
+    let basePoints = points || currentCard.question.points || 0;
 
     // Apply betting multiplier
     if (player.currentBet > 0) {
@@ -460,6 +457,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set((state) => ({
       players: state.players.map((p) => {
         if (p.id === playerId) {
+          // ✅ CORREGIDO: Usar currentCard.question.type y currentCard.scan.difficulty
+          const cardType = currentCard.question.type;
+          const difficulty = currentCard.scan.difficulty;
+
           const newPlayer = {
             ...p,
             score: p.score + basePoints,
@@ -468,13 +469,11 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
             boostActive: false, // Clear boost after use
             cardTypeStreaks: {
               ...p.cardTypeStreaks,
-              [currentCard.cardType]:
-                (p.cardTypeStreaks[currentCard.cardType] || 0) + 1,
+              [cardType]: (p.cardTypeStreaks[cardType] || 0) + 1,
             },
             difficultyStreaks: {
               ...p.difficultyStreaks,
-              [currentCard.difficulty]:
-                (p.difficultyStreaks[currentCard.difficulty] || 0) + 1,
+              [difficulty]: (p.difficultyStreaks[difficulty] || 0) + 1,
             },
           };
 
@@ -498,7 +497,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     get().nextTurn();
   },
 
-  // ⏭️ NEXT TURN
+  // ⭐️ NEXT TURN
   nextTurn: () => {
     const { players, currentTurn } = get();
     const nextTurnIndex = (currentTurn + 1) % players.length;
@@ -522,7 +521,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       showAnswer: false,
     });
 
-    console.log(`⏭️ Next turn: ${nextPlayer.name} (Round ${get().round})`);
+    console.log(`⭐️ Next turn: ${nextPlayer.name} (Round ${get().round})`);
 
     // Clear all bets
     get().clearBets();
@@ -823,10 +822,5 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 }));
 
-// 🔧 Helper Functions
-function getBettingMultiplier(betAmount: number): number {
-  if (betAmount === 1) return 2;
-  if (betAmount === 2) return 3;
-  if (betAmount >= 3) return 4;
-  return 1;
-}
+// Exportar helper para uso externo
+export { getBettingMultiplier };

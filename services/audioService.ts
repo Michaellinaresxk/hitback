@@ -1,48 +1,90 @@
-// services/audioService.ts - LIMPIO: Solo Backend Integration
-import { Audio } from 'expo-av';
-import Constants from 'expo-constants';
+// services/audioService.ts - HITBACK Audio Service COMPLETO
+// ✅ Todos los métodos que usa gameStore.ts
+// ✅ Siempre obtiene audio desde el backend (Deezer)
 
-// 🔧 SOLO INTERFACES - Sin datos hardcodeados
-interface BackendScanResponse {
-  success: boolean;
-  data?: {
-    scan: {
-      qrCode: string;
-      points: number;
-      difficulty: string;
-      timestamp: string;
-    };
-    track: {
-      id: string;
-      title: string;
-      artist: string;
-      album: string;
-      year: number;
-      genre: string;
-    };
-    question: {
-      type: string;
-      question: string;
-      answer: string;
-      points: number;
-      hints: string[];
-    };
-    audio: {
-      hasAudio: boolean;
-      url: string;
-      duration: number;
-    };
-  };
-  error?: { message: string };
+import { Audio } from 'expo-av';
+import { Platform } from 'react-native';
+
+// 🔧 CONFIGURACIÓN
+const getBaseUrl = (): string => {
+  if (__DEV__) {
+    const LOCAL_IP = '192.168.1.10'; // ⚠️ CAMBIA POR TU IP
+    return `http://${LOCAL_IP}:3000`;
+  }
+  return 'https://api.hitback.com';
+};
+
+// 📋 TIPOS
+interface AudioState {
+  isPlaying: boolean;
+  isLoading: boolean;
+  currentUrl: string | null;
+  duration: number;
+  position: number;
+  error: string | null;
+  isInitialized: boolean;
 }
 
-// 🎵 Audio Manager - Solo para reproducción
-class AudioManager {
-  private sound: Audio.Sound | null = null;
-  private isInitialized: boolean = false;
+interface PlayOptions {
+  url: string;
+  onFinish?: () => void;
+  onError?: (error: string) => void;
+  duration?: number;
+}
 
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
+interface ConnectionInfo {
+  backendConnected: boolean;
+  baseUrl: string;
+  timestamp: string;
+}
+
+interface Track {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  year?: number;
+  genre?: string;
+  decade?: string;
+  previewUrl?: string;
+}
+
+// 🏭 CLASE PRINCIPAL
+class AudioService {
+  private sound: Audio.Sound | null = null;
+  private baseUrl: string;
+  private playbackTimeout: NodeJS.Timeout | null = null;
+  private onFinishCallback: (() => void) | null = null;
+
+  private state: AudioState = {
+    isPlaying: false,
+    isLoading: false,
+    currentUrl: null,
+    duration: 0,
+    position: 0,
+    error: null,
+    isInitialized: false,
+  };
+
+  constructor() {
+    this.baseUrl = getBaseUrl();
+    console.log(`🎵 AudioService initialized`);
+    console.log(`   Base URL: ${this.baseUrl}`);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 🔧 MÉTODOS DE INICIALIZACIÓN (usados por gameStore)
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Inicializar el sistema de audio
+   * ✅ Usado por gameStore.startGame()
+   */
+  async initializeAudio(): Promise<void> {
+    if (this.state.isInitialized) {
+      console.log('🎵 Audio already initialized');
+      return;
+    }
 
     try {
       await Audio.setAudioModeAsync({
@@ -53,293 +95,366 @@ class AudioManager {
         playThroughEarpieceAndroid: false,
       });
 
-      this.isInitialized = true;
-      console.log('✅ AudioManager initialized');
+      this.state.isInitialized = true;
+      console.log(`✅ Audio mode configured`);
     } catch (error) {
-      console.error('❌ AudioManager initialization failed:', error);
+      console.error(`❌ Failed to initialize audio:`, error);
       throw error;
     }
   }
 
-  async playTrackPreview(
-    audioUrl: string,
-    maxDuration: number = 5000,
-    onFinished?: () => void
-  ): Promise<void> {
-    try {
-      if (!this.isInitialized) {
-        await this.initialize();
-      }
-
-      await this.stop();
-      console.log(`🎵 Playing: ${audioUrl} (${maxDuration}ms)`);
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: audioUrl },
-        {
-          shouldPlay: true,
-          volume: 1.0,
-          rate: 1.0,
-          isLooping: false,
-          isMuted: false,
-        }
-      );
-
-      this.sound = sound;
-
-      // Auto-stop after duration
-      setTimeout(async () => {
-        await this.stop();
-        onFinished?.();
-      }, maxDuration);
-    } catch (error) {
-      console.error('❌ Audio playback failed:', error);
-      throw new Error(`Audio playback failed: ${error.message}`);
-    }
-  }
-
-  async stop(): Promise<void> {
-    try {
-      if (this.sound) {
-        await this.sound.stopAsync();
-        await this.sound.unloadAsync();
-        this.sound = null;
-      }
-    } catch (error) {
-      console.error('❌ Error stopping audio:', error);
-    }
-  }
-
-  isPlaying(): boolean {
-    return this.sound !== null;
-  }
-
-  async cleanup(): Promise<void> {
-    await this.stop();
-    this.isInitialized = false;
-  }
-}
-
-// 🌐 HTTP Client para Backend
-class BackendClient {
-  private readonly baseUrl: string;
-  private readonly defaultHeaders: Record<string, string>;
-
-  constructor() {
-    this.baseUrl = this.getServerUrl();
-    this.defaultHeaders = {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    };
-  }
-
-  private getServerUrl(): string {
-    // 🔧 CONFIGURACIÓN DINÁMICA IP
-    const YOUR_IP = '192.168.1.10'; // Cambia por tu IP local
-    const PORT = '3000';
-
-    if (__DEV__ && Constants.expoConfig?.hostUri) {
-      const hostUri = Constants.expoConfig.hostUri.split(':')[0];
-      if (hostUri && hostUri !== 'localhost' && !hostUri.startsWith('127.')) {
-        return `http://${hostUri}:${PORT}`;
-      }
-    }
-    return `http://${YOUR_IP}:${PORT}`;
-  }
-
-  private async request<T>(endpoint: string, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`;
-
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-
-      const response = await fetch(url, {
-        ...options,
-        headers: { ...this.defaultHeaders, ...options.headers },
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      if (error.message.includes('Network request failed')) {
-        throw new Error(`Network error: Cannot connect to ${this.baseUrl}`);
-      }
-      throw error;
-    }
-  }
-
-  async get<T>(endpoint: string, options?: RequestInit) {
-    return this.request<T>(endpoint, { method: 'GET', ...options });
-  }
-
-  async post<T>(endpoint: string, body?: any, options?: RequestInit) {
-    return this.request<T>(endpoint, {
-      method: 'POST',
-      body: body ? JSON.stringify(body) : undefined,
-      ...options,
-    });
+  /**
+   * Actualizar URL base
+   */
+  setBaseUrl(url: string): void {
+    this.baseUrl = url;
+    console.log(`🔧 AudioService URL: ${url}`);
   }
 
   getBaseUrl(): string {
     return this.baseUrl;
   }
-}
 
-// 🎮 Main Audio Service - SOLO Backend Integration
-class AudioService {
-  private backendClient: BackendClient;
-  private audioManager: AudioManager;
+  // ════════════════════════════════════════════════════════════
+  // 🎵 MÉTODOS DE REPRODUCCIÓN
+  // ════════════════════════════════════════════════════════════
 
-  constructor() {
-    this.backendClient = new BackendClient();
-    this.audioManager = new AudioManager();
-  }
+  /**
+   * Reproducir audio desde URL
+   */
+  async play(options: PlayOptions): Promise<boolean> {
+    const { url, onFinish, onError, duration = 30 } = options;
 
-  async initializeAudio(): Promise<void> {
-    await this.audioManager.initialize();
-  }
+    console.log(`\n🎵 AudioService.play`);
+    console.log(`   URL: ${url}`);
+    console.log(`   Duration: ${duration}s`);
 
-  // 🔍 ESCANEO QR - Backend Only
-  async scanQRAndPlay(qrCode: string): Promise<BackendScanResponse> {
+    // Detener audio anterior
+    await this.stopAudio();
+
+    this.state.isLoading = true;
+    this.state.error = null;
+    this.onFinishCallback = onFinish || null;
+
     try {
-      console.log(`🔍 Scanning QR via backend: ${qrCode}`);
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true, volume: 1.0 },
+        this.onPlaybackStatusUpdate.bind(this)
+      );
 
-      // ✅ LLAMADA AL BACKEND REAL
-      const response = await this.backendClient.post(`/api/qr/scan/${qrCode}`);
+      this.sound = sound;
+      this.state.isPlaying = true;
+      this.state.isLoading = false;
+      this.state.currentUrl = url;
 
-      if (response.success && response.data) {
-        console.log('✅ Backend scan successful:', response.data.track.title);
-        return {
-          success: true,
-          data: response.data,
-        };
+      console.log(`✅ Audio playing`);
+
+      // Timeout para detener después de la duración
+      if (duration > 0) {
+        this.playbackTimeout = setTimeout(() => {
+          console.log(`⏰ Duration limit reached (${duration}s)`);
+          this.stopAudio();
+          if (this.onFinishCallback) {
+            this.onFinishCallback();
+          }
+        }, duration * 1000);
       }
 
-      throw new Error(response.error?.message || 'Backend scan failed');
+      return true;
     } catch (error) {
-      console.error('❌ QR scan error:', error);
-      return {
-        success: false,
-        error: { message: error.message || 'QR scan failed' },
-      };
-    }
-  }
+      const errorMessage = (error as Error).message;
+      console.error(`❌ Audio play failed:`, errorMessage);
 
-  // 🎵 REPRODUCIR AUDIO - Solo streaming desde backend
-  async playTrackPreview(
-    audioUrl: string,
-    duration: number = 5000,
-    onFinished?: () => void
-  ): Promise<void> {
-    if (!audioUrl) {
-      throw new Error('No audio URL provided');
-    }
+      this.state.isLoading = false;
+      this.state.isPlaying = false;
+      this.state.error = errorMessage;
 
-    console.log(`🎵 Playing audio from backend: ${audioUrl}`);
-    return this.audioManager.playTrackPreview(audioUrl, duration, onFinished);
-  }
+      if (onError) {
+        onError(errorMessage);
+      }
 
-  async stopAudio(): Promise<void> {
-    return this.audioManager.stop();
-  }
-
-  isPlaying(): boolean {
-    return this.audioManager.isPlaying();
-  }
-
-  // 🔧 HEALTH CHECK - Backend
-  async testConnection(): Promise<boolean> {
-    try {
-      const response = await this.backendClient.get('/api/health');
-      return response.success && response.data?.status === 'healthy';
-    } catch (error) {
-      console.error('❌ Backend connection failed:', error);
       return false;
     }
   }
 
-  // 📋 OBTENER TRACKS - Backend Only
-  async getAllTracks(): Promise<any[]> {
+  /**
+   * Callback de estado de reproducción
+   */
+  private onPlaybackStatusUpdate(status: any): void {
+    if (!status.isLoaded) {
+      if (status.error) {
+        console.error(`❌ Playback error: ${status.error}`);
+        this.state.error = status.error;
+      }
+      return;
+    }
+
+    this.state.isPlaying = status.isPlaying;
+    this.state.duration = status.durationMillis
+      ? status.durationMillis / 1000
+      : 0;
+    this.state.position = status.positionMillis
+      ? status.positionMillis / 1000
+      : 0;
+
+    if (status.didJustFinish && !status.isLooping) {
+      console.log(`🏁 Audio finished naturally`);
+      this.cleanup();
+      if (this.onFinishCallback) {
+        this.onFinishCallback();
+      }
+    }
+  }
+
+  /**
+   * Detener audio
+   * ✅ Usado por gameStore.createNewGame() y gameStore.endGame()
+   */
+  async stopAudio(): Promise<void> {
+    console.log(`⏹️ AudioService.stopAudio`);
+
+    this.cleanup();
+
+    if (this.sound) {
+      try {
+        await this.sound.stopAsync();
+        await this.sound.unloadAsync();
+      } catch (error) {
+        // Ignorar errores al detener
+      }
+      this.sound = null;
+    }
+
+    this.state.isPlaying = false;
+    this.state.currentUrl = null;
+  }
+
+  /**
+   * Alias de stopAudio para compatibilidad
+   */
+  async stop(): Promise<void> {
+    return this.stopAudio();
+  }
+
+  /**
+   * Pausar audio
+   */
+  async pause(): Promise<void> {
+    if (this.sound && this.state.isPlaying) {
+      try {
+        await this.sound.pauseAsync();
+        this.state.isPlaying = false;
+        console.log(`⏸️ Audio paused`);
+      } catch (error) {
+        console.error(`❌ Pause failed:`, error);
+      }
+    }
+  }
+
+  /**
+   * Reanudar audio
+   */
+  async resume(): Promise<void> {
+    if (this.sound && !this.state.isPlaying) {
+      try {
+        await this.sound.playAsync();
+        this.state.isPlaying = true;
+        console.log(`▶️ Audio resumed`);
+      } catch (error) {
+        console.error(`❌ Resume failed:`, error);
+      }
+    }
+  }
+
+  /**
+   * Ajustar volumen
+   */
+  async setVolume(volume: number): Promise<void> {
+    if (this.sound) {
+      try {
+        await this.sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
+      } catch (error) {
+        console.error(`❌ Set volume failed:`, error);
+      }
+    }
+  }
+
+  /**
+   * Limpiar recursos
+   */
+  private cleanup(): void {
+    if (this.playbackTimeout) {
+      clearTimeout(this.playbackTimeout);
+      this.playbackTimeout = null;
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 🌐 MÉTODOS DE CONEXIÓN (usados por gameStore)
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Test de conexión al backend
+   * ✅ Usado por gameStore.checkBackendConnection()
+   */
+  async testConnection(): Promise<boolean> {
+    console.log(`🧪 Testing connection to ${this.baseUrl}`);
+
     try {
-      const response = await this.backendClient.get('/api/tracks');
-      return response.success ? response.data : [];
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      const response = await fetch(`${this.baseUrl}/api/health`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        console.log(`✅ Backend connection OK`);
+        return true;
+      }
+
+      console.warn(`⚠️ Backend responded with ${response.status}`);
+      return false;
     } catch (error) {
-      console.error('❌ Failed to get tracks from backend:', error);
+      console.error(`❌ Backend connection failed:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Obtener info de conexión
+   * ✅ Usado por gameStore.syncWithBackend()
+   */
+  async getConnectionInfo(): Promise<ConnectionInfo> {
+    const isConnected = await this.testConnection();
+
+    return {
+      backendConnected: isConnected,
+      baseUrl: this.baseUrl,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 📚 MÉTODOS DE TRACKS (usados por gameStore)
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Obtener todos los tracks
+   * ✅ Usado por gameStore.syncWithBackend()
+   */
+  async getAllTracks(): Promise<Track[]> {
+    console.log(`📚 AudioService.getAllTracks`);
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+      const response = await fetch(`${this.baseUrl}/api/tracks`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { Accept: 'application/json' },
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Manejar diferentes estructuras de respuesta
+      let tracks: Track[] = [];
+
+      if (data.data?.tracks) {
+        tracks = data.data.tracks;
+      } else if (data.tracks) {
+        tracks = data.tracks;
+      } else if (Array.isArray(data.data)) {
+        tracks = data.data;
+      } else if (Array.isArray(data)) {
+        tracks = data;
+      }
+
+      console.log(`✅ ${tracks.length} tracks retrieved`);
+      return tracks;
+    } catch (error) {
+      console.error(`❌ getAllTracks failed:`, error);
       return [];
     }
   }
 
-  // ✅ VALIDAR QR - Backend
-  async validateQRCode(qrCode: string): Promise<boolean> {
+  // ════════════════════════════════════════════════════════════
+  // 📊 MÉTODOS DE ESTADO
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Obtener estado actual
+   */
+  getState(): AudioState {
+    return { ...this.state };
+  }
+
+  /**
+   * ¿Está reproduciendo?
+   */
+  isPlaying(): boolean {
+    return this.state.isPlaying;
+  }
+
+  /**
+   * ¿Está inicializado?
+   */
+  isInitialized(): boolean {
+    return this.state.isInitialized;
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 🧪 MÉTODOS DE TEST
+  // ════════════════════════════════════════════════════════════
+
+  /**
+   * Test de reproducción de audio
+   */
+  async testAudio(): Promise<{ success: boolean; error?: string }> {
+    const testUrl = 'https://www.soundjay.com/buttons/beep-01a.mp3';
+
     try {
-      const response = await this.backendClient.get(
-        `/api/qr/validate/${qrCode}`
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: testUrl },
+        { shouldPlay: false }
       );
-      return response.success && response.data?.isValid === true;
-    } catch (error) {
-      console.error('❌ QR validation failed:', error);
-      return false;
-    }
-  }
 
-  // 📊 STATS DEL SERVIDOR
-  async getConnectionInfo(): Promise<any> {
-    const serverUrl = this.backendClient.getBaseUrl();
-    const isExpoDevMode = __DEV__ && !!Constants.expoConfig?.hostUri;
+      await sound.unloadAsync();
 
-    try {
-      const [healthResponse, tracksResponse] = await Promise.all([
-        this.backendClient.get('/api/health').catch(() => null),
-        this.backendClient.get('/api/tracks').catch(() => null),
-      ]);
-
-      return {
-        serverUrl,
-        isExpoDevMode,
-        expoHostUri: Constants.expoConfig?.hostUri || null,
-        backendConnected: !!healthResponse?.success,
-        tracksAvailable: tracksResponse?.data?.length || 0,
-        serverStatus: healthResponse?.data?.status || 'unknown',
-      };
+      return { success: true };
     } catch (error) {
       return {
-        serverUrl,
-        isExpoDevMode,
-        expoHostUri: Constants.expoConfig?.hostUri || null,
-        backendConnected: false,
-        tracksAvailable: 0,
-        serverStatus: 'error',
-        error: error.message,
+        success: false,
+        error: (error as Error).message,
       };
     }
   }
 
-  // 💾 GUARDAR STATS - Backend
-  async saveGameStats(gameStats: any): Promise<void> {
-    try {
-      await this.backendClient.post('/api/game/stats', gameStats);
-      console.log('✅ Game stats saved to backend');
-    } catch (error) {
-      console.error('❌ Failed to save game stats:', error);
-      // No fallar el juego por esto
-    }
-  }
-
-  async cleanup(): Promise<void> {
-    await this.audioManager.cleanup();
+  /**
+   * Liberar todos los recursos
+   */
+  async dispose(): Promise<void> {
+    await this.stopAudio();
+    this.state.isInitialized = false;
+    console.log(`🧹 AudioService disposed`);
   }
 }
 
+// 🏭 Exportar instancia singleton
 export const audioService = new AudioService();
-export type { BackendScanResponse };
+
+// También exportar la clase
+export { AudioService };
+export type { AudioState, PlayOptions, ConnectionInfo, Track };

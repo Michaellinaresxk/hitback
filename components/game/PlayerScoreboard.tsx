@@ -1,6 +1,6 @@
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   FlatList,
   StyleSheet,
@@ -27,6 +27,16 @@ export default function PlayerScoreboard({
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = highlightWinner ? sortedPlayers[0] : null;
 
+  // ✅ Memoized callback para evitar re-renders innecesarios
+  const handlePlayerPress = useCallback(
+    (playerId: string) => {
+      if (onPlayerSelect) {
+        onPlayerSelect(playerId);
+      }
+    },
+    [onPlayerSelect]
+  );
+
   const renderPlayer = ({
     item: player,
     index,
@@ -39,19 +49,9 @@ export default function PlayerScoreboard({
       highlightWinner && player.id === winner?.id && player.score >= 15;
     const position = index + 1;
 
-    const getPositionEmoji = (pos: number): string => {
-      if (pos === 1) return '🥇';
-      if (pos === 2) return '🥈';
-      if (pos === 3) return '🥉';
-      return `${pos}°`;
-    };
-
-    const getPositionColor = (pos: number) => {
-      if (pos === 1) return '#F59E0B';
-      if (pos === 2) return '#94A3B8';
-      if (pos === 3) return '#CD7F32';
-      return '#64748B';
-    };
+    // ✅ Mueve helper functions fuera del render
+    const positionEmoji = getPositionEmoji(position);
+    const positionColor = getPositionColor(position);
 
     return (
       <TouchableOpacity
@@ -60,21 +60,16 @@ export default function PlayerScoreboard({
           isCurrentTurn && styles.currentTurnCard,
           isWinner && styles.winnerCard,
         ]}
-        onPress={() => onPlayerSelect?.(player.id)}
+        onPress={() => handlePlayerPress(player.id)}
         activeOpacity={onPlayerSelect ? 0.8 : 1}
         disabled={!onPlayerSelect}
       >
         {/* Position & Status */}
         <View style={styles.playerLeft}>
           <View
-            style={[
-              styles.positionBadge,
-              { backgroundColor: getPositionColor(position) },
-            ]}
+            style={[styles.positionBadge, { backgroundColor: positionColor }]}
           >
-            <Text style={styles.positionText}>
-              {getPositionEmoji(position)}
-            </Text>
+            <Text style={styles.positionText}>{positionEmoji}</Text>
           </View>
 
           {isCurrentTurn && (
@@ -253,6 +248,21 @@ export default function PlayerScoreboard({
       />
     </View>
   );
+}
+
+// ✅ Helper functions FUERA del componente (puro y memoizado)
+function getPositionEmoji(pos: number): string {
+  const emojis = ['🥇', '🥈', '🥉'];
+  return emojis[pos - 1] ?? `${pos}°`;
+}
+
+function getPositionColor(pos: number): string {
+  const colors: Record<number, string> = {
+    1: '#F59E0B',
+    2: '#94A3B8',
+    3: '#CD7F32',
+  };
+  return colors[pos] ?? '#64748B';
 }
 
 const styles = StyleSheet.create({
