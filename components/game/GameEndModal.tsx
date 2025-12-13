@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
-import { router } from 'expo-router';
 
 const { width, height } = Dimensions.get('window');
 

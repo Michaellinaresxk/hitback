@@ -1,1 +1,1 @@
-export const REPRODUCTION_TIME_LIMIT = 5000; // 5 seconds
+export const REPRODUCTION_TIME_LIMIT = 8000; // 5 seconds

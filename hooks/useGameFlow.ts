@@ -83,7 +83,7 @@ export const useGameFlow = () => {
           // Reset betting
           bettingPhase: false,
           bettingStarted: false,
-          bettingTimeLeft: 30,
+          bettingTimeLeft: BETTING_TIME_LIMIT,
           // Reset audio/question states
           audioPlaying: false,
           questionPhase: false,
@@ -147,7 +147,7 @@ export const useGameFlow = () => {
       questionPhase: true,
       bettingPhase: true,
       bettingStarted: true,
-      bettingTimeLeft: 30,
+      bettingTimeLeft: BETTING_TIME_LIMIT,
     }));
 
     // Iniciar timer de apuestas
@@ -163,7 +163,7 @@ export const useGameFlow = () => {
       clearInterval(bettingTimerRef.current);
     }
 
-    let timeLeft = 30;
+    let timeLeft = BETTING_TIME_LIMIT;
 
     bettingTimerRef.current = setInterval(() => {
       timeLeft -= 1;
@@ -249,7 +249,7 @@ export const useGameFlow = () => {
       questionPhase: false,
       showAnswerRevealed: false,
       bettingPhase: false,
-      bettingTimeLeft: 30,
+      bettingTimeLeft: BETTING_TIME_LIMIT,
       bettingStarted: false,
       currentError: null,
       lastWinnerId: null,

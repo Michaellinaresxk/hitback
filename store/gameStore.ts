@@ -2,6 +2,11 @@
 import { audioService } from '@/services/audioService';
 import { create } from 'zustand';
 import type { CurrentCard } from '@/types/game_types';
+import { SCORE_TO_WIN } from '@/constants/Points';
+import {
+  CURRENT_SPEED_ROUND_INDEX,
+  SPEED_ROUND_TIME_LIMIT,
+} from '@/constants/SpeedRound';
 
 // ðŸŽ® INTERFACES - Player se mantiene aquÃ­, Card viene de game_types
 export interface Player {
@@ -137,8 +142,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   speedRoundCards: [],
   speedRoundAnswers: {},
   battleRound: null,
-  currentSpeedRoundIndex: 0,
-  speedRoundTimeLeft: 30,
+  currentSpeedRoundIndex: CURRENT_SPEED_ROUND_INDEX,
+  speedRoundTimeLeft: SPEED_ROUND_TIME_LIMIT,
 
   // Audio State
   audioFinished: false,
@@ -510,7 +515,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     get().clearBets();
 
     // Check win condition (15 points)
-    const winner = updatedPlayers.find((p) => p.score >= 15);
+    const winner = updatedPlayers.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) {
       console.log(
         `ðŸ† Winner found: ${winner.name} with ${winner.score} points!`
@@ -690,7 +695,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set({
       gameMode: 'speed',
       speedRoundActive: true,
-      speedRoundTimeLeft: 30,
+      speedRoundTimeLeft: SPEED_ROUND_TIME_LIMIT,
       speedRoundAnswers: {},
       currentSpeedRoundIndex: 0,
     });
