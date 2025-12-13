@@ -5,10 +5,13 @@ import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import RealQRScanner from '@/components/game/QRScanner';
 import BettingModal from '@/components/modal/BettingModal';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { SCORE_TO_WIN } from '@/constants/Points';
 import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { useGameFlow } from '@/hooks/useGameFlow';
+import { soundEffects } from '@/services/SoundEffectsService';
 import { useGameStore } from '@/store/gameStore';
 import React, { useEffect, useState } from 'react';
+
 import {
   Dimensions,
   FlatList,
@@ -92,13 +95,14 @@ export default function GameScreen() {
 
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const winner = players.find((p) => p.score >= 15);
+  const winner = players.find((p) => p.score >= SCORE_TO_WIN);
   const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
 
   useEffect(() => {
     if (isActive) {
       checkBackendConnection();
+      soundEffects.initialize();
     }
   }, [isActive]);
 
@@ -128,6 +132,12 @@ export default function GameScreen() {
       setShowPointsModal(true);
     }
   }, [audioFinished, showQuestion, currentCard, bettingStatus.isActive]);
+
+  useEffect(() => {
+    if (showGameEndModal && winner) {
+      soundEffects.playVictory();
+    }
+  }, [showGameEndModal, winner]);
 
   const checkBackendConnection = async () => {
     const isConnected = await testConnection();
@@ -214,6 +224,8 @@ export default function GameScreen() {
   };
 
   const handleWrongAnswer = () => {
+    soundEffects.playWrong();
+
     const playersWithBets = players.filter((p) => p.currentBet > 0);
 
     if (playersWithBets.length > 0) {
@@ -242,6 +254,7 @@ export default function GameScreen() {
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
+    soundEffects.playCorrect();
     awardPoints(playerId, undefined, 2000);
 
     setShowPointsModal(false);
@@ -309,6 +322,7 @@ export default function GameScreen() {
   const handleNewGame = () => {
     setShowGameEndModal(false);
     resetFlow();
+    soundEffects.dispose();
     createNewGame();
   };
 
@@ -557,7 +571,7 @@ export default function GameScreen() {
           </TouchableOpacity>
 
           <View style={styles.actionButtonsRow}>
-            <TouchableOpacity
+            {/* <TouchableOpacity
               style={[
                 styles.bettingButton,
                 !bettingStatus.canBet && styles.bettingButtonDisabled,
@@ -570,7 +584,7 @@ export default function GameScreen() {
               <Text style={styles.actionButtonText}>
                 {bettingStatus.isActive ? 'Apostar' : 'Sin Apuestas'}
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
             {/* <TouchableOpacity
             style={styles.powerButton}

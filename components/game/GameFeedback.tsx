@@ -1,4 +1,3 @@
-// components/game/GameFeedback.tsx - Visual Feedback System
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import React, { useEffect, useState } from 'react';
 import { Animated, Dimensions, StyleSheet, Text, View } from 'react-native';
