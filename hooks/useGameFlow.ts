@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cardService, GameCard } from '@/services/cardService';
 import { useGameStore } from '@/store/gameStore';
+import { BETTING_TIME_LIMIT } from '@/constants/Betting';
 
 // 📋 TIPOS
 export interface GameFlowState {
@@ -43,7 +44,7 @@ export const useGameFlow = () => {
     questionPhase: false,
     showAnswerRevealed: false,
     bettingPhase: false,
-    bettingTimeLeft: 30,
+    bettingTimeLeft: BETTING_TIME_LIMIT,
     bettingStarted: false,
     currentError: null,
     lastWinnerId: null,
