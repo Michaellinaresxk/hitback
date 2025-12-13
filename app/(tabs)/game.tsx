@@ -5,6 +5,7 @@ import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import RealQRScanner from '@/components/game/QRScanner';
 import BettingModal from '@/components/modal/BettingModal';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { useGameFlow } from '@/hooks/useGameFlow';
 import { useGameStore } from '@/store/gameStore';
 import React, { useEffect, useState } from 'react';
@@ -63,9 +64,9 @@ export default function GameScreen() {
     resetFlow,
     testConnection,
     getWinnerInfo,
-    endBettingPhase, // âœ… NEW
-    getBettingStatus, // âœ… NEW
-    getCurrentPhase, // âœ… NEW
+    endBettingPhase, // Ã¢Å“â€¦ NEW
+    getBettingStatus, // Ã¢Å“â€¦ NEW
+    getCurrentPhase, // Ã¢Å“â€¦ NEW
   } = useGameFlow();
 
   const {
@@ -78,7 +79,7 @@ export default function GameScreen() {
   } = useFeedback();
 
   {
-    /* ðŸŽ® Modal States */
+    /* Ã°Å¸Å½Â® Modal States */
   }
   const [showScanner, setShowScanner] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -115,7 +116,7 @@ export default function GameScreen() {
   }, [flowState.currentError]);
 
   {
-    /*  âœ… UPDATED: Show points modal only after betting phase ends */
+    /*  Ã¢Å“â€¦ UPDATED: Show points modal only after betting phase ends */
   }
   useEffect(() => {
     if (
@@ -133,13 +134,13 @@ export default function GameScreen() {
     if (!isConnected) {
       showWarning(
         'Backend Desconectado',
-        'El servidor no estÃ¡ disponible. Algunas funciones pueden no funcionar.'
+        'El servidor no estÃƒÂ¡ disponible. Algunas funciones pueden no funcionar.'
       );
     }
   };
 
   {
-    /* ðŸŽ¯ QR Scanning Handler */
+    /* Ã°Å¸Å½Â¯ QR Scanning Handler */
   }
   const handleScanCard = async (qrData: string) => {
     setShowScanner(false);
@@ -154,7 +155,7 @@ export default function GameScreen() {
   };
 
   const handleOpenBetting = () => {
-    console.log('ðŸŽ² Opening betting modal...', {
+    console.log('Ã°Å¸Å½Â² Opening betting modal...', {
       currentCard: !!currentCard,
       bettingStatus,
       currentPhase,
@@ -204,7 +205,7 @@ export default function GameScreen() {
     const multiplier = getBettingMultiplier(amount);
     showSuccess(
       'Apuesta Realizada',
-      `${player.name} apostÃ³ ${amount} token${
+      `${player.name} apostÃƒÂ³ ${amount} token${
         amount > 1 ? 's' : ''
       } (${multiplier}x multiplicador)`
     );
@@ -249,9 +250,11 @@ export default function GameScreen() {
     const finalPoints = currentCard.question.points * multiplier;
 
     showSuccess(
-      player.currentBet > 0 ? 'ðŸŽ² Apuesta Ganada!' : 'ðŸ† Punto Otorgado',
       player.currentBet > 0
-        ? `${player.name} gana ${finalPoints} puntos (${currentCard.question.points} Ã— ${multiplier})`
+        ? 'Ã°Å¸Å½Â² Apuesta Ganada!'
+        : 'Ã°Å¸Ââ€  Punto Otorgado',
+      player.currentBet > 0
+        ? `${player.name} gana ${finalPoints} puntos (${currentCard.question.points} Ãƒâ€” ${multiplier})`
         : `${player.name} gana ${finalPoints} punto${
             finalPoints > 1 ? 's' : ''
           }`
@@ -270,7 +273,7 @@ export default function GameScreen() {
 
     usePowerCard(playerId, powerCardId, targetPlayerId);
 
-    showInfo('Poder Activado', `${player.name} usÃ³: ${powerCard.name}`);
+    showInfo('Poder Activado', `${player.name} usÃƒÂ³: ${powerCard.name}`);
   };
 
   const handleSpecialMode = (modeType: 'battle' | 'speed' | 'viral') => {
@@ -316,7 +319,7 @@ export default function GameScreen() {
   };
 
   {
-    /* ðŸŽ¨ Utility Functions */
+    /* Ã°Å¸Å½Â¨ Utility Functions */
   }
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -372,9 +375,9 @@ export default function GameScreen() {
   };
 
   {
-    /* ðŸŽ® Setup Screen */
+    /* 🎮 Setup Screen - Only show if game not active AND not showing end modal */
   }
-  if (!isActive) {
+  if (!isActive && !showGameEndModal) {
     return (
       <View style={styles.setupContainer}>
         <IconSymbol name='gamecontroller' size={48} color='#64748B' />
@@ -387,12 +390,31 @@ export default function GameScreen() {
             if (connected) {
               showSuccess('Conectado', 'Backend funcionando correctamente');
             } else {
-              showError('Sin ConexiÃ³n', 'No se pudo conectar al servidor');
+              showError('Sin Conexión', 'No se pudo conectar al servidor');
             }
           }}
         >
-          <Text style={styles.testConnectionText}>ðŸ§ª Probar ConexiÃ³n</Text>
+          <Text style={styles.testConnectionText}>🧪 Probar Conexión</Text>
         </TouchableOpacity>
+      </View>
+    );
+  }
+
+  {
+    /* 🏆 Game End Screen - Show when game ended with winner */
+  }
+  if (!isActive && showGameEndModal) {
+    return (
+      <View style={styles.container}>
+        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+        <GameEndModal
+          visible={true}
+          players={players}
+          gameTimeElapsed={1200 - timeLeft}
+          totalRounds={round}
+          onNewGame={handleNewGame}
+          onBackToMenu={handleBackToMenu}
+        />
       </View>
     );
   }
@@ -429,7 +451,7 @@ export default function GameScreen() {
           >
             <View style={styles.bettingPhaseHeader}>
               <Text style={styles.bettingPhaseTitle}>
-                ðŸŽ² TIEMPO DE APUESTAS
+                Ã°Å¸Å½Â² TIEMPO DE APUESTAS
               </Text>
               <Text
                 style={[
@@ -463,7 +485,7 @@ export default function GameScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* âœ… Betting Progress Bar */}
+            {/* Ã¢Å“â€¦ Betting Progress Bar */}
             <View style={styles.bettingProgressContainer}>
               <View
                 style={[
@@ -498,7 +520,7 @@ export default function GameScreen() {
             previewUrl={currentCard.audio?.url || ''}
             trackTitle={currentCard.track.title}
             artist={currentCard.track.artist}
-            duration={5000} // ðŸ”§ FIXED: 5 seconds
+            duration={REPRODUCTION_TIME_LIMIT}
             autoPlay={true}
             onAudioFinished={handleAudioFinished}
           />
@@ -508,7 +530,7 @@ export default function GameScreen() {
         <View style={styles.currentTurnContainer}>
           <Text style={styles.turnLabel}>Turno Actual</Text>
           <Text style={styles.currentTurnName}>
-            {currentPlayer?.name || 'No one'} â€¢ Ronda {round}
+            {currentPlayer?.name || 'No one'} Ã¢â‚¬Â¢ Ronda {round}
           </Text>
           <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
         </View>
@@ -619,7 +641,8 @@ export default function GameScreen() {
                       {currentCard.track.title}
                     </Text>
                     <Text style={styles.modalSubtitle}>
-                      {currentCard.track.artist} â€¢ {currentCard.track.year}
+                      {currentCard.track.artist} Ã¢â‚¬Â¢{' '}
+                      {currentCard.track.year}
                     </Text>
                   </View>
 
@@ -629,13 +652,13 @@ export default function GameScreen() {
                     </Text>
                     {showAnswer && (
                       <Text style={styles.answerText}>
-                        âœ… {currentCard.question.answer}
+                        Ã¢Å“â€¦ {currentCard.question.answer}
                       </Text>
                     )}
                   </View>
 
                   <Text style={styles.pointsLabel}>
-                    Â¿QuiÃ©n respondiÃ³ correctamente? (
+                    Ã‚Â¿QuiÃƒÂ©n respondiÃƒÂ³ correctamente? (
                     {currentCard.question.points} pts)
                   </Text>
 
@@ -653,7 +676,7 @@ export default function GameScreen() {
                         </Text>
                         {player.currentBet > 0 && (
                           <Text style={styles.playerBetIndicator}>
-                            Apuesta: {player.currentBet} â†’{' '}
+                            Apuesta: {player.currentBet} Ã¢â€ â€™{' '}
                             {getBettingMultiplier(player.currentBet)}x
                           </Text>
                         )}
@@ -666,7 +689,7 @@ export default function GameScreen() {
                     onPress={handleWrongAnswer}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.noWinnerText}>Nadie acertÃ³</Text>
+                    <Text style={styles.noWinnerText}>Nadie acertÃƒÂ³</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -674,7 +697,7 @@ export default function GameScreen() {
           </View>
         </Modal>
 
-        {/* âœ… Betting Modal */}
+        {/* Ã¢Å“â€¦ Betting Modal */}
         <BettingModal
           visible={showBettingModal}
           onClose={() => setShowBettingModal(false)}
@@ -788,7 +811,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
   },
 
-  // âœ… NEW: Betting Phase Styles
+  // Ã¢Å“â€¦ NEW: Betting Phase Styles
   bettingPhaseContainer: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     margin: 20,
