@@ -1,15 +1,7 @@
 import { StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { styles } from './styles';
-import { useEffect } from 'react';
+import { useColorScheme as useRNColorScheme } from 'react-native';
 import React from 'react';
 import FloatingTabButton from './FloatingTabButton';
 
@@ -18,21 +10,8 @@ export default function FloatingDockTabBar({
   descriptors,
   navigation,
 }: BottomTabBarProps) {
-  const colorScheme = useColorScheme();
+  const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
-
-  const dockScale = useSharedValue(1);
-  const dockOpacity = useSharedValue(1);
-
-  useEffect(() => {
-    dockScale.value = withSpring(1, { damping: 20, stiffness: 300 });
-    dockOpacity.value = withTiming(1, { duration: 500 });
-  }, []);
-
-  const dockStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: dockScale.value }],
-    opacity: dockOpacity.value,
-  }));
 
   const handleTabPress = (route: any, isFocused: boolean) => {
     const event = navigation.emit({
@@ -47,10 +26,9 @@ export default function FloatingDockTabBar({
   };
 
   return (
-    <Animated.View
+    <View
       style={[
         styles.dockContainer,
-        dockStyle,
         {
           backgroundColor: isDark
             ? 'rgba(15, 23, 42, 0.8)'
@@ -107,6 +85,61 @@ export default function FloatingDockTabBar({
           },
         ]}
       />
-    </Animated.View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  dockContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    height: 70,
+    borderRadius: 28,
+    borderWidth: 1,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  backgroundOrb: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    opacity: 0.3,
+  },
+  orb1: {
+    backgroundColor: 'rgba(59, 130, 246, 0.4)',
+    top: -50,
+    left: -30,
+  },
+  orb2: {
+    backgroundColor: 'rgba(139, 92, 246, 0.3)',
+    bottom: -60,
+    right: -40,
+  },
+  tabsContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingHorizontal: 12,
+  },
+  dockReflection: {
+    position: 'absolute',
+    bottom: -8,
+    left: '10%',
+    right: '10%',
+    height: 8,
+    borderRadius: 10,
+    opacity: 0.6,
+    transform: [{ scaleY: 0.3 }],
+  },
+});

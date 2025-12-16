@@ -2,6 +2,7 @@ import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useRouter } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Platform,
   ScrollView,
@@ -14,6 +15,7 @@ import {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   return (
     <ThemedView style={styles.container}>
@@ -23,10 +25,8 @@ export default function HomeScreen() {
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.appTitle}>🎵 HITBACK</Text>
-          <Text style={styles.appSubtitle}>Game Master Edition</Text>
-          <Text style={styles.description}>
-            Escanea cartas musicales y compite con tus amigos
-          </Text>
+          <Text style={styles.appSubtitle}> {t('home.subtitle')}</Text>
+          <Text style={styles.description}>{t('home.description')}</Text>
         </View>
 
         {/* Main Content */}
@@ -40,9 +40,11 @@ export default function HomeScreen() {
             <View style={styles.buttonContent}>
               <IconSymbol name='play.circle.fill' size={32} color='#FFFFFF' />
               <View style={styles.buttonText}>
-                <Text style={styles.buttonTitle}>Nueva Partida</Text>
+                <Text style={styles.buttonTitle}>
+                  {t('home.new_game.title')}
+                </Text>
                 <Text style={styles.buttonSubtitle}>
-                  2-8 jugadores • 20 min
+                  {t('home.new_game.subtitle')}
                 </Text>
               </View>
               <IconSymbol
@@ -66,38 +68,53 @@ export default function HomeScreen() {
                   size={24}
                   color='#F59E0B'
                 />
-                <Text style={styles.secondaryButtonText}>Reglas</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {' '}
+                  {t('home.rules')}
+                </Text>
               </View>
             </TouchableOpacity>
 
-            {/* <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => router.push('/settings')}
-            activeOpacity={0.8}
-          >
-            <View style={styles.secondaryButtonContent}>
-              <IconSymbol name='gear' size={24} color='#8B5CF6' />
-              <Text style={styles.secondaryButtonText}>Configuración</Text>
-            </View>
-          </TouchableOpacity> */}
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => router.push('/settings')}
+              activeOpacity={0.8}
+            >
+              <View style={styles.secondaryButtonContent}>
+                <IconSymbol name='gear' size={24} color='#8B5CF6' />
+                <Text style={styles.secondaryButtonText}>
+                  {' '}
+                  {t('home.settings')}
+                </Text>
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Simple Instructions */}
           <View style={styles.instructionsContainer}>
-            <Text style={styles.instructionsTitle}>¿Cómo funciona?</Text>
+            <Text style={styles.instructionsTitle}>
+              {' '}
+              {t('home.how_works.title')}
+            </Text>
             <View style={styles.instructionsList}>
               <View style={styles.instructionItem}>
                 <Text style={styles.instructionNumber}>1</Text>
-                <Text style={styles.instructionText}>Agrega jugadores</Text>
+                <Text style={styles.instructionText}>
+                  {' '}
+                  {t('home.how_works.step1')}
+                </Text>
               </View>
               <View style={styles.instructionItem}>
                 <Text style={styles.instructionNumber}>2</Text>
-                <Text style={styles.instructionText}>Escanea cartas QR</Text>
+                <Text style={styles.instructionText}>
+                  {' '}
+                  {t('home.how_works.step2')}
+                </Text>
               </View>
               <View style={styles.instructionItem}>
                 <Text style={styles.instructionNumber}>3</Text>
                 <Text style={styles.instructionText}>
-                  ¡Compite y diviértete!
+                  {t('home.how_works.step3')}
                 </Text>
               </View>
             </View>
@@ -106,9 +123,7 @@ export default function HomeScreen() {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Versión Beta • Hecho con ❤️ para amigos
-          </Text>
+          <Text style={styles.footerText}>{t('home.footer')}</Text>
         </View>
       </ScrollView>
     </ThemedView>
