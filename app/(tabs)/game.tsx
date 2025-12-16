@@ -267,11 +267,9 @@ export default function GameScreen() {
     const finalPoints = currentCard.question.points * multiplier;
 
     showSuccess(
+      player.currentBet > 0 ? ' Apuesta Ganada!' : ' Punto Otorgado',
       player.currentBet > 0
-        ? 'Ã°Å¸Å½Â² Apuesta Ganada!'
-        : 'Ã°Å¸Ââ€  Punto Otorgado',
-      player.currentBet > 0
-        ? `${player.name} gana ${finalPoints} puntos (${currentCard.question.points} Ãƒâ€” ${multiplier})`
+        ? `${player.name} gana ${finalPoints} puntos (${currentCard.question.points} ” ${multiplier})`
         : `${player.name} gana ${finalPoints} punto${
             finalPoints > 1 ? 's' : ''
           }`
@@ -290,7 +288,7 @@ export default function GameScreen() {
 
     usePowerCard(playerId, powerCardId, targetPlayerId);
 
-    showInfo('Poder Activado', `${player.name} usÃƒÂ³: ${powerCard.name}`);
+    showInfo('Poder Activado', `${player.name} : ${powerCard.name}`);
   };
 
   const handleSpecialMode = (modeType: 'battle' | 'speed' | 'viral') => {
@@ -468,9 +466,7 @@ export default function GameScreen() {
             ]}
           >
             <View style={styles.bettingPhaseHeader}>
-              <Text style={styles.bettingPhaseTitle}>
-                Ã°Å¸Å½Â² TIEMPO DE APUESTAS
-              </Text>
+              <Text style={styles.bettingPhaseTitle}>TIEMPO DE APUESTAS</Text>
               <Text
                 style={[
                   styles.bettingPhaseTimer,
@@ -503,7 +499,7 @@ export default function GameScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Ã¢Å“â€¦ Betting Progress Bar */}
+            {/* Betting Progress Bar */}
             <View style={styles.bettingProgressContainer}>
               <View
                 style={[
@@ -670,13 +666,13 @@ export default function GameScreen() {
                     </Text>
                     {showAnswer && (
                       <Text style={styles.answerText}>
-                        Ã¢Å“â€¦ {currentCard.question.answer}
+                        {currentCard.question.answer}
                       </Text>
                     )}
                   </View>
 
                   <Text style={styles.pointsLabel}>
-                    Ã‚Â¿QuiÃƒÂ©n respondiÃƒÂ³ correctamente? (
+                    ¿Quien respondio correctamente? (
                     {currentCard.question.points} pts)
                   </Text>
 
@@ -707,7 +703,7 @@ export default function GameScreen() {
                     onPress={handleWrongAnswer}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.noWinnerText}>Nadie acertÃƒÂ³</Text>
+                    <Text style={styles.noWinnerText}>Nadie acerto</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -715,7 +711,7 @@ export default function GameScreen() {
           </View>
         </Modal>
 
-        {/* Ã¢Å“â€¦ Betting Modal */}
+        {/*  Betting Modal */}
         <BettingModal
           visible={showBettingModal}
           onClose={() => setShowBettingModal(false)}
@@ -829,7 +825,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
   },
 
-  // Ã¢Å“â€¦ NEW: Betting Phase Styles
+  //Betting Phase Styles
   bettingPhaseContainer: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     margin: 20,

@@ -5,7 +5,7 @@
     "error": "An error occurred"
   },
   "home": {
-    "subtitle": "Game Master Edition",
+    "subtitle": "Edición Game Master",
     "description": "Escanea cartas musicales y compite con tus amigos",
     "new_game": {
       "title": "Nueva Partida",
@@ -23,7 +23,7 @@
   },
   "setupGame": {
     "config_game": "Configura tu partida",
-    "players_count": "JUGADORES ({{count}}/8)",
+    "players_count": "JUGADORES",
     "player_placeholder": "Nombre del jugador",
     "empty_players": "Agrega jugadores para empezar",
     "how_to_play": "CÓMO JUGAR",
@@ -39,7 +39,8 @@
       "game_config": "CONFIGURACIÓN DE JUEGO",
       "features": "CARACTERÍSTICAS",
       "preferences": "PREFERENCIAS",
-      "advanced": "AVANZADO"
+      "advanced": "AVANZADO",
+      "selected_language": "Lenguaje Seleccionado:"
     },
     "units": {
       "min": "{{count}} min",

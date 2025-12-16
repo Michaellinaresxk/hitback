@@ -5,7 +5,7 @@
     "error": "An error occurred"
   },
   "home": {
-    "subtitle": "Edición Game Master",
+    "subtitle": "Edycja Game Master",
     "description": "Skanuj karty muzyczne i rywalizuj ze znajomymi",
     "new_game": {
       "title": "Nowa gra",
@@ -23,7 +23,7 @@
   },
   "setupGame": {
     "config_game": "Skonfiguruj swoją grę",
-    "players_count": "GRACZE ({{count}}/8)",
+    "players_count": "GRACZE",
     "player_placeholder": "Nazwa gracza",
     "empty_players": "Dodaj graczy, aby rozpocząć",
     "how_to_play": "JAK GRAĆ",
@@ -39,7 +39,8 @@
       "game_config": "USTAWIENIA GRY",
       "features": "FUNKCJE",
       "preferences": "PREFERENCJE",
-      "advanced": "ZAAWANSOWANE"
+      "advanced": "ZAAWANSOWANE",
+      "selected_language": "Wybrany język:"
     },
     "units": {
       "min": "{{count}} min",

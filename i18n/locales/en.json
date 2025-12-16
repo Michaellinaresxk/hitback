@@ -23,7 +23,7 @@
   },
   "setupGame": {
     "config_game": "Set up your game",
-    "players_count": "PLAYERS ({{count}}/8)",
+    "players_count": "PLAYERS ",
     "player_placeholder": "Player name",
     "empty_players": "Add players to start",
     "how_to_play": "HOW TO PLAY",
@@ -39,7 +39,8 @@
       "game_config": "GAME SETTINGS",
       "features": "FEATURES",
       "preferences": "PREFERENCES",
-      "advanced": "ADVANCED"
+      "advanced": "ADVANCED",
+      "selected_language": "SELECTED LANGUAGE"
     },
     "units": {
       "min": "{{count}} min",
@@ -95,7 +96,7 @@
     "flow": {
       "title": "⚡ GAME FLOW",
       "normal_round": "Normal Round:",
-      "normal_steps": "• Player scans their QR card\n• Audio plays on Game Master's device (5 seconds)\n• Question appears on Game Master's screen\n• Everyone competes by shouting the answer\n• Game Master selects the winner\n• Points are added automatically",
+      "normal_steps": "•Player scans their QR card\n• Audio plays on Game Master's device (5 seconds)\n• Question appears on Game Master's screen\n• Everyone competes by shouting the answer\n• Game Master selects the winner\n• Points are added automatically",
       "rotation": "Rotation:",
       "rotation_steps": "• The winner becomes the next DJ\n• In case of a tie, the Game Master decides who goes next"
     },

@@ -21,8 +21,8 @@ export default function SettingsScreen() {
   // Future settings state (not functional yet, just for UI)
   const [settings, setSettings] = useState({
     gameDuration: 20, // minutes
-    winningScore: 15, // points
-    audioPreviewTime: 5, // seconds
+    winningScore: 22, // points
+    audioPreviewTime: 8, // seconds
     enableBetting: true,
     enablePowerCards: true,
     enableSpecialModes: true,
@@ -30,51 +30,6 @@ export default function SettingsScreen() {
     soundEffects: true,
     hapticFeedback: true,
   });
-
-  const renderSettingItem = (
-    icon: string,
-    title: string,
-    subtitle: string,
-    value: string | boolean,
-    onPress: () => void,
-    type: 'toggle' | 'select' = 'select'
-  ) => (
-    <TouchableOpacity
-      style={styles.settingItem}
-      onPress={onPress}
-      activeOpacity={type === 'toggle' ? 1 : 0.8}
-      disabled={type === 'toggle'}
-    >
-      <View style={styles.settingLeft}>
-        <View style={styles.settingIcon}>
-          <IconSymbol name={icon} size={20} color='#64748B' />
-        </View>
-        <View style={styles.settingInfo}>
-          <Text style={styles.settingTitle}>{title}</Text>
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
-        </View>
-      </View>
-
-      <View style={styles.settingRight}>
-        {type === 'toggle' ? (
-          <Switch
-            value={value as boolean}
-            onValueChange={(newValue) => {
-              // Future functionality
-              console.log(`Toggle ${title}:`, newValue);
-            }}
-            trackColor={{ false: '#374151', true: '#3B82F6' }}
-            thumbColor={value ? '#FFFFFF' : '#9CA3AF'}
-          />
-        ) : (
-          <>
-            <Text style={styles.settingValue}>{value}</Text>
-            <IconSymbol name='chevron.right' size={16} color='#94A3B8' />
-          </>
-        )}
-      </View>
-    </TouchableOpacity>
-  );
 
   const renderSectionHeader = (title: string, icon: string) => (
     <View style={styles.sectionHeader}>
@@ -90,7 +45,10 @@ export default function SettingsScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 🌍 LANGUAGE SECTION */}
         <View style={styles.section}>
-          {renderSectionHeader(t('settings.language').toUpperCase(), 'globe')}
+          {renderSectionHeader(
+            t('settingPage.sections.game_config').toUpperCase(),
+            'globe'
+          )}
 
           {/* Language Selector Component */}
           <View style={styles.languageSelectorContainer}>
@@ -98,129 +56,16 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* Game Settings */}
-        <View style={styles.section}>
-          {renderSectionHeader('CONFIGURACIÓN DE JUEGO', 'gamecontroller')}
-
-          {renderSettingItem(
-            'clock',
-            'Duración de Partida',
-            'Tiempo máximo por juego',
-            `${settings.gameDuration} min`,
-            () => console.log('Change game duration')
-          )}
-
-          {renderSettingItem(
-            'trophy',
-            'Puntos para Ganar',
-            'Puntuación objetivo para victoria',
-            `${settings.winningScore} pts`,
-            () => console.log('Change winning score')
-          )}
-
-          {renderSettingItem(
-            'speaker.wave.3',
-            'Tiempo de Audio',
-            'Duración de preview musical',
-            `${settings.audioPreviewTime} seg`,
-            () => console.log('Change audio time')
-          )}
-        </View>
-
-        {/* Game Features */}
-        <View style={styles.section}>
-          {renderSectionHeader('CARACTERÍSTICAS', 'sparkles')}
-
-          {renderSettingItem(
-            'dice.fill',
-            'Sistema de Apuestas',
-            'Permitir apostar tokens en respuestas',
-            settings.enableBetting,
-            () => console.log('Toggle betting'),
-            'toggle'
-          )}
-
-          {renderSettingItem(
-            'sparkles',
-            'Cartas de Poder',
-            'Habilitar power-ups especiales',
-            settings.enablePowerCards,
-            () => console.log('Toggle power cards'),
-            'toggle'
-          )}
-
-          {renderSettingItem(
-            'flame.fill',
-            'Modos Especiales',
-            'Battle, Speed Round, Viral Moment',
-            settings.enableSpecialModes,
-            () => console.log('Toggle special modes'),
-            'toggle'
-          )}
-
-          {renderSettingItem(
-            'arrow.clockwise',
-            'Avance Automático',
-            'Cambiar turno automáticamente',
-            settings.autoAdvanceTurn,
-            () => console.log('Toggle auto advance'),
-            'toggle'
-          )}
-        </View>
-
-        {/* App Preferences */}
-        <View style={styles.section}>
-          {renderSectionHeader('PREFERENCIAS', 'gear')}
-
-          {renderSettingItem(
-            'speaker',
-            'Efectos de Sonido',
-            'Sonidos de la interfaz',
-            settings.soundEffects,
-            () => console.log('Toggle sound effects'),
-            'toggle'
-          )}
-
-          {renderSettingItem(
-            'iphone.radiowaves.left.and.right',
-            'Vibración',
-            'Feedback háptico en acciones',
-            settings.hapticFeedback,
-            () => console.log('Toggle haptic'),
-            'toggle'
-          )}
-        </View>
-
-        {/* Advanced Settings */}
-        <View style={styles.section}>
-          {renderSectionHeader('AVANZADO', 'wrench.and.screwdriver')}
-
-          {renderSettingItem(
-            'trash',
-            'Reiniciar Configuración',
-            'Volver a valores por defecto',
-            '',
-            () => console.log('Reset settings')
-          )}
-
-          {renderSettingItem(
-            'square.and.arrow.up',
-            'Exportar Configuración',
-            'Compartir ajustes con otros',
-            '',
-            () => console.log('Export settings')
-          )}
-        </View>
-
         {/* Info Section */}
         <View style={styles.infoSection}>
           <View style={styles.infoCard}>
             <IconSymbol name='info.circle' size={24} color='#3B82F6' />
             <View style={styles.infoContent}>
-              <Text style={styles.infoTitle}>Configuración en Desarrollo</Text>
+              <Text style={styles.infoTitle}>
+                {t('settingPage.info.dev_title')}
+              </Text>
               <Text style={styles.infoText}>
-                Estas opciones estarán disponibles en futuras actualizaciones.
-                Por ahora, todas las partidas usan la configuración estándar.
+                {t('settingPage.info.dev_text')}
               </Text>
             </View>
           </View>
@@ -229,7 +74,7 @@ export default function SettingsScreen() {
         {/* Version Info */}
         <View style={styles.versionSection}>
           <Text style={styles.versionText}>HITBACK v1.0.0 Beta</Text>
-          <Text style={styles.versionSubtext}>Game Master Edition</Text>
+          <Text style={styles.versionSubtext}> {t('home.subtitle')}</Text>
         </View>
       </ScrollView>
     </View>
