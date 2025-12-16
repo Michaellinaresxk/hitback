@@ -177,9 +177,9 @@ export default function AudioPlayer({
         soundRef.current = null;
       }
     };
-  }, [previewUrl]); // Solo depende de previewUrl para evitar múltiples reproducciones
+  }, [previewUrl]); // It only depends on previewUrl to avoid multiple plays
 
-  // 🎨 Animación de pulso
+  // 🎨 Pulse animation
   const startPulseAnimation = () => {
     Animated.loop(
       Animated.sequence([
@@ -205,7 +205,7 @@ export default function AudioPlayer({
           isPlaying && { transform: [{ scale: pulseAnim }] },
         ]}
       >
-        {/* Icono */}
+        {/* Icon */}
         <View
           style={[
             styles.iconContainer,
@@ -237,7 +237,6 @@ export default function AudioPlayer({
             {artist}
           </Text>
 
-          {/* Estado */}
           <View style={styles.statusContainer}>
             {isLoading ? (
               <Text style={styles.statusText}>Cargando audio...</Text>

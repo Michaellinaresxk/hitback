@@ -37,10 +37,6 @@ export default function LanguageSelector() {
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>
-        {t('settings.language')}
-      </Text>
-
       <View style={styles.languageList}>
         {LANGUAGES.map((language) => {
           const isSelected = i18n.language === language.code;
@@ -99,7 +95,7 @@ export default function LanguageSelector() {
             { color: isDark ? '#9CA3AF' : '#6B7280' },
           ]}
         >
-          {t('settings.language')}:{' '}
+          {t('settingPage.sections.selected_language')}:{' '}
         </Text>
         <Text
           style={[
@@ -107,6 +103,7 @@ export default function LanguageSelector() {
             { color: isDark ? '#E5E7EB' : '#374151' },
           ]}
         >
+          {' '}
           {LANGUAGES.find((l) => l.code === i18n.language)?.label || 'English'}
         </Text>
       </View>

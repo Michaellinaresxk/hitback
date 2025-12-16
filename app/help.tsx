@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Platform,
   ScrollView,
@@ -10,64 +10,7 @@ import {
 } from 'react-native';
 
 export default function HelpScreen() {
-  const router = useRouter();
-
-  const cardTypes = [
-    {
-      emoji: '🎵',
-      name: 'SONG CARDS',
-      color: '#F59E0B',
-      points: '1 punto',
-      description: 'Escuchas 5 segundos → "¿Cuál es la canción?"',
-    },
-    {
-      emoji: '🎤',
-      name: 'ARTIST CARDS',
-      color: '#EF4444',
-      points: '2 puntos',
-      description: 'Escuchas 5 segundos → "¿Quién la canta?"',
-    },
-    {
-      emoji: '📅',
-      name: 'DECADE CARDS',
-      color: '#3B82F6',
-      points: '3 puntos',
-      description: 'Escuchas 5 segundos → "¿De qué década es?"',
-    },
-    {
-      emoji: '📝',
-      name: 'LYRICS CARDS',
-      color: '#10B981',
-      points: '3 puntos',
-      description: 'Escuchas 5 segundos → "Completa la siguiente línea"',
-    },
-    {
-      emoji: '🔥',
-      name: 'CHALLENGE CARDS',
-      color: '#8B5CF6',
-      points: '5 puntos',
-      description: 'Canta, baila o imita al artista',
-    },
-  ];
-
-  const specialModes = [
-    {
-      icon: '⚔️',
-      name: 'BATTLE MODE',
-      description:
-        'Game Master selecciona 2 jugadores específicos para competir cara a cara',
-    },
-    {
-      icon: '⚡',
-      name: 'SPEED ROUND',
-      description: 'Game Master escanea 5 cartas seguidas en 30 segundos',
-    },
-    {
-      icon: '🔥',
-      name: 'VIRAL MOMENT',
-      description: 'Challenge Cards activadas con performance grabado',
-    },
-  ];
+  const { t } = useTranslation();
 
   return (
     <View style={styles.container}>
@@ -89,7 +32,7 @@ export default function HelpScreen() {
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Game Overview */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎯 OBJETIVO</Text>
+          <Text style={styles.sectionTitle}>{t('help.objective.title')}</Text>
           <View style={styles.overviewCard}>
             <Text style={styles.overviewText}>
               Ser el primer jugador en alcanzar{' '}
@@ -102,106 +45,52 @@ export default function HelpScreen() {
 
         {/* Setup */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>📱 CONFIGURACIÓN</Text>
+          <Text style={styles.sectionTitle}>{t('help.setup.title')}</Text>
           <View style={styles.stepsList}>
             <View style={styles.stepItem}>
               <Text style={styles.stepNumber}>1</Text>
-              <Text style={styles.stepText}>
-                Game Master abre la app y crea nueva partida
-              </Text>
+              <Text style={styles.stepText}>{t('help.setup.step1')}</Text>
             </View>
             <View style={styles.stepItem}>
               <Text style={styles.stepNumber}>2</Text>
-              <Text style={styles.stepText}>
-                Agrega jugadores manualmente (2-8 personas)
-              </Text>
+              <Text style={styles.stepText}>{t('help.setup.step2')}</Text>
             </View>
             <View style={styles.stepItem}>
               <Text style={styles.stepNumber}>3</Text>
-              <Text style={styles.stepText}>
-                Distribuye 5 cartas físicas a cada jugador
-              </Text>
+              <Text style={styles.stepText}>{t('help.setup.step3')}</Text>
             </View>
             <View style={styles.stepItem}>
               <Text style={styles.stepNumber}>4</Text>
-              <Text style={styles.stepText}>¡Inicia el juego!</Text>
+              <Text style={styles.stepText}>{t('help.setup.step4')}</Text>
             </View>
           </View>
         </View>
 
         {/* Game Flow */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚡ FLUJO DE JUEGO</Text>
+          <Text style={styles.sectionTitle}>{t('help.flow.title')}</Text>
           <View style={styles.flowCard}>
             <View style={styles.flowStep}>
-              <Text style={styles.flowTitle}>Ronda Normal:</Text>
-              <Text style={styles.flowText}>
-                • Jugador escanea su carta QR{'\n'}• Audio reproduce en
-                dispositivo del Game Master (5 segundos){'\n'}• Pregunta aparece
-                en pantalla del Game Master{'\n'}• Todos compiten gritando la
-                respuesta{'\n'}• Game Master selecciona al ganador{'\n'}• Puntos
-                se suman automáticamente
+              <Text style={styles.flowTitle}>
+                {t('help.flow.normal_round')}
               </Text>
+              <Text style={styles.flowText}>{t('help.flow.normal_steps')}</Text>
             </View>
 
             <View style={styles.flowStep}>
-              <Text style={styles.flowTitle}>Rotación:</Text>
+              <Text style={styles.flowTitle}>{t('help.flow.rotation')}</Text>
               <Text style={styles.flowText}>
-                • El ganador se convierte en el próximo DJ{'\n'}• Si hay empate,
-                el Game Master decide quién sigue
+                {t('help.flow.rotation_steps')}
               </Text>
             </View>
           </View>
         </View>
 
-        {/* Card Types */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🃏 TIPOS DE CARTAS</Text>
-          {cardTypes.map((card, index) => (
-            <View
-              key={index}
-              style={[styles.cardTypeItem, { borderLeftColor: card.color }]}
-            >
-              <View style={styles.cardTypeHeader}>
-                <Text style={styles.cardTypeEmoji}>{card.emoji}</Text>
-                <View style={styles.cardTypeInfo}>
-                  <Text style={styles.cardTypeName}>{card.name}</Text>
-                  <Text style={[styles.cardTypePoints, { color: card.color }]}>
-                    {card.points}
-                  </Text>
-                </View>
-              </View>
-              <Text style={styles.cardTypeDescription}>{card.description}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Special Modes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🎮 MODOS ESPECIALES</Text>
-          {specialModes.map((mode, index) => (
-            <View key={index} style={styles.specialModeItem}>
-              <Text style={styles.specialModeIcon}>{mode.icon}</Text>
-              <View style={styles.specialModeInfo}>
-                <Text style={styles.specialModeName}>{mode.name}</Text>
-                <Text style={styles.specialModeDescription}>
-                  {mode.description}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </View>
-
         {/* Tips */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>💡 CONSEJOS</Text>
+          <Text style={styles.sectionTitle}>{t('help.tips.title')}</Text>
           <View style={styles.tipsCard}>
-            <Text style={styles.tipText}>
-              • Mantén el volumen alto para que todos escuchen{'\n'}• Como Game
-              Master, sé justo pero rápido en las decisiones{'\n'}• ¡La
-              diversión es más importante que ganar!{'\n'}• Si hay dudas, el
-              Game Master tiene la palabra final
-            </Text>
+            <Text style={styles.tipText}>{t('help.tips.list')}</Text>
           </View>
         </View>
       </ScrollView>

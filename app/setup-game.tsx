@@ -2,6 +2,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   FlatList,
@@ -17,6 +18,7 @@ import {
 export default function GameSetupScreen() {
   const { players, addPlayer, removePlayer, startGame } = useGameStore();
   const [playerName, setPlayerName] = useState('');
+  const { t } = useTranslation();
 
   const handleAddPlayer = () => {
     if (playerName.trim().length === 0) {
@@ -72,7 +74,7 @@ export default function GameSetupScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>🎵 HITBACK</Text>
-        <Text style={styles.subtitle}>Configura tu partida</Text>
+        <Text style={styles.subtitle}>{t('setupGame.config_game')}</Text>
       </View>
 
       {/* Players Section */}
@@ -80,14 +82,14 @@ export default function GameSetupScreen() {
         <View style={styles.sectionHeader}>
           <IconSymbol name='person.3' size={20} color='#10B981' />
           <Text style={styles.sectionTitle}>
-            JUGADORES ({players.length}/8)
+            {t('setupGame.players_count')} ({players.length}/8)
           </Text>
         </View>
 
         <View style={styles.addPlayerContainer}>
           <TextInput
             style={styles.playerInput}
-            placeholder='Nombre del jugador'
+            placeholder={t('setupGame.player_placeholder')}
             placeholderTextColor='#64748B'
             value={playerName}
             onChangeText={setPlayerName}
@@ -116,7 +118,7 @@ export default function GameSetupScreen() {
           <View style={styles.emptyPlayersContainer}>
             <IconSymbol name='person.3' size={48} color='#475569' />
             <Text style={styles.emptyPlayersText}>
-              Agrega jugadores para empezar
+              {t('setupGame.empty_players')}
             </Text>
           </View>
         )}
@@ -126,20 +128,14 @@ export default function GameSetupScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <IconSymbol name='info.circle' size={20} color='#F59E0B' />
-          <Text style={styles.sectionTitle}>CÓMO JUGAR</Text>
+          <Text style={styles.sectionTitle}> {t('setupGame.how_to_play')}</Text>
         </View>
 
         <View style={styles.rulesContainer}>
-          <Text style={styles.ruleText}>
-            • Escanea cartas QR para reproducir audio
-          </Text>
-          <Text style={styles.ruleText}>• Compite gritando las respuestas</Text>
-          <Text style={styles.ruleText}>
-            • Primer jugador en llegar a 15 puntos gana
-          </Text>
-          <Text style={styles.ruleText}>
-            • Cada partida dura 20 minutos máximo
-          </Text>
+          <Text style={styles.ruleText}>•{t('setupGame.rule_1')}</Text>
+          <Text style={styles.ruleText}>• {t('setupGame.rule_2')}</Text>
+          <Text style={styles.ruleText}>• {t('setupGame.rule_3')}</Text>
+          <Text style={styles.ruleText}>• {t('setupGame.rule_4')}</Text>
         </View>
       </View>
 
@@ -155,12 +151,12 @@ export default function GameSetupScreen() {
           activeOpacity={0.9}
         >
           <IconSymbol name='play.circle.fill' size={28} color='#FFFFFF' />
-          <Text style={styles.startGameText}>EMPEZAR JUEGO</Text>
+          <Text style={styles.startGameText}>{t('setupGame.start_game')}</Text>
         </TouchableOpacity>
 
         {players.length < 2 && (
           <Text style={styles.minPlayersText}>
-            Necesitas al menos 2 jugadores
+            {t('setupGame.min_players_warning')}
           </Text>
         )}
       </View>
