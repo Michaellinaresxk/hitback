@@ -1,0 +1,152 @@
+{
+  "common": {
+    "welcome": "Welcome to Hitback",
+    "loading": "Loading...",
+    "error": "An error occurred"
+  },
+  "home": {
+    "subtitle": "Edición Game Master",
+    "description": "Skanuj karty muzyczne i rywalizuj ze znajomymi",
+    "new_game": {
+      "title": "Nowa gra",
+      "subtitle": "2-8 graczy • 20 min"
+    },
+    "rules": "Zasady",
+    "settings": "Ustawienia",
+    "how_works": {
+      "title": "Jak to działa?",
+      "step1": "Dodaj graczy",
+      "step2": "Skanuj karty QR",
+      "step3": "Rywalizuj i baw się dobrze!"
+    },
+    "footer": "Wersja Beta • Stworzone z ❤️ dla przyjaciół"
+  },
+  "setupGame": {
+    "config_game": "Skonfiguruj swoją grę",
+    "players_count": "GRACZE ({{count}}/8)",
+    "player_placeholder": "Nazwa gracza",
+    "empty_players": "Dodaj graczy, aby rozpocząć",
+    "how_to_play": "JAK GRAĆ",
+    "rule_1": "Skanuj karty QR, aby odtwarzać dźwięk",
+    "rule_2": "Rywalizuj wykrzykując odpowiedzi",
+    "rule_3": "Pierwszy gracz, który zdobędzie 15 punktów, wygrywa",
+    "rule_4": "Każda gra trwa maksymalnie 20 minut",
+    "start_game": "ROZPOCZNIJ GRĘ",
+    "min_players_warning": "Potrzebujesz co najmniej 2 graczy"
+  },
+  "settingPage": {
+    "sections": {
+      "game_config": "USTAWIENIA GRY",
+      "features": "FUNKCJE",
+      "preferences": "PREFERENCJE",
+      "advanced": "ZAAWANSOWANE"
+    },
+    "units": {
+      "min": "{{count}} min",
+      "pts": "{{count}} pkt",
+      "seg": "{{count}} sek"
+    },
+    "info": {
+      "dev_title": "Ustawienia w przygotowaniu",
+      "dev_text": "Te opcje będą dostępne w przyszłych aktualizacjach. Obecnie wszystkie gry używają ustawień standardowych."
+    },
+    "duration": {
+      "title": "Czas trwania gry",
+      "desc": "Maksymalny czas na grę"
+    },
+    "winning_score": {
+      "title": "Punkty do wygrania",
+      "desc": "Docelowy wynik do zwycięstwa"
+    },
+    "audio_time": {
+      "title": "Czas dźwięku",
+      "desc": "Czas trwania podglądu muzyki"
+    },
+    "betting": {
+      "title": "System zakładów",
+      "desc": "Zezwalaj na obstawianie żetonów"
+    },
+    "power_cards": {
+      "title": "Karty mocy",
+      "desc": "Włącz specjalne ulepszenia"
+    },
+    "special_modes": {
+      "title": "Tryby specjalne",
+      "desc": "Battle, Speed Round, Viral Moment"
+    },
+    "auto_advance": {
+      "title": "Automatyczne przejście",
+      "desc": "Automatycznie zmieniaj tury"
+    },
+    "sound_effects": {
+      "title": "Efekty dźwiękowe",
+      "desc": "Dźwięki interfejsu"
+    },
+    "vibration": { "title": "Wibracje", "desc": "Informacja haptyczna" },
+    "reset": {
+      "title": "Resetuj ustawienia",
+      "desc": "Przywróć wartości domyślne"
+    },
+    "export": {
+      "title": "Eksportuj ustawienia",
+      "desc": "Udostępnij ustawienia innym"
+    }
+  },
+  "help": {
+    "objective": {
+      "title": "🎯 CEL",
+      "text": "Bądź pierwszym graczem, który zdobędzie <1>{{score}} punktów</1> lub zdobędzie najwyższy wynik po <1>{{time}} minutach</1> gry."
+    },
+    "setup": {
+      "title": "📱 KONFIGURACJA",
+      "step1": "Game Master otwiera aplikację i tworzy nową grę",
+      "step2": "Dodaj graczy ręcznie (2-8 osób)",
+      "step3": "Rozdaj po 5 fizycznych kart każdemu graczowi",
+      "step4": "Rozpocznij grę!"
+    },
+    "flow": {
+      "title": "⚡ PRZEBIEG GRY",
+      "normal_round": "Normalna runda:",
+      "normal_steps": "• Gracz skanuje swoją kartę QR\n• Dźwięk jest odtwarzany na urządzeniu Game Mastera (5 sekund)\n• Pytanie pojawia się na ekranie Game Mastera\n• Wszyscy rywalizują wykrzykując odpowiedź\n• Game Master wybiera zwycięzcę\n• Punkty są dodawane automatycznie",
+      "rotation": "Rotacja:",
+      "rotation_steps": "• Zwycięzca zostaje kolejnym DJ-em\n• W przypadku remisu Game Master decyduje, kto będzie następny"
+    },
+    "card_types_title": "🃏 TYPY KART",
+    "special_modes_title": "🎮 TRYBY SPECJALNE",
+    "tips": {
+      "title": "💡 WSKAZÓWKI",
+      "list": "• Utrzymuj wysoki poziom głośności, aby wszyscy słyszeli\n• Jako Game Master bądź sprawiedliwy, ale szybki w podejmowaniu decyzji\n• Zabawa jest ważniejsza niż wygrana!\n• W razie wątpliwości Game Master ma ostateczne zdanie"
+    }
+  },
+  "game": {
+    "viral": "WIRALOWY",
+    "pot_label": "PULA GRY",
+    "pot_subtext": "Żetony utracone w zakładach",
+    "tokens_count": "{{count}} żetonów",
+    "current_turn": "Obecna tura",
+    "no_one": "Nikt",
+    "round_info": "Runda {{round}}",
+    "phase_prefix": "Faza: ",
+    "scanning": "Skanowanie...",
+    "scan_button": "Skanuj kartę",
+    "betting": {
+      "title": "🎲 CZAS NA ZAKŁADY",
+      "instructions": "Gracze mogą położyć swoje żetony na stole",
+      "register": "Zarejestruj zakłady",
+      "end": "Zakończ",
+      "active": "Obstawiaj",
+      "inactive": "Brak zakładów"
+    },
+    "modal": {
+      "question_label": "Kto odpowiedział poprawnie? ({{points}} pkt)",
+      "answer_correct": "✅ {{answer}}",
+      "player_bet": "Zakład: {{amount}} → {{mult}}x",
+      "no_winner": "Nikt nie zgadł"
+    },
+    "phases": {
+      "normal": "Normalna",
+      "battle": "Bitwa",
+      "speed": "Szybkość"
+    }
+  }
+}

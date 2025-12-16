@@ -1,25 +1,6 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
-import Animated, {
-  interpolate,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import { styles } from './styles';
-import ParticleEffect from './ParticleEffect';
-
-interface TabConfig {
-  icon: string;
-  color: string;
-  activeColor: string;
-  gradient: string[];
-}
+import { TouchableOpacity, Text, StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface FloatingTabButtonProps {
   routeName: string;
@@ -31,23 +12,12 @@ interface FloatingTabButtonProps {
   totalTabs: number;
 }
 
-const TAB_CONFIGS: Record<string, Omit<TabConfig, 'color'>> = {
-  index: {
-    icon: 'house',
-    activeColor: '#3B82F6',
-    gradient: ['#3B82F6', '#1E40AF'],
-  },
-  game: {
-    icon: 'gamecontroller',
-    activeColor: '#10B981',
-    gradient: ['#10B981', '#059669'],
-  },
-};
-
-const DEFAULT_TAB_CONFIG: Omit<TabConfig, 'color'> = {
-  icon: 'circle',
-  activeColor: '#3B82F6',
-  gradient: ['#3B82F6', '#1E40AF'],
+const iconMap: Record<string, keyof typeof Ionicons.glyphMap> = {
+  index: 'home',
+  'setup-game': 'game-controller',
+  game: 'musical-notes',
+  settings: 'settings',
+  help: 'help-circle',
 };
 
 export default function FloatingTabButton({
@@ -56,128 +26,76 @@ export default function FloatingTabButton({
   isFocused,
   isDark,
   onPress,
-  index,
-  totalTabs,
 }: FloatingTabButtonProps) {
-  const scale = useSharedValue(1);
-  const translateY = useSharedValue(0);
-  const rotateZ = useSharedValue(0);
-  const glowOpacity = useSharedValue(0);
-  const magneticX = useSharedValue(0);
-
-  const baseConfig = TAB_CONFIGS[routeName] || DEFAULT_TAB_CONFIG;
-  const inactiveColor = isDark ? '#64748B' : '#475569';
-
-  const config: TabConfig = {
-    ...baseConfig,
-    icon: isFocused ? `${baseConfig.icon}.fill` : baseConfig.icon,
-    color: isFocused ? baseConfig.activeColor : inactiveColor,
-  };
-
-  React.useEffect(() => {
-    if (isFocused) {
-      scale.value = withSpring(1.2, { damping: 12, stiffness: 200 });
-      translateY.value = withSpring(-8, { damping: 15 });
-      glowOpacity.value = withTiming(1, { duration: 300 });
-      rotateZ.value = withSequence(
-        withTiming(5, { duration: 150 }),
-        withTiming(-5, { duration: 150 }),
-        withTiming(0, { duration: 150 })
-      );
-    } else {
-      scale.value = withSpring(1, { damping: 15 });
-      translateY.value = withSpring(0, { damping: 15 });
-      glowOpacity.value = withTiming(0, { duration: 200 });
-      rotateZ.value = withTiming(0, { duration: 200 });
-    }
-  }, [isFocused]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [
-      { scale: scale.value },
-      { translateY: translateY.value },
-      { rotateZ: `${rotateZ.value}deg` },
-      { translateX: magneticX.value },
-    ],
-  }));
-
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: glowOpacity.value,
-    transform: [{ scale: interpolate(glowOpacity.value, [0, 1], [0.8, 1.4]) }],
-  }));
-
-  const handlePressIn = () => {
-    runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium);
-    scale.value = withSpring(isFocused ? 1.1 : 0.9, { damping: 10 });
-  };
-
-  const handlePressOut = () => {
-    scale.value = withSpring(isFocused ? 1.2 : 1, { damping: 12 });
-  };
-
-  const handlePress = () => {
-    runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Heavy);
-    onPress();
-  };
+  const iconName = iconMap[routeName] || 'ellipse';
 
   return (
-    <View style={styles.floatingButtonContainer}>
-      <Animated.View style={[styles.glowEffect, glowStyle]} />
-
-      <Pressable
-        onPress={handlePress}
-        onPressIn={handlePressIn}
-        onPressOut={handlePressOut}
-        accessibilityRole='button'
-        accessibilityState={{ selected: isFocused }}
-        accessibilityLabel={label}
-      >
-        <Animated.View style={[styles.floatingButton, animatedStyle]}>
+    <TouchableOpacity
+      onPress={onPress}
+      style={[
+        styles.tabButton,
+        isFocused && styles.tabButtonActive,
+        {
+          backgroundColor: isFocused
+            ? isDark
+              ? 'rgba(59, 130, 246, 0.2)'
+              : 'rgba(59, 130, 246, 0.15)'
+            : 'transparent',
+        },
+      ]}
+      activeOpacity={0.7}
+    >
+      <View style={styles.iconContainer}>
+        <Ionicons
+          name={iconName}
+          size={24}
+          color={
+            isFocused
+              ? isDark
+                ? '#60A5FA'
+                : '#3B82F6'
+              : isDark
+              ? '#94A3B8'
+              : '#64748B'
+          }
+        />
+        {isFocused && (
           <View
             style={[
-              styles.tabButtonContent,
-              isFocused && [
-                styles.activeTabButtonContent,
-                { backgroundColor: `${config.activeColor}20` },
-              ],
+              styles.activeIndicator,
+              {
+                backgroundColor: isDark ? '#60A5FA' : '#3B82F6',
+              },
             ]}
-          >
-            <View
-              style={[
-                styles.iconContainer,
-                isFocused && styles.activeIconContainer,
-              ]}
-            >
-              <IconSymbol
-                name={config.icon}
-                size={isFocused ? 26 : 22}
-                color={config.color}
-              />
-            </View>
-
-            <Text
-              style={[
-                styles.tabLabel,
-                isFocused && [styles.activeTabLabel, { color: config.color }],
-                { color: isDark ? '#E2E8F0' : '#475569' },
-              ]}
-            >
-              {label}
-            </Text>
-
-            {isFocused && (
-              <View
-                style={[
-                  styles.activeDot,
-                  { backgroundColor: config.activeColor },
-                ]}
-              />
-            )}
-          </View>
-
-          <ParticleEffect isVisible={isFocused} />
-        </Animated.View>
-      </Pressable>
-    </View>
+          />
+        )}
+      </View>
+    </TouchableOpacity>
   );
 }
+
+const styles = StyleSheet.create({
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: 16,
+    marginHorizontal: 4,
+  },
+  tabButtonActive: {
+    transform: [{ scale: 1.05 }],
+  },
+  iconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  activeIndicator: {
+    position: 'absolute',
+    bottom: -12,
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+});

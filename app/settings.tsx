@@ -1,6 +1,8 @@
+import LanguageSelector from '@/components/LanguagePicker';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Platform,
   ScrollView,
@@ -14,6 +16,7 @@ import {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Future settings state (not functional yet, just for UI)
   const [settings, setSettings] = useState({
@@ -84,20 +87,17 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
 
-      {/* Header
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name='chevron.left' size={24} color='#F8FAFC' />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Configuración</Text>
-        <View style={styles.headerSpacer} />
-      </View> */}
-
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* 🌍 LANGUAGE SECTION */}
+        <View style={styles.section}>
+          {renderSectionHeader(t('settings.language').toUpperCase(), 'globe')}
+
+          {/* Language Selector Component */}
+          <View style={styles.languageSelectorContainer}>
+            <LanguageSelector />
+          </View>
+        </View>
+
         {/* Game Settings */}
         <View style={styles.section}>
           {renderSectionHeader('CONFIGURACIÓN DE JUEGO', 'gamecontroller')}
@@ -291,6 +291,15 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     marginLeft: 8,
     letterSpacing: 0.5,
+  },
+
+  // Language Selector Container
+  languageSelectorContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
 
   // Setting Items

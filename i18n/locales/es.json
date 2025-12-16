@@ -1,0 +1,155 @@
+{
+  "common": {
+    "welcome": "Welcome to Hitback",
+    "loading": "Loading...",
+    "error": "An error occurred"
+  },
+  "home": {
+    "subtitle": "Game Master Edition",
+    "description": "Escanea cartas musicales y compite con tus amigos",
+    "new_game": {
+      "title": "Nueva Partida",
+      "subtitle": "2-8 jugadores • 20 min"
+    },
+    "rules": "Reglas",
+    "settings": "Configuración",
+    "how_works": {
+      "title": "¿Cómo funciona?",
+      "step1": "Agrega jugadores",
+      "step2": "Escanea cartas QR",
+      "step3": "¡Compite y diviértete!"
+    },
+    "footer": "Versión Beta • Hecho con ❤️ para amigos"
+  },
+  "setupGame": {
+    "config_game": "Configura tu partida",
+    "players_count": "JUGADORES ({{count}}/8)",
+    "player_placeholder": "Nombre del jugador",
+    "empty_players": "Agrega jugadores para empezar",
+    "how_to_play": "CÓMO JUGAR",
+    "rule_1": "Escanea cartas QR para reproducir audio",
+    "rule_2": "Compite gritando las respuestas",
+    "rule_3": "Primer jugador en llegar a 15 puntos gana",
+    "rule_4": "Cada partida dura 20 minutos máximo",
+    "start_game": "EMPEZAR JUEGO",
+    "min_players_warning": "Necesitas al menos 2 jugadores"
+  },
+  "settingPage": {
+    "sections": {
+      "game_config": "CONFIGURACIÓN DE JUEGO",
+      "features": "CARACTERÍSTICAS",
+      "preferences": "PREFERENCIAS",
+      "advanced": "AVANZADO"
+    },
+    "units": {
+      "min": "{{count}} min",
+      "pts": "{{count}} pts",
+      "seg": "{{count}} seg"
+    },
+    "info": {
+      "dev_title": "Configuración en Desarrollo",
+      "dev_text": "Estas opciones estarán disponibles en futuras actualizaciones. Por ahora, todas las partidas usan la configuración estándar."
+    },
+    "duration": {
+      "title": "Duración de Partida",
+      "desc": "Tiempo máximo por juego"
+    },
+    "winning_score": {
+      "title": "Puntos para Ganar",
+      "desc": "Puntuación objetivo para victoria"
+    },
+    "audio_time": {
+      "title": "Tiempo de Audio",
+      "desc": "Duración de preview musical"
+    },
+    "betting": {
+      "title": "Sistema de Apuestas",
+      "desc": "Permitir apostar tokens en respuestas"
+    },
+    "power_cards": {
+      "title": "Cartas de Poder",
+      "desc": "Habilitar power-ups especiales"
+    },
+    "special_modes": {
+      "title": "Modos Especiales",
+      "desc": "Battle, Speed Round, Viral Moment"
+    },
+    "auto_advance": {
+      "title": "Avance Automático",
+      "desc": "Cambiar turno automáticamente"
+    },
+    "sound_effects": {
+      "title": "Efectos de Sonido",
+      "desc": "Sonidos de la interfaz"
+    },
+    "vibration": {
+      "title": "Vibración",
+      "desc": "Feedback háptico en acciones"
+    },
+    "reset": {
+      "title": "Reiniciar Configuración",
+      "desc": "Volver a valores por defecto"
+    },
+    "export": {
+      "title": "Exportar Configuración",
+      "desc": "Compartir ajustes con otros"
+    }
+  },
+  "help": {
+    "objective": {
+      "title": "🎯 OBJETIVO",
+      "text": "Ser el primer jugador en alcanzar <1>{{score}} puntos</1> o tener la mayor puntuación después de <1>{{time}} minutos</1> de juego."
+    },
+    "setup": {
+      "title": "📱 CONFIGURACIÓN",
+      "step1": "Game Master abre la app y crea nueva partida",
+      "step2": "Agrega jugadores manualmente (2-8 personas)",
+      "step3": "Distribuye 5 cartas físicas a cada jugador",
+      "step4": "¡Inicia el juego!"
+    },
+    "flow": {
+      "title": "⚡ FLUJO DE JUEGO",
+      "normal_round": "Ronda Normal:",
+      "normal_steps": "• Jugador escanea su carta QR\n• Audio reproduce en dispositivo del Game Master (5 segundos)\n• Pregunta aparece en pantalla del Game Master\n• Todos compiten gritando la respuesta\n• Game Master selecciona al ganador\n• Puntos se suman automáticamente",
+      "rotation": "Rotación:",
+      "rotation_steps": "• El ganador se convierte en el próximo DJ\n• Si hay empate, el Game Master decide quién sigue"
+    },
+    "card_types_title": "🃏 TIPOS DE CARTAS",
+    "special_modes_title": "🎮 MODOS ESPECIALES",
+    "tips": {
+      "title": "💡 CONSEJOS",
+      "list": "• Mantén el volumen alto para que todos escuchen\n• Como Game Master, sé justo pero rápido en las decisiones\n• ¡La diversión es más importante que ganar!\n• Si hay dudas, el Game Master tiene la palabra final"
+    }
+  },
+  "game": {
+    "viral": "VIRAL",
+    "pot_label": "POT DEL JUEGO",
+    "pot_subtext": "Tokens perdidos en apuestas",
+    "tokens_count": "{{count}} tokens",
+    "current_turn": "Turno Actual",
+    "no_one": "Nadie",
+    "round_info": "Ronda {{round}}",
+    "phase_prefix": "Fase: ",
+    "scanning": "Escaneando...",
+    "scan_button": "Escanear Carta",
+    "betting": {
+      "title": "🎲 TIEMPO DE APUESTAS",
+      "instructions": "Los jugadores pueden poner sus tokens en la mesa",
+      "register": "Registrar Apuestas",
+      "end": "Terminar",
+      "active": "Apostar",
+      "inactive": "Sin Apuestas"
+    },
+    "modal": {
+      "question_label": "¿Quién respondió correctamente? ({{points}} pts)",
+      "answer_correct": "✅ {{answer}}",
+      "player_bet": "Apuesta: {{amount}} → {{mult}}x",
+      "no_winner": "Nadie acertó"
+    },
+    "phases": {
+      "normal": "Normal",
+      "battle": "Batalla",
+      "speed": "Velocidad"
+    }
+  }
+}

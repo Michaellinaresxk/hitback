@@ -1,0 +1,140 @@
+{
+  "common": {
+    "welcome": "Welcome to Hitback",
+    "loading": "Loading...",
+    "error": "An error occurred"
+  },
+  "home": {
+    "subtitle": "Game Master Edition",
+    "description": "Scan music cards and compete with your friends",
+    "new_game": {
+      "title": "New Game",
+      "subtitle": "2-8 players • 20 min"
+    },
+    "rules": "Rules",
+    "settings": "Settings",
+    "how_works": {
+      "title": "How it works?",
+      "step1": "Add players",
+      "step2": "Scan QR cards",
+      "step3": "Compete and have fun!"
+    },
+    "footer": "Beta Version • Made with ❤️ for friends"
+  },
+  "setupGame": {
+    "config_game": "Set up your game",
+    "players_count": "PLAYERS ({{count}}/8)",
+    "player_placeholder": "Player name",
+    "empty_players": "Add players to start",
+    "how_to_play": "HOW TO PLAY",
+    "rule_1": "Scan QR cards to play audio",
+    "rule_2": "Compete by shouting out the answers",
+    "rule_3": "First player to reach 15 points wins",
+    "rule_4": "Each game lasts 20 minutes max",
+    "start_game": "START GAME",
+    "min_players_warning": "You need at least 2 players"
+  },
+  "settingPage": {
+    "sections": {
+      "game_config": "GAME SETTINGS",
+      "features": "FEATURES",
+      "preferences": "PREFERENCES",
+      "advanced": "ADVANCED"
+    },
+    "units": {
+      "min": "{{count}} min",
+      "pts": "{{count}} pts",
+      "seg": "{{count}} sec"
+    },
+    "info": {
+      "dev_title": "Settings under Development",
+      "dev_text": "These options will be available in future updates. For now, all games use standard settings."
+    },
+    "duration": { "title": "Game Duration", "desc": "Maximum time per game" },
+    "winning_score": {
+      "title": "Winning Score",
+      "desc": "Target score for victory"
+    },
+    "audio_time": { "title": "Audio Time", "desc": "Music preview duration" },
+    "betting": {
+      "title": "Betting System",
+      "desc": "Allow betting tokens on answers"
+    },
+    "power_cards": {
+      "title": "Power Cards",
+      "desc": "Enable special power-ups"
+    },
+    "special_modes": {
+      "title": "Special Modes",
+      "desc": "Battle, Speed Round, Viral Moment"
+    },
+    "auto_advance": {
+      "title": "Auto Advance",
+      "desc": "Automatically switch turns"
+    },
+    "sound_effects": { "title": "Sound Effects", "desc": "Interface sounds" },
+    "vibration": { "title": "Vibration", "desc": "Haptic feedback on actions" },
+    "reset": { "title": "Reset Settings", "desc": "Return to default values" },
+    "export": {
+      "title": "Export Settings",
+      "desc": "Share settings with others"
+    }
+  },
+  "help": {
+    "objective": {
+      "title": "🎯 OBJECTIVE",
+      "text": "Be the first player to reach <1>{{score}} points</1> or have the highest score after <1>{{time}} minutes</1> of play."
+    },
+    "setup": {
+      "title": "📱 SETUP",
+      "step1": "Game Master opens the app and creates a new game",
+      "step2": "Add players manually (2-8 people)",
+      "step3": "Distribute 5 physical cards to each player",
+      "step4": "Start the game!"
+    },
+    "flow": {
+      "title": "⚡ GAME FLOW",
+      "normal_round": "Normal Round:",
+      "normal_steps": "• Player scans their QR card\n• Audio plays on Game Master's device (5 seconds)\n• Question appears on Game Master's screen\n• Everyone competes by shouting the answer\n• Game Master selects the winner\n• Points are added automatically",
+      "rotation": "Rotation:",
+      "rotation_steps": "• The winner becomes the next DJ\n• In case of a tie, the Game Master decides who goes next"
+    },
+    "card_types_title": "🃏 CARD TYPES",
+    "special_modes_title": "🎮 SPECIAL MODES",
+    "tips": {
+      "title": "💡 TIPS",
+      "list": "• Keep the volume up so everyone can hear\n• As Game Master, be fair but quick with decisions\n• Fun is more important than winning!\n• If in doubt, the Game Master has the final say"
+    }
+  },
+  "game": {
+    "viral": "VIRAL",
+    "pot_label": "GAME POT",
+    "pot_subtext": "Tokens lost in bets",
+    "tokens_count": "{{count}} tokens",
+    "current_turn": "Current Turn",
+    "no_one": "No one",
+    "round_info": "Round {{round}}",
+    "phase_prefix": "Phase: ",
+    "scanning": "Scanning...",
+    "scan_button": "Scan Card",
+    "betting": {
+      "title": "🎲 BETTING TIME",
+      "instructions": "Players can place their tokens on the table",
+      "register": "Register Bets",
+      "end": "Finish",
+      "active": "Bet",
+      "inactive": "No Bets"
+    },
+    "modal": {
+      "question_label": "Who answered correctly? ({{points}} pts)",
+      "answer_correct": "✅ {{answer}}",
+      "player_bet": "Bet: {{amount}} → {{mult}}x",
+      "no_winner": "No one correct"
+    },
+    "phases": {
+      "normal": "Normal",
+      "battle": "Battle",
+      "speed": "Speed"
+    }
+  }
+}

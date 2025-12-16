@@ -12,6 +12,8 @@ import { soundEffects } from '@/services/SoundEffectsService';
 import { useGameStore } from '@/store/gameStore';
 import React, { useEffect, useState } from 'react';
 
+import { useTranslation } from 'react-i18next';
+
 import {
   Dimensions,
   FlatList,
@@ -67,9 +69,9 @@ export default function GameScreen() {
     resetFlow,
     testConnection,
     getWinnerInfo,
-    endBettingPhase, // Ã¢Å“â€¦ NEW
-    getBettingStatus, // Ã¢Å“â€¦ NEW
-    getCurrentPhase, // Ã¢Å“â€¦ NEW
+    endBettingPhase,
+    getBettingStatus,
+    getCurrentPhase,
   } = useGameFlow();
 
   const {
@@ -81,8 +83,10 @@ export default function GameScreen() {
     showWarning,
   } = useFeedback();
 
+  const { t } = useTranslation();
+
   {
-    /* Ã°Å¸Å½Â® Modal States */
+    /* Modal States */
   }
   const [showScanner, setShowScanner] = useState(false);
   const [showPointsModal, setShowPointsModal] = useState(false);
@@ -120,7 +124,7 @@ export default function GameScreen() {
   }, [flowState.currentError]);
 
   {
-    /*  Ã¢Å“â€¦ UPDATED: Show points modal only after betting phase ends */
+    /*  Show points modal only after betting phase ends */
   }
   useEffect(() => {
     if (
@@ -150,7 +154,7 @@ export default function GameScreen() {
   };
 
   {
-    /* Ã°Å¸Å½Â¯ QR Scanning Handler */
+    /* QR Scanning Handler */
   }
   const handleScanCard = async (qrData: string) => {
     setShowScanner(false);
@@ -215,7 +219,7 @@ export default function GameScreen() {
     const multiplier = getBettingMultiplier(amount);
     showSuccess(
       'Apuesta Realizada',
-      `${player.name} apostÃƒÂ³ ${amount} token${
+      `${player.name} apostar³ ${amount} token${
         amount > 1 ? 's' : ''
       } (${multiplier}x multiplicador)`
     );
@@ -333,7 +337,7 @@ export default function GameScreen() {
   };
 
   {
-    /* Ã°Å¸Å½Â¨ Utility Functions */
+    /* Utility Functions */
   }
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
