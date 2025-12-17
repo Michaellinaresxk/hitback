@@ -152,5 +152,65 @@
       "battle": "Batalla",
       "speed": "Velocidad"
     }
+  },
+  "rewards": {
+    "title_main": "PREMIOS GANADOS",
+    "tokens_bonus": "Tokens Bonus",
+    "power_card": "Carta de Poder",
+    "awesome": "¡Genial!",
+    "token_unit": "token",
+    "token_unit_plural": "tokens",
+    "next_round": "próxima ronda",
+    "extra_power_card": "Carta de poder extra",
+    "difficulty": {
+      "easy": {
+        "title": "¡Buen trabajo!",
+        "message": "¡Respuesta correcta!"
+      },
+      "medium": {
+        "title": "¡Excelente!",
+        "message": "¡Pregunta de dificultad media!"
+      },
+      "hard": {
+        "title": "¡Increíble!",
+        "message": "¡Pregunta difícil dominada!"
+      },
+      "expert": {
+        "title": "¡LEGENDARIO!",
+        "message": "¡Nivel experto desbloqueado!"
+      }
+    },
+    "continue": "Continue",
+    "combo": "!Combo!",
+    "great": "!Genial!"
+  },
+  "bettingModal": {
+    "header": {
+      "title": "🎲 Sistema de Apuestas"
+    },
+    "cardInfo": {
+      "basePoints": "Puntos base: {{points}}"
+    },
+    "instructions": {
+      "title": "📋 ¿Cómo funciona?",
+      "step1": "• Apuesta tokens antes de responder",
+      "step2": "• Si aciertas: puntos × multiplicador",
+      "step3": "• Si fallas: pierdes los tokens"
+    },
+    "multipliers": {
+      "title": "🎯 Multiplicadores:",
+      "option1": "1 token = 2x puntos",
+      "option2": "2 tokens = 3x puntos",
+      "option3": "3 tokens = 4x puntos"
+    },
+    "players": {
+      "selectionTitle": "👥 Selecciona tu apuesta:",
+      "tokenCount": "{{count}} tokens",
+      "alreadyBet": "Ya apostó {{amount}} tokens"
+    },
+    "buttons": {
+      "cancel": "Cancelar",
+      "multiplierSuffix": "{{value}}x"
+    }
   }
 }

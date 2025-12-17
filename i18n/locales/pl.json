@@ -149,5 +149,65 @@
       "battle": "Bitwa",
       "speed": "Szybkość"
     }
+  },
+  "rewards": {
+    "title_main": "ZDOBYTE NAGRODY",
+    "tokens_bonus": "Bonusowe Żetony",
+    "power_card": "Karta Mocy",
+    "awesome": "Świetnie!",
+    "token_unit": "żeton",
+    "token_unit_plural": "żetony",
+    "next_round": "następna runda",
+    "extra_power_card": "Dodatkowa Karta Mocy",
+    "difficulty": {
+      "easy": {
+        "title": "Dobra robota!",
+        "message": "Poprawna odpowiedź!"
+      },
+      "medium": {
+        "title": "Doskonale!",
+        "message": "Pytanie na poziomie średnim!"
+      },
+      "hard": {
+        "title": "Niesamowite!",
+        "message": "Trudne pytanie opanowane!"
+      },
+      "expert": {
+        "title": "LEGENDA!",
+        "message": "Poziom ekspercki odblokowany!"
+      }
+    },
+    "continue": "Kontynuuj",
+    "combo": "Kombo",
+    "great": "Świetnie!"
+  },
+  "bettingModal": {
+    "header": {
+      "title": "🎲 System Zakładów"
+    },
+    "cardInfo": {
+      "basePoints": "Punkty bazowe: {{points}}"
+    },
+    "instructions": {
+      "title": "📋 Jak to działa?",
+      "step1": "• Postaw żetony przed odpowiedzią",
+      "step2": "• Jeśli trafisz: punkty × mnożnik",
+      "step3": "• Jeśli przegrasz: tracisz żetony"
+    },
+    "multipliers": {
+      "title": "🎯 Mnożniki:",
+      "option1": "1 żeton = 2x punkty",
+      "option2": "2 żetony = 3x punkty",
+      "option3": "3 żetony = 4x punkty"
+    },
+    "players": {
+      "selectionTitle": "👥 Wybierz swój zakład:",
+      "tokenCount": "{{count}} żetonów",
+      "alreadyBet": "Już postawił {{amount}} żetonów"
+    },
+    "buttons": {
+      "cancel": "Anuluj",
+      "multiplierSuffix": "{{value}}x"
+    }
   }
 }

@@ -137,5 +137,65 @@
       "battle": "Battle",
       "speed": "Speed"
     }
+  },
+  "rewards": {
+    "title_main": "AWARDS WON",
+    "tokens_bonus": "Tokens Bonus",
+    "power_card": "Power Card",
+    "awesome": "Awesome!",
+    "token_unit": "token",
+    "token_unit_plural": "tokens",
+    "next_round": "next round",
+    "extra_power_card": "Extra Power Card",
+    "difficulty": {
+      "easy": {
+        "title": "Good job!",
+        "message": "Correct answer!"
+      },
+      "medium": {
+        "title": "Excellent!",
+        "message": "Medium difficulty question!"
+      },
+      "hard": {
+        "title": "Incredible!",
+        "message": "Hard question mastered!"
+      },
+      "expert": {
+        "title": "LEGENDARY!",
+        "message": "Expert level unlocked!"
+      }
+    },
+    "continue": "Continue",
+    "combo": "Combo!",
+    "great": "!Great!"
+  },
+  "bettingModal": {
+    "header": {
+      "title": "🎲 Betting System"
+    },
+    "cardInfo": {
+      "basePoints": "Base points: {{points}}"
+    },
+    "instructions": {
+      "title": "📋 How it works?",
+      "step1": "• Bet tokens before answering",
+      "step2": "• If correct: points × multiplier",
+      "step3": "• If you fail: you lose the tokens"
+    },
+    "multipliers": {
+      "title": "🎯 Multipliers:",
+      "option1": "1 token = 2x points",
+      "option2": "2 tokens = 3x points",
+      "option3": "3 tokens = 4x points"
+    },
+    "players": {
+      "selectionTitle": "👥 Select your bet:",
+      "tokenCount": "{{count}} tokens",
+      "alreadyBet": "Already bet {{amount}} tokens"
+    },
+    "buttons": {
+      "cancel": "Cancel",
+      "multiplierSuffix": "{{value}}x"
+    }
   }
 }
