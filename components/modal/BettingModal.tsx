@@ -1,5 +1,6 @@
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
   FlatList,
@@ -27,6 +28,8 @@ export default function BettingModal({
   currentCard,
   onPlaceBet,
 }: BettingModalProps) {
+  const { t } = useTranslation();
+
   const getBettingMultiplier = (betAmount: number): number => {
     if (betAmount === 1) return 2;
     if (betAmount === 2) return 3;
@@ -40,7 +43,8 @@ export default function BettingModal({
         <View style={styles.playerItem}>
           <Text style={styles.playerName}>{player.name}</Text>
           <Text style={styles.alreadyBet}>
-            Ya apostó {player.currentBet} tokens
+            {t('bettingModal.players.alreadyBet')}
+            {player.currentBet}
           </Text>
         </View>
       );
@@ -92,33 +96,47 @@ export default function BettingModal({
             <Text style={styles.cardTitle}>{currentCard.track.title}</Text>
             <Text style={styles.cardArtist}>{currentCard.track.artist}</Text>
             <Text style={styles.cardPoints}>
-              Puntos base: {currentCard.points}
+              {t('bettingModal.cardInfo.basePoints')} {currentCard.points}
             </Text>
           </View>
 
           <View style={styles.instructions}>
-            <Text style={styles.instructionTitle}>📋 ¿Cómo funciona?</Text>
-            <Text style={styles.instructionText}>
-              • Apuesta tokens antes de responder
+            <Text style={styles.instructionTitle}>
+              📋 {t('bettingModal.instructions.title')}
             </Text>
             <Text style={styles.instructionText}>
-              • Si aciertas: puntos × multiplicador
+              • {t('bettingModal.instructions.step1')}
             </Text>
             <Text style={styles.instructionText}>
-              • Si fallas: pierdes los tokens
+              • {t('bettingModal.instructions.step2')}
+            </Text>
+            <Text style={styles.instructionText}>
+              • {t('bettingModal.instructions.step3')}
             </Text>
           </View>
 
           <View style={styles.multipliers}>
-            <Text style={styles.multipliersTitle}>🎯 Multiplicadores:</Text>
+            <Text style={styles.multipliersTitle}>
+              🎯 {t('bettingModal.multipliers.title')}
+            </Text>
             <View style={styles.multiplierRow}>
-              <Text style={styles.multiplierText}>1 token = 2x puntos</Text>
-              <Text style={styles.multiplierText}>2 tokens = 3x puntos</Text>
-              <Text style={styles.multiplierText}>3 tokens = 4x puntos</Text>
+              <Text style={styles.multiplierText}>
+                {t('bettingModal.multipliers.option1')}
+              </Text>
+              <Text style={styles.multiplierText}>
+                {' '}
+                {t('bettingModal.multipliers.option2')}
+              </Text>
+              <Text style={styles.multiplierText}>
+                {' '}
+                {t('bettingModal.multipliers.option3')}
+              </Text>
             </View>
           </View>
 
-          <Text style={styles.playersTitle}>👥 Selecciona tu apuesta:</Text>
+          <Text style={styles.playersTitle}>
+            👥 {t('bettingModal.players.selectionTitle')}
+          </Text>
 
           <FlatList
             data={players}
@@ -129,7 +147,9 @@ export default function BettingModal({
           />
 
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancelar</Text>
+            <Text style={styles.cancelText}>
+              {t('bettingModal.buttons.cancel')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
