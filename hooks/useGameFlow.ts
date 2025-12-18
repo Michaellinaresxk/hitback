@@ -1,6 +1,7 @@
-// Usa gameSessionService para comunicarse con backend
-// SINCRONIZA CON gameStore para actualizar puntos
-// Maneja fases: idle loading audio betting â†’ question answer
+// hooks/useGameFlow.ts - HITBACK Game Flow Hook
+// ✅ CORREGIDO: Sincronización de puntos entre backend y frontend
+// ✅ AÑADIDO: getRewardData y closeRewardNotification
+// ✅ MEJORADO: Logging para debug
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -12,6 +13,10 @@ import {
 } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
 
+// ═══════════════════════════════════════════════════════════════════════════
+// TIPOS
+// ═══════════════════════════════════════════════════════════════════════════
+
 export type GamePhase =
   | 'idle'
   | 'loading'
@@ -19,6 +24,14 @@ export type GamePhase =
   | 'betting'
   | 'question'
   | 'answer';
+
+export interface RewardData {
+  type: 'tokens' | 'powerCard' | 'combo' | 'achievement';
+  amount?: number;
+  name?: string;
+  description?: string;
+  icon?: string;
+}
 
 export interface GameFlow {
   // Fases del juego
@@ -41,7 +54,7 @@ export interface GameFlow {
   answerRevealed: boolean;
   roundResult: RoundResult | null;
 
-  // âœ… NUEVO: Respuesta correcta para mostrar en modal
+  // Respuesta correcta para mostrar en modal
   correctAnswer: string | null;
   trackInfo: { title: string; artist: string } | null;
 
@@ -51,10 +64,16 @@ export interface GameFlow {
   // Game over
   gameOver: boolean;
   gameWinner: { id: string; name: string; score: number } | null;
+
+  // Rewards
   showReward: boolean;
+  rewardData: RewardData | null;
 }
 
-// Estado inicial
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTADO INICIAL
+// ═══════════════════════════════════════════════════════════════════════════
+
 const initialState: GameFlow = {
   phase: 'idle',
   isLoading: false,
@@ -72,7 +91,12 @@ const initialState: GameFlow = {
   gameOver: false,
   gameWinner: null,
   showReward: false,
+  rewardData: null,
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOOK PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
 
 export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
@@ -81,17 +105,80 @@ export const useGameFlow = () => {
   // Conectar con gameStore para sincronizar puntos
   const { players, endGame, setShowGameEndModal } = useGameStore();
 
-  const [rewardData, setRewardData] = useState<{
-    show: boolean;
-    data: any;
-  }>({ show: false, data: null });
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SINCRONIZACIÓN DE PLAYERS (CORREGIDO)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /**
+   * ✅ CORREGIDO: Sincroniza players del backend con el store local
+   * Usa ÍNDICE directo en lugar de buscar por ID (más confiable)
+   */
+  const syncPlayersWithStore = useCallback(
+    (
+      backendPlayers: Array<{
+        id: string;
+        name: string;
+        score: number;
+        tokens: number;
+      }>
+    ) => {
+      console.log(`\n📊 ═══ SYNC PLAYERS START ═══`);
+      console.log(`📊 Backend players received: ${backendPlayers.length}`);
+      console.log(`📊 Backend data:`, JSON.stringify(backendPlayers, null, 2));
+
+      useGameStore.setState((state) => {
+        console.log(`📊 Local players count: ${state.players.length}`);
+
+        const updatedPlayers = state.players.map((localPlayer, index) => {
+          // ✅ CORREGIDO: Sincronizar directamente por ÍNDICE
+          // El backend mantiene el mismo orden que el frontend
+          const backendPlayer = backendPlayers[index];
+
+          if (backendPlayer) {
+            const scoreChanged = localPlayer.score !== backendPlayer.score;
+            const tokensChanged = localPlayer.tokens !== backendPlayer.tokens;
+
+            if (scoreChanged || tokensChanged) {
+              console.log(
+                `   ✅ ${localPlayer.name} [${index}]: ` +
+                  `score ${localPlayer.score}→${backendPlayer.score}, ` +
+                  `tokens ${localPlayer.tokens}→${backendPlayer.tokens}`
+              );
+            } else {
+              console.log(`   ℹ️ ${localPlayer.name} [${index}]: sin cambios`);
+            }
+
+            return {
+              ...localPlayer,
+              score: backendPlayer.score,
+              tokens: backendPlayer.tokens,
+            };
+          }
+
+          console.log(
+            `   ⚠️ No backend data for index ${index} (${localPlayer.name})`
+          );
+          return localPlayer;
+        });
+
+        console.log(`📊 ═══ SYNC PLAYERS END ═══\n`);
+
+        return { players: updatedPlayers };
+      });
+    },
+    []
+  );
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SIGUIENTE RONDA
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Obtiene la siguiente ronda del backend
-   * âœ… Este es el mÃ©todo principal que reemplaza handleQRScan
+   * Este es el método principal que reemplaza handleQRScan
    */
   const nextRound = useCallback(async (): Promise<boolean> => {
-    console.log(`\nðŸŽµ useGameFlowV2.nextRound`);
+    console.log(`\n🎵 ═══ NEXT ROUND START ═══`);
 
     try {
       // Actualizar estado: cargando
@@ -110,6 +197,8 @@ export const useGameFlow = () => {
         trackInfo: null,
         bettingPhase: false,
         bettingTimeLeft: BETTING_TIME_LIMIT,
+        showReward: false,
+        rewardData: null,
       }));
 
       // Llamar al backend
@@ -123,7 +212,7 @@ export const useGameFlow = () => {
 
       // Verificar game over
       if (result.gameOver) {
-        console.log(`Game Over! Winner: ${result.winner?.name}`);
+        console.log(`🏆 Game Over! Winner: ${result.winner?.name}`);
         setFlowState((prev) => ({
           ...prev,
           phase: 'idle',
@@ -132,7 +221,7 @@ export const useGameFlow = () => {
           gameWinner: result.winner || null,
         }));
 
-        //Sincronizar con gameStore
+        // Sincronizar con gameStore
         endGame();
         setShowGameEndModal(true);
 
@@ -140,16 +229,16 @@ export const useGameFlow = () => {
       }
 
       if (!result.round) {
-        throw new Error('Ronda invÃ¡lida');
+        throw new Error('Ronda inválida');
       }
 
-      console.log(`Round ${result.round.number} received`);
+      console.log(`🎵 Round ${result.round.number} received`);
       console.log(`   Question: ${result.round.question.type}`);
-      console.log(`   Audio: ${result.round.track.audioUrl ? 'âœ…' : 'âŒ'}`);
+      console.log(`   Audio: ${result.round.track.audioUrl ? '✅' : '❌'}`);
 
       if (!result.round.track.audioUrl) {
         console.warn(
-          ` No audio URL for this track - Deezer may not have found it`
+          `⚠️ No audio URL for this track - Deezer may not have found it`
         );
       }
 
@@ -163,23 +252,24 @@ export const useGameFlow = () => {
           track: result.round!.track,
           question: result.round!.question,
         },
-        audioPlaying: !!result.round!.track.audioUrl, // Solo si hay URL
+        audioPlaying: !!result.round!.track.audioUrl,
         audioUrl: result.round!.track.audioUrl || null,
       }));
 
       // Si no hay audio, saltar directamente a betting
       if (!result.round.track.audioUrl) {
-        console.log(`â­ï¸ No audio, skipping to betting phase`);
+        console.log(`⏭️ No audio, skipping to betting phase`);
         setTimeout(() => {
           handleAudioFinished();
         }, 1000);
       }
 
+      console.log(`🎵 ═══ NEXT ROUND END ═══\n`);
       return true;
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Error desconocido';
-      console.error(`âŒ nextRound failed: ${errorMessage}`);
+      console.error(`❌ nextRound failed: ${errorMessage}`);
 
       setFlowState((prev) => ({
         ...prev,
@@ -192,14 +282,16 @@ export const useGameFlow = () => {
     }
   }, [endGame, setShowGameEndModal]);
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // AUDIO TERMINADO
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Llamado cuando termina el audio
    * Inicia la fase de apuestas
    */
   const handleAudioFinished = useCallback(() => {
-    console.log(`ðŸŽµ Audio finished, starting betting phase`);
+    console.log(`🎵 Audio finished, starting betting phase`);
 
     setFlowState((prev) => ({
       ...prev,
@@ -214,7 +306,9 @@ export const useGameFlow = () => {
     startBettingTimer();
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // TIMER DE APUESTAS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const startBettingTimer = useCallback(() => {
     // Limpiar timer anterior
@@ -233,7 +327,7 @@ export const useGameFlow = () => {
       }));
 
       if (timeLeft <= 0) {
-        console.log(`â° Betting time expired`);
+        console.log(`⏰ Betting time expired`);
         endBettingPhase();
       }
     }, 1000);
@@ -255,61 +349,29 @@ export const useGameFlow = () => {
       bettingTimeLeft: 0,
     }));
 
-    console.log(`Betting phase ended`);
+    console.log(`🎰 Betting phase ended`);
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // REVELAR RESPUESTA
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Revela la respuesta y asigna puntos al ganador
-   * ACTUALIZADO: Guarda la respuesta correcta y trackInfo
+   * ✅ CORREGIDO: Sincroniza correctamente los puntos
    */
-  // ✅ NUEVO: Función para sincronizar players del backend con el store
-  const syncPlayersWithStore = useCallback(
-    (
-      backendPlayers: Array<{
-        id: string;
-        name: string;
-        score: number;
-        tokens: number;
-      }>
-    ) => {
-      console.log(`📊 Syncing ${backendPlayers.length} players with store`);
-
-      useGameStore.setState((state) => ({
-        players: state.players.map((localPlayer, index) => {
-          // Buscar jugador correspondiente en backend por índice (player_1, player_2, etc.)
-          const backendPlayerId = `player_${index + 1}`;
-          const backendPlayer = backendPlayers.find(
-            (bp) => bp.id === backendPlayerId
-          );
-
-          if (backendPlayer) {
-            console.log(
-              `   → ${localPlayer.name}: score ${localPlayer.score}→${backendPlayer.score}, tokens ${localPlayer.tokens}→${backendPlayer.tokens}`
-            );
-            return {
-              ...localPlayer,
-              score: backendPlayer.score,
-              tokens: backendPlayer.tokens,
-            };
-          }
-          return localPlayer;
-        }),
-      }));
-    },
-    []
-  );
-
   const revealAnswer = useCallback(
     async (winnerId: string | null): Promise<RoundResult | null> => {
-      console.log(`✅ Revealing answer, winner: ${winnerId || 'none'}`);
+      console.log(`\n✅ ═══ REVEAL ANSWER START ═══`);
+      console.log(`✅ Winner ID: ${winnerId || 'none'}`);
 
-      // Terminar apuestas si aÃºn estÃ¡n activas
+      // Terminar apuestas si aún están activas
       endBettingPhase();
 
       try {
         const result = await gameSessionService.revealAnswer(winnerId);
+
+        console.log(`✅ Backend response:`, JSON.stringify(result, null, 2));
 
         if (!result.success) {
           throw new Error(result.error || 'Error revelando respuesta');
@@ -317,7 +379,7 @@ export const useGameFlow = () => {
 
         const roundResult = result.results;
 
-        // âœ… NUEVO: Guardar respuesta correcta y track info
+        // Guardar respuesta correcta y track info
         setFlowState((prev) => ({
           ...prev,
           phase: 'answer',
@@ -329,30 +391,51 @@ export const useGameFlow = () => {
           gameWinner: roundResult.gameWinner || null,
         }));
 
-        console.log(`   Correct: ${roundResult.correctAnswer}`);
+        console.log(`✅ Correct answer: ${roundResult.correctAnswer}`);
         console.log(
-          `   Track: ${roundResult.trackInfo.title} - ${roundResult.trackInfo.artist}`
+          `✅ Track: ${roundResult.trackInfo.title} - ${roundResult.trackInfo.artist}`
         );
+        console.log(`✅ Points awarded: ${roundResult.pointsAwarded}`);
 
-        // ✅ Sincronizar players del backend con el store
+        // ✅ CRÍTICO: Sincronizar players del backend con el store
         if (result.players && Array.isArray(result.players)) {
+          console.log(`✅ Syncing ${result.players.length} players...`);
           syncPlayersWithStore(result.players);
+        } else {
+          console.warn(`⚠️ No players array in response!`);
+          console.warn(`⚠️ result.players:`, result.players);
         }
 
         // Si hay game over, actualizar gameStore
         if (roundResult.gameOver && roundResult.gameWinner) {
           console.log(
-            `ðŸ† Game Over detected! Winner: ${roundResult.gameWinner.name}`
+            `🏆 Game Over detected! Winner: ${roundResult.gameWinner.name}`
           );
           endGame();
           setShowGameEndModal(true);
         }
 
+        // Mostrar recompensa si hay puntos
+        if (roundResult.pointsAwarded > 0 && winnerId) {
+          setFlowState((prev) => ({
+            ...prev,
+            showReward: true,
+            rewardData: {
+              type: 'tokens',
+              amount: roundResult.pointsAwarded,
+              name: 'Puntos Ganados',
+              description: `¡Has ganado ${roundResult.pointsAwarded} puntos!`,
+              icon: '🏆',
+            },
+          }));
+        }
+
+        console.log(`✅ ═══ REVEAL ANSWER END ═══\n`);
         return roundResult;
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : 'Error desconocido';
-        console.error(`âŒ revealAnswer failed: ${errorMessage}`);
+        console.error(`❌ revealAnswer failed: ${errorMessage}`);
 
         setFlowState((prev) => ({
           ...prev,
@@ -365,6 +448,10 @@ export const useGameFlow = () => {
     [endBettingPhase, endGame, setShowGameEndModal, syncPlayersWithStore]
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // APUESTAS
+  // ═══════════════════════════════════════════════════════════════════════════
+
   /**
    * Registra una apuesta en el backend
    */
@@ -373,7 +460,7 @@ export const useGameFlow = () => {
       playerId: string,
       tokens: number
     ): Promise<{ success: boolean; multiplier: number }> => {
-      console.log(`ðŸŽ° Placing bet: ${playerId} -> ${tokens} tokens`);
+      console.log(`🎰 Placing bet: ${playerId} -> ${tokens} tokens`);
 
       try {
         const result = await gameSessionService.placeBet(playerId, tokens);
@@ -389,37 +476,51 @@ export const useGameFlow = () => {
           multiplier: result.bet.multiplier,
         };
       } catch (error) {
-        console.error(`âŒ placeBet failed:`, error);
+        console.error(`❌ placeBet failed:`, error);
         return { success: false, multiplier: 1 };
       }
     },
     []
   );
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SYNC CON BACKEND
+  // ═══════════════════════════════════════════════════════════════════════════
+
   /**
-   * âœ… NUEVO: Sincroniza los puntos del backend con el gameStore local
+   * Sincroniza los puntos del backend con el gameStore local
+   * Útil para refrescar el estado manualmente
    */
   const syncPlayersFromBackend = useCallback(async () => {
     try {
+      console.log(`🔄 Fetching players from backend...`);
       const status = await gameSessionService.getStatus();
+
       if (status.success && status.session) {
-        // Los puntos ya vienen del backend, podrÃ­amos actualizar el store
-        console.log(`ðŸ“Š Backend session status:`, status.session.players);
+        console.log(`🔄 Backend session status:`, status.session.players);
+
+        // Sincronizar con el store
+        if (status.session.players && Array.isArray(status.session.players)) {
+          syncPlayersWithStore(status.session.players);
+        }
+
         return status.session.players;
       }
     } catch (error) {
-      console.error(`âŒ Failed to sync players:`, error);
+      console.error(`❌ Failed to sync players:`, error);
     }
     return null;
-  }, []);
+  }, [syncPlayersWithStore]);
 
-  // RESET PARA SIGUIENTE RONDA
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RESET Y PREPARACIÓN
+  // ═══════════════════════════════════════════════════════════════════════════
 
   /**
    * Prepara el estado para la siguiente ronda
    */
   const prepareNextRound = useCallback(() => {
-    console.log(`ðŸ”„ Preparing for next round`);
+    console.log(`🔄 Preparing for next round`);
 
     // Limpiar timers
     if (bettingTimerRef.current) {
@@ -441,6 +542,8 @@ export const useGameFlow = () => {
       correctAnswer: null,
       trackInfo: null,
       currentError: null,
+      showReward: false,
+      rewardData: null,
     }));
   }, []);
 
@@ -448,7 +551,7 @@ export const useGameFlow = () => {
    * Reset completo del flujo
    */
   const resetFlow = useCallback(() => {
-    console.log(`ðŸ”„ Resetting game flow completely`);
+    console.log(`🔄 Resetting game flow completely`);
 
     // Limpiar timers
     if (bettingTimerRef.current) {
@@ -459,7 +562,9 @@ export const useGameFlow = () => {
     setFlowState(initialState);
   }, []);
 
-  // HELPERS Y GETTERS
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GETTERS Y HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const getBettingStatus = useCallback(() => {
     return {
@@ -486,7 +591,9 @@ export const useGameFlow = () => {
     );
   }, [flowState.phase, flowState.answerRevealed]);
 
-  // âœ… NUEVO: Getter para la respuesta correcta
+  /**
+   * Getter para la respuesta correcta
+   */
   const getCorrectAnswer = useCallback(() => {
     return {
       answer: flowState.correctAnswer,
@@ -494,21 +601,38 @@ export const useGameFlow = () => {
     };
   }, [flowState.correctAnswer, flowState.trackInfo]);
 
-  // ✅ Getter for reward data
+  /**
+   * ✅ AÑADIDO: Getter para reward data
+   */
   const getRewardData = useCallback(() => {
-    return rewardData;
-  }, [rewardData]);
+    return {
+      show: flowState.showReward,
+      data: flowState.rewardData,
+    };
+  }, [flowState.showReward, flowState.rewardData]);
 
-  // ✅ Close reward notification
+  /**
+   * ✅ AÑADIDO: Cierra la notificación de recompensa
+   */
   const closeRewardNotification = useCallback(() => {
-    setRewardData({ show: false, data: null });
+    setFlowState((prev) => ({
+      ...prev,
+      showReward: false,
+      rewardData: null,
+    }));
   }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // TEST DE CONEXIÓN
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const testConnection = useCallback(async (): Promise<boolean> => {
     return gameSessionService.testConnection();
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // CLEANUP
+  // ═══════════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     return () => {
@@ -518,7 +642,9 @@ export const useGameFlow = () => {
     };
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════════════════
   // RETURN
+  // ═══════════════════════════════════════════════════════════════════════════
 
   return {
     // Estado
@@ -541,7 +667,8 @@ export const useGameFlow = () => {
     isRoundActive,
     canStartNextRound,
     getCorrectAnswer,
-    getRewardData, // ✅ ADD THIS
+    getRewardData, // ✅ AÑADIDO
+    closeRewardNotification, // ✅ AÑADIDO
 
     // Sync
     syncPlayersFromBackend,
@@ -549,6 +676,5 @@ export const useGameFlow = () => {
 
     // Utils
     testConnection,
-    closeRewardNotification, // ✅ ADD THIS
   };
 };

@@ -1,7 +1,7 @@
-// app/(tabs)/game.tsx - HITBACK Game Screen CORREGIDO
-// ✅ Fix: Text strings must be rendered within a Text component
-// ✅ Fix: Player IDs sync con backend
-// ✅ Fix: awardPoints sin currentCard
+// app/(tabs)/game.tsx - HITBACK Game Screen
+// ✅ CORREGIDO: Sincronización de puntos con backend
+// ✅ CORREGIDO: getRewardData y closeRewardNotification
+// ✅ CORREGIDO: Player IDs sync con backend
 
 import AudioPlayer from '@/components/game/AudioPlayer';
 import GameEndModal from '@/components/game/GameEndModal';
@@ -9,7 +9,7 @@ import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 
 import BettingModal from '@/components/modal/BettingModal';
-import RewardNotification from '@/components/rewards/RewardNotification';
+// import RewardNotification from '@/components/rewards/RewardNotification'; // TODO: Adaptar para nuevo flujo
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
@@ -34,6 +34,10 @@ import {
 const { width } = Dimensions.get('window');
 
 export default function GameScreen() {
+  // ═══════════════════════════════════════════════════════════
+  // STORE & HOOKS
+  // ═══════════════════════════════════════════════════════════
+
   const {
     players,
     isActive,
@@ -64,8 +68,8 @@ export default function GameScreen() {
     getCurrentPhase,
     canStartNextRound,
     testConnection,
-    closeRewardNotification,
-    getRewardData,
+    // getRewardData,        // TODO: Reactivar cuando se adapte RewardNotification
+    // closeRewardNotification,
   } = useGameFlow();
 
   const {
@@ -79,19 +83,24 @@ export default function GameScreen() {
 
   const { t } = useTranslation();
 
-  // Modal States
+  // ═══════════════════════════════════════════════════════════
+  // LOCAL STATE
+  // ═══════════════════════════════════════════════════════════
+
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
-
-  // Map de IDs: frontend -> backend
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
+
+  // ═══════════════════════════════════════════════════════════
+  // DERIVED STATE
+  // ═══════════════════════════════════════════════════════════
 
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = players.find((p) => p.score >= SCORE_TO_WIN);
   const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
-  const rewardData = getRewardData();
+  // const rewardData = getRewardData(); // TODO: Reactivar cuando se adapte RewardNotification
 
   // ═══════════════════════════════════════════════════════════
   // EFFECTS
@@ -105,7 +114,6 @@ export default function GameScreen() {
       // Crear mapa de IDs cuando el juego inicia
       const idMap: Record<string, string> = {};
       players.forEach((player, index) => {
-        // El backend usa player_1, player_2, etc.
         idMap[player.id] = `player_${index + 1}`;
       });
       setPlayerIdMap(idMap);
@@ -164,20 +172,16 @@ export default function GameScreen() {
   // HELPERS
   // ═══════════════════════════════════════════════════════════
 
-  // Obtener ID del backend para un jugador del frontend
   const getBackendPlayerId = (frontendId: string): string => {
-    // Si ya tenemos el mapa, usarlo
     if (playerIdMap[frontendId]) {
       return playerIdMap[frontendId];
     }
 
-    // Buscar por índice
     const playerIndex = players.findIndex((p) => p.id === frontendId);
     if (playerIndex !== -1) {
       return `player_${playerIndex + 1}`;
     }
 
-    // Fallback: usar el ID original
     return frontendId;
   };
 
@@ -244,7 +248,7 @@ export default function GameScreen() {
     // Place bet locally
     placeBet(playerId, amount);
 
-    // ✅ CORREGIDO: Usar el ID del backend
+    // Usar el ID del backend
     const backendPlayerId = getBackendPlayerId(playerId);
     console.log(`🎰 Mapping ID: ${playerId} -> ${backendPlayerId}`);
 
@@ -306,16 +310,14 @@ export default function GameScreen() {
 
     soundEffects.playCorrect();
 
-    // ✅ CORREGIDO: Usar el ID del backend para revealAnswer
+    // Usar el ID del backend para revealAnswer
     const backendPlayerId = getBackendPlayerId(playerId);
     console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
 
     const result = await revealAnswer(backendPlayerId);
 
     if (result) {
-      // ✅ Los puntos ya se sincronizan automáticamente en useGameFlow.revealAnswer
-      // Solo mostramos feedback al usuario
-
+      // Los puntos ya se sincronizan automáticamente en useGameFlow.revealAnswer
       showSuccess(
         '🎉 ¡Correcto!',
         `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
@@ -332,18 +334,22 @@ export default function GameScreen() {
     }
 
     setShowPointsModal(false);
-  };
 
-  // Handler cuando se cierra la notificación de recompensa
-  const handleRewardClose = () => {
-    closeRewardNotification();
-
-    // Preparar siguiente ronda después de cerrar
+    // Preparar siguiente ronda
     setTimeout(() => {
       nextTurn();
       prepareNextRound();
-    }, 500);
+    }, 2000);
   };
+
+  // handleRewardClose - Desactivado temporalmente
+  // const handleRewardClose = () => {
+  //   closeRewardNotification();
+  //   setTimeout(() => {
+  //     nextTurn();
+  //     prepareNextRound();
+  //   }, 500);
+  // };
 
   const handleNewGame = () => {
     setShowGameEndModal(false);
@@ -515,7 +521,7 @@ export default function GameScreen() {
               <View
                 style={[
                   styles.bettingProgress,
-                  { width: `${(bettingStatus.timeLeft / 10) * 100}%` },
+                  { width: `${(bettingStatus.timeLeft / 30) * 100}%` },
                   bettingStatus.urgentTime && styles.progressUrgent,
                 ]}
               />
@@ -558,10 +564,7 @@ export default function GameScreen() {
           <Text style={styles.currentTurnName}>
             {currentPlayer?.name || 'Nadie'} - Ronda {round}
           </Text>
-          <Text style={styles.phaseInfo}>
-            <Text>Fase: </Text>
-            <Text>{getPhaseLabel()}</Text>
-          </Text>
+          <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
         </View>
 
         {/* Main Action: Next Round Button */}
@@ -642,9 +645,8 @@ export default function GameScreen() {
                   </View>
 
                   <Text style={styles.pointsLabel}>
-                    <Text>¿Quién respondió correctamente? (</Text>
-                    <Text>{flowState.currentRound.question.points}</Text>
-                    <Text> pts)</Text>
+                    ¿Quién respondió correctamente? (
+                    {flowState.currentRound.question.points} pts)
                   </Text>
 
                   <FlatList
@@ -659,17 +661,12 @@ export default function GameScreen() {
                         <Text style={styles.playerButtonText}>
                           {player.name}
                         </Text>
-                        {player.currentBet !== undefined &&
-                          player.currentBet > 0 && (
-                            <Text style={styles.playerBetIndicator}>
-                              <Text>Apuesta: </Text>
-                              <Text>{player.currentBet}</Text>
-                              <Text> x</Text>
-                              <Text>
-                                {getBettingMultiplier(player.currentBet)}
-                              </Text>
-                            </Text>
-                          )}
+                        {player.currentBet > 0 && (
+                          <Text style={styles.playerBetIndicator}>
+                            Apuesta: {player.currentBet} x
+                            {getBettingMultiplier(player.currentBet)}
+                          </Text>
+                        )}
                       </TouchableOpacity>
                     )}
                   />
@@ -704,18 +701,10 @@ export default function GameScreen() {
           bettingTimeLeft={bettingStatus.timeLeft}
         />
 
-        {/* Reward Notification */}
-        {rewardData.data && (
-          <RewardNotification
-            visible={rewardData.show}
-            onClose={handleRewardClose}
-            playerName={rewardData.data.playerName}
-            difficulty={rewardData.data.difficulty}
-            powerCardWon={rewardData.data.powerCardWon}
-            bonusTokens={rewardData.data.bonusTokens}
-            combosAchieved={rewardData.data.combosAchieved}
-          />
-        )}
+        {/* Reward Notification - Desactivado temporalmente
+            Los puntos se muestran en el toast de showSuccess
+            TODO: Adaptar RewardNotification para el nuevo flujo
+        */}
 
         {/* Game End Modal */}
         <GameEndModal
