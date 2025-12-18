@@ -1,19 +1,24 @@
+// app/(tabs)/game.tsx - HITBACK Game Screen CORREGIDO
+// ✅ Fix: Text strings must be rendered within a Text component
+// ✅ Fix: Player IDs sync con backend
+// ✅ Fix: awardPoints sin currentCard
+
 import AudioPlayer from '@/components/game/AudioPlayer';
 import GameEndModal from '@/components/game/GameEndModal';
 import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
-import RealQRScanner from '@/components/game/QRScanner';
+
 import BettingModal from '@/components/modal/BettingModal';
+import RewardNotification from '@/components/rewards/RewardNotification';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { useGameFlow } from '@/hooks/useGameFlow';
+import { gameSessionService } from '@/services/GameSessionService';
 import { soundEffects } from '@/services/SoundEffectsService';
 import { useGameStore } from '@/store/gameStore';
 import React, { useEffect, useState } from 'react';
-
 import { useTranslation } from 'react-i18next';
-
 import {
   Dimensions,
   FlatList,
@@ -31,29 +36,15 @@ const { width } = Dimensions.get('window');
 export default function GameScreen() {
   const {
     players,
-    currentCard,
     isActive,
     gameMode,
     timeLeft,
     gamePot,
-    viralMomentActive,
-    battleModeActive,
-    speedRoundActive,
-    selectedBattlePlayers,
-    audioFinished,
-    showQuestion,
-    showAnswer,
     showGameEndModal,
     round,
     error,
-    awardPoints,
     placeBet,
-    usePowerCard,
-    startBattleMode,
-    startSpeedRound,
-    startViralMoment,
     setError,
-    setShowAnswer,
     setShowGameEndModal,
     createNewGame,
     nextTurn,
@@ -62,16 +53,19 @@ export default function GameScreen() {
 
   const {
     flowState,
-    handleQRScan,
+    nextRound,
     handleAudioFinished,
     revealAnswer,
-    awardPointsAndAdvance,
-    resetFlow,
-    testConnection,
-    getWinnerInfo,
+    placeBet: placeBetBackend,
     endBettingPhase,
+    prepareNextRound,
+    resetFlow,
     getBettingStatus,
     getCurrentPhase,
+    canStartNextRound,
+    testConnection,
+    closeRewardNotification,
+    getRewardData,
   } = useGameFlow();
 
   const {
@@ -85,30 +79,39 @@ export default function GameScreen() {
 
   const { t } = useTranslation();
 
-  {
-    /* Modal States */
-  }
-  const [showScanner, setShowScanner] = useState(false);
+  // Modal States
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
-  const [showPowerCardsModal, setShowPowerCardsModal] = useState(false);
-  const [showPlayerSelection, setShowPlayerSelection] = useState(false);
-  const [pendingModeType, setPendingModeType] = useState<
-    'battle' | 'speed' | 'viral' | null
-  >(null);
+
+  // Map de IDs: frontend -> backend
+  const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
 
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = players.find((p) => p.score >= SCORE_TO_WIN);
   const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
+  const rewardData = getRewardData();
+
+  // ═══════════════════════════════════════════════════════════
+  // EFFECTS
+  // ═══════════════════════════════════════════════════════════
 
   useEffect(() => {
     if (isActive) {
       checkBackendConnection();
       soundEffects.initialize();
+
+      // Crear mapa de IDs cuando el juego inicia
+      const idMap: Record<string, string> = {};
+      players.forEach((player, index) => {
+        // El backend usa player_1, player_2, etc.
+        idMap[player.id] = `player_${index + 1}`;
+      });
+      setPlayerIdMap(idMap);
+      console.log('📋 Player ID Map created:', idMap);
     }
-  }, [isActive]);
+  }, [isActive, players.length]);
 
   useEffect(() => {
     if (error) {
@@ -119,72 +122,103 @@ export default function GameScreen() {
 
   useEffect(() => {
     if (flowState.currentError) {
-      showWarning('Escaneo Fallido', flowState.currentError);
+      showWarning('Aviso', flowState.currentError);
     }
   }, [flowState.currentError]);
 
-  {
-    /*  Show points modal only after betting phase ends */
-  }
+  // Show points modal after betting phase ends
   useEffect(() => {
     if (
-      audioFinished &&
-      showQuestion &&
-      currentCard &&
-      !bettingStatus.isActive
+      flowState.questionVisible &&
+      flowState.currentRound &&
+      !bettingStatus.isActive &&
+      currentPhase === 'question'
     ) {
       setShowPointsModal(true);
     }
-  }, [audioFinished, showQuestion, currentCard, bettingStatus.isActive]);
+  }, [
+    flowState.questionVisible,
+    flowState.currentRound,
+    bettingStatus.isActive,
+    currentPhase,
+  ]);
 
+  // Game over handling
   useEffect(() => {
-    if (showGameEndModal && winner) {
+    if (flowState.gameOver && flowState.gameWinner) {
       soundEffects.playVictory();
+      setShowGameEndModal(true);
     }
-  }, [showGameEndModal, winner]);
+  }, [flowState.gameOver, flowState.gameWinner]);
+
+  // También verificar por puntos locales
+  useEffect(() => {
+    if (winner && isActive) {
+      console.log(`🏆 Winner detected locally: ${winner.name}`);
+      soundEffects.playVictory();
+      setShowGameEndModal(true);
+    }
+  }, [winner, isActive]);
+
+  // ═══════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════
+
+  // Obtener ID del backend para un jugador del frontend
+  const getBackendPlayerId = (frontendId: string): string => {
+    // Si ya tenemos el mapa, usarlo
+    if (playerIdMap[frontendId]) {
+      return playerIdMap[frontendId];
+    }
+
+    // Buscar por índice
+    const playerIndex = players.findIndex((p) => p.id === frontendId);
+    if (playerIndex !== -1) {
+      return `player_${playerIndex + 1}`;
+    }
+
+    // Fallback: usar el ID original
+    return frontendId;
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // HANDLERS
+  // ═══════════════════════════════════════════════════════════
 
   const checkBackendConnection = async () => {
     const isConnected = await testConnection();
     if (!isConnected) {
       showWarning(
         'Backend Desconectado',
-        'El servidor no estÃƒÂ¡ disponible. Algunas funciones pueden no funcionar.'
+        'El servidor no está disponible. Verifica la conexión.'
       );
     }
   };
 
-  {
-    /* QR Scanning Handler */
-  }
-  const handleScanCard = async (qrData: string) => {
-    setShowScanner(false);
+  const handleNextRound = async () => {
+    console.log('🎵 Next Round button pressed');
 
-    const success = await handleQRScan(qrData);
-    if (success && currentCard) {
-      showSuccess(
-        'Carta Escaneada',
-        `${currentCard.track.title} - ${currentCard.track.artist}`
+    const success = await nextRound();
+
+    if (success && flowState.currentRound) {
+      showInfo(
+        'Nueva Ronda',
+        `Ronda ${
+          flowState.currentRound.number
+        } - ${flowState.currentRound.question.type.toUpperCase()}`
       );
     }
   };
 
   const handleOpenBetting = () => {
-    console.log('Ã°Å¸Å½Â² Opening betting modal...', {
-      currentCard: !!currentCard,
-      bettingStatus,
-      currentPhase,
-    });
-
-    if (!currentCard) {
-      showWarning('Error', 'Necesitas una carta activa para apostar');
+    if (!flowState.currentRound) {
+      showWarning('Error', 'Necesitas iniciar una ronda primero');
       return;
     }
 
     if (!bettingStatus.canBet) {
       if (currentPhase === 'audio') {
         showWarning('Espera', 'Espera a que termine el audio');
-      } else if (currentPhase === 'betting' && bettingStatus.timeLeft <= 0) {
-        showWarning('Error', 'El tiempo de apuestas ha terminado');
       } else {
         showWarning('Error', 'No es momento de apostar');
       }
@@ -194,7 +228,7 @@ export default function GameScreen() {
     setShowBettingModal(true);
   };
 
-  const handlePlaceBet = (playerId: string, amount: number) => {
+  const handlePlaceBet = async (playerId: string, amount: number) => {
     const player = players.find((p) => p.id === playerId);
 
     if (!player) {
@@ -207,158 +241,138 @@ export default function GameScreen() {
       return;
     }
 
-    if (player.currentBet > 0) {
-      showWarning('Error', 'Ya apostaste en esta ronda');
-      return;
-    }
-
-    // Place bet
+    // Place bet locally
     placeBet(playerId, amount);
 
-    // Enhanced feedback
-    const multiplier = getBettingMultiplier(amount);
-    showSuccess(
-      'Apuesta Realizada',
-      `${player.name} apostar³ ${amount} token${
-        amount > 1 ? 's' : ''
-      } (${multiplier}x multiplicador)`
-    );
+    // ✅ CORREGIDO: Usar el ID del backend
+    const backendPlayerId = getBackendPlayerId(playerId);
+    console.log(`🎰 Mapping ID: ${playerId} -> ${backendPlayerId}`);
+
+    const result = await placeBetBackend(backendPlayerId, amount);
+
+    if (result.success) {
+      showSuccess(
+        'Apuesta Realizada',
+        `${player.name} apostó ${amount} token${amount > 1 ? 's' : ''} (${
+          result.multiplier
+        }x)`
+      );
+    } else {
+      showError('Error', 'No se pudo registrar la apuesta en el servidor');
+    }
 
     setShowBettingModal(false);
   };
 
-  const handleWrongAnswer = () => {
+  const handleWrongAnswer = async () => {
     soundEffects.playWrong();
 
-    const playersWithBets = players.filter((p) => p.currentBet > 0);
+    // Revelar respuesta sin ganador
+    const result = await revealAnswer(null);
 
+    if (result) {
+      showInfo(
+        'Nadie Acertó',
+        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+      );
+    }
+
+    const playersWithBets = players.filter(
+      (p) => p.currentBet && p.currentBet > 0
+    );
     if (playersWithBets.length > 0) {
-      const totalLostTokens = playersWithBets.reduce(
-        (sum, p) => sum + p.currentBet,
+      const totalLost = playersWithBets.reduce(
+        (sum, p) => sum + (p.currentBet || 0),
         0
       );
-      showInfo(
-        'Tokens Perdidos',
-        `${totalLostTokens} tokens perdidos por apuestas fallidas`
-      );
+      showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
 
     clearBets();
     setShowPointsModal(false);
 
+    // Preparar siguiente ronda
     setTimeout(() => {
       nextTurn();
-      resetFlow();
-    }, 1500);
+      prepareNextRound();
+    }, 2000);
   };
 
-  const handleAwardPoints = (playerId: string) => {
-    if (!currentCard) return;
+  const handleAwardPoints = async (playerId: string) => {
+    if (!flowState.currentRound) return;
 
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
     soundEffects.playCorrect();
-    awardPoints(playerId, undefined, 2000);
+
+    // ✅ CORREGIDO: Usar el ID del backend para revealAnswer
+    const backendPlayerId = getBackendPlayerId(playerId);
+    console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
+
+    const result = await revealAnswer(backendPlayerId);
+
+    if (result) {
+      // ✅ Los puntos ya se sincronizan automáticamente en useGameFlow.revealAnswer
+      // Solo mostramos feedback al usuario
+
+      showSuccess(
+        '🎉 ¡Correcto!',
+        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+      );
+
+      // Check game over
+      if (result.gameOver && result.gameWinner) {
+        setTimeout(() => {
+          setShowGameEndModal(true);
+        }, 1500);
+        setShowPointsModal(false);
+        return;
+      }
+    }
 
     setShowPointsModal(false);
-    const multiplier =
-      player.currentBet > 0 ? getBettingMultiplier(player.currentBet) : 1;
-    const finalPoints = currentCard.question.points * multiplier;
-
-    showSuccess(
-      player.currentBet > 0 ? ' Apuesta Ganada!' : ' Punto Otorgado',
-      player.currentBet > 0
-        ? `${player.name} gana ${finalPoints} puntos (${currentCard.question.points} ” ${multiplier})`
-        : `${player.name} gana ${finalPoints} punto${
-            finalPoints > 1 ? 's' : ''
-          }`
-    );
   };
 
-  const handleUsePowerCard = (
-    playerId: string,
-    powerCardId: string,
-    targetPlayerId?: string
-  ) => {
-    const player = players.find((p) => p.id === playerId);
-    const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
+  // Handler cuando se cierra la notificación de recompensa
+  const handleRewardClose = () => {
+    closeRewardNotification();
 
-    if (!powerCard) return;
-
-    usePowerCard(playerId, powerCardId, targetPlayerId);
-
-    showInfo('Poder Activado', `${player.name} : ${powerCard.name}`);
-  };
-
-  const handleSpecialMode = (modeType: 'battle' | 'speed' | 'viral') => {
-    if (modeType === 'battle') {
-      if (players.length < 2) {
-        showWarning(
-          'Error',
-          'Se necesitan al menos 2 jugadores para Battle Mode'
-        );
-        return;
-      }
-      setPendingModeType('battle');
-      setShowPlayerSelection(true);
-    } else if (modeType === 'speed') {
-      startSpeedRound();
-    } else if (modeType === 'viral') {
-      if (!currentCard) {
-        showWarning('Error', 'Necesitas una carta activa para Viral Moment');
-        return;
-      }
-      startViralMoment();
-    }
-  };
-
-  const handlePlayerSelection = (player1Id: string, player2Id: string) => {
-    setShowPlayerSelection(false);
-    if (pendingModeType === 'battle') {
-      startBattleMode(player1Id, player2Id);
-    }
-    setPendingModeType(null);
+    // Preparar siguiente ronda después de cerrar
+    setTimeout(() => {
+      nextTurn();
+      prepareNextRound();
+    }, 500);
   };
 
   const handleNewGame = () => {
     setShowGameEndModal(false);
     resetFlow();
     soundEffects.dispose();
+    gameSessionService.clearCurrentSession();
     createNewGame();
   };
 
   const handleBackToMenu = () => {
     setShowGameEndModal(false);
     resetFlow();
+    gameSessionService.clearCurrentSession();
     createNewGame();
   };
 
-  {
-    /* Utility Functions */
-  }
+  // ═══════════════════════════════════════════════════════════
+  // UTILITY FUNCTIONS
+  // ═══════════════════════════════════════════════════════════
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const getGameModeStyle = () => {
-    switch (gameMode) {
-      case 'battle':
-        return { backgroundColor: '#EF4444', borderColor: '#DC2626' };
-      case 'speed':
-        return { backgroundColor: '#8B5CF6', borderColor: '#7C3AED' };
-      case 'viral':
-        return { backgroundColor: '#F59E0B', borderColor: '#D97706' };
-      default:
-        return { backgroundColor: '#3B82F6', borderColor: '#2563EB' };
-    }
-  };
-
   const getPhaseStyle = () => {
     switch (currentPhase) {
-      case 'scanning':
+      case 'loading':
         return { backgroundColor: '#3B82F6', borderColor: '#2563EB' };
       case 'audio':
         return { backgroundColor: '#10B981', borderColor: '#059669' };
@@ -375,8 +389,8 @@ export default function GameScreen() {
 
   const getPhaseLabel = () => {
     switch (currentPhase) {
-      case 'scanning':
-        return 'ESCANEANDO';
+      case 'loading':
+        return 'CARGANDO';
       case 'audio':
         return 'AUDIO';
       case 'betting':
@@ -386,39 +400,34 @@ export default function GameScreen() {
       case 'answer':
         return 'RESPUESTA';
       default:
-        return gameMode.toUpperCase();
+        return 'LISTO';
     }
   };
 
-  {
-    /* 🎮 Setup Screen - Only show if game not active AND not showing end modal */
-  }
+  const getBettingMultiplier = (amount: number): number => {
+    return gameSessionService.getBettingMultiplier(amount);
+  };
+
+  // ═══════════════════════════════════════════════════════════
+  // RENDER: Setup Screen
+  // ═══════════════════════════════════════════════════════════
+
   if (!isActive && !showGameEndModal) {
     return (
       <View style={styles.setupContainer}>
         <IconSymbol name='gamecontroller' size={48} color='#64748B' />
         <Text style={styles.setupText}>Configure el juego para empezar</Text>
-
-        <TouchableOpacity
-          style={styles.testConnectionButton}
-          onPress={async () => {
-            const connected = await testConnection();
-            if (connected) {
-              showSuccess('Conectado', 'Backend funcionando correctamente');
-            } else {
-              showError('Sin Conexión', 'No se pudo conectar al servidor');
-            }
-          }}
-        >
-          <Text style={styles.testConnectionText}>🧪 Probar Conexión</Text>
-        </TouchableOpacity>
+        <Text style={styles.setupSubtext}>
+          Ve a la pestaña "Setup" para agregar jugadores
+        </Text>
       </View>
     );
   }
 
-  {
-    /* 🏆 Game End Screen - Show when game ended with winner */
-  }
+  // ═══════════════════════════════════════════════════════════
+  // RENDER: Game End Screen
+  // ═══════════════════════════════════════════════════════════
+
   if (!isActive && showGameEndModal) {
     return (
       <View style={styles.container}>
@@ -435,6 +444,10 @@ export default function GameScreen() {
     );
   }
 
+  // ═══════════════════════════════════════════════════════════
+  // RENDER: Main Game Screen
+  // ═══════════════════════════════════════════════════════════
+
   return (
     <View style={styles.container}>
       <ScrollView>
@@ -442,14 +455,12 @@ export default function GameScreen() {
 
         <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
 
+        {/* Header */}
         <View style={styles.header}>
           <View style={styles.gameInfo}>
             <Text style={styles.gameTitle}>HITBACK</Text>
             <View style={[styles.gameModeIndicator, getPhaseStyle()]}>
-              <Text style={styles.gameModeText}>
-                {getPhaseLabel()}
-                {viralMomentActive && ' - VIRAL'}
-              </Text>
+              <Text style={styles.gameModeText}>{getPhaseLabel()}</Text>
             </View>
           </View>
           <View style={styles.timerContainer}>
@@ -458,6 +469,7 @@ export default function GameScreen() {
           </View>
         </View>
 
+        {/* Betting Phase UI */}
         {bettingStatus.isActive && (
           <View
             style={[
@@ -492,19 +504,18 @@ export default function GameScreen() {
 
               <TouchableOpacity
                 style={styles.endBettingButton}
-                onPress={() => endBettingPhase()}
+                onPress={endBettingPhase}
               >
                 <IconSymbol name='checkmark.circle' size={18} color='#FFFFFF' />
                 <Text style={styles.endBettingText}>Terminar</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Betting Progress Bar */}
             <View style={styles.bettingProgressContainer}>
               <View
                 style={[
                   styles.bettingProgress,
-                  { width: `${(bettingStatus.timeLeft / 30) * 100}%` },
+                  { width: `${(bettingStatus.timeLeft / 10) * 100}%` },
                   bettingStatus.urgentTime && styles.progressUrgent,
                 ]}
               />
@@ -524,109 +535,78 @@ export default function GameScreen() {
               />
               <Text style={styles.potCount}>{gamePot.tokens} tokens</Text>
             </View>
-            <Text style={styles.potSubtext}>Tokens perdidos en apuestas</Text>
           </View>
         )}
 
-        {/* Audio Player - 5 seconds */}
-        {currentCard && flowState.audioPlaying && (
-          <AudioPlayer
-            previewUrl={currentCard.audio?.url || ''}
-            trackTitle={currentCard.track.title}
-            artist={currentCard.track.artist}
-            duration={REPRODUCTION_TIME_LIMIT}
-            autoPlay={true}
-            onAudioFinished={handleAudioFinished}
-          />
-        )}
+        {/* Audio Player */}
+        {flowState.audioPlaying &&
+          flowState.audioUrl &&
+          flowState.currentRound && (
+            <AudioPlayer
+              previewUrl={flowState.audioUrl}
+              trackTitle='Escucha...'
+              artist={`${flowState.currentRound.question.type.toUpperCase()}`}
+              duration={REPRODUCTION_TIME_LIMIT}
+              autoPlay={true}
+              onAudioFinished={handleAudioFinished}
+            />
+          )}
 
         {/* Current Turn Info */}
         <View style={styles.currentTurnContainer}>
           <Text style={styles.turnLabel}>Turno Actual</Text>
           <Text style={styles.currentTurnName}>
-            {currentPlayer?.name || 'No one'} Ã¢â‚¬Â¢ Ronda {round}
+            {currentPlayer?.name || 'Nadie'} - Ronda {round}
           </Text>
-          <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
+          <Text style={styles.phaseInfo}>
+            <Text>Fase: </Text>
+            <Text>{getPhaseLabel()}</Text>
+          </Text>
         </View>
 
-        {/* Main Actions */}
+        {/* Main Action: Next Round Button */}
         <View style={styles.mainActions}>
           <TouchableOpacity
             style={[
-              styles.scanButton,
-              flowState.isScanning && styles.scanButtonLoading,
+              styles.nextRoundButton,
+              flowState.isLoading && styles.nextRoundButtonLoading,
+              !canStartNextRound() && styles.nextRoundButtonDisabled,
             ]}
-            onPress={() => setShowScanner(true)}
+            onPress={handleNextRound}
             activeOpacity={0.9}
-            disabled={flowState.isScanning}
+            disabled={flowState.isLoading || !canStartNextRound()}
           >
             <IconSymbol
-              name={flowState.isScanning ? 'clock' : 'qrcode.viewfinder'}
-              size={28}
+              name={flowState.isLoading ? 'hourglass' : 'play.circle.fill'}
+              size={32}
               color='#FFFFFF'
             />
-            <Text style={styles.scanButtonText}>
-              {flowState.isScanning ? 'Escaneando...' : 'Escanear Carta'}
+            <Text style={styles.nextRoundButtonText}>
+              {flowState.isLoading
+                ? 'Cargando...'
+                : currentPhase === 'idle'
+                ? 'Siguiente Canción'
+                : currentPhase === 'answer'
+                ? 'Siguiente Ronda'
+                : 'Ronda en Curso...'}
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.actionButtonsRow}>
-            {/* <TouchableOpacity
-              style={[
-                styles.bettingButton,
-                !bettingStatus.canBet && styles.bettingButtonDisabled,
-              ]}
-              onPress={handleOpenBetting}
-              activeOpacity={0.9}
-              disabled={!bettingStatus.canBet}
-            >
-              <IconSymbol name='dice.fill' size={20} color='#FFFFFF' />
-              <Text style={styles.actionButtonText}>
-                {bettingStatus.isActive ? 'Apostar' : 'Sin Apuestas'}
+          {/* Question Preview */}
+          {flowState.questionVisible && flowState.currentRound && (
+            <View style={styles.questionPreview}>
+              <Text style={styles.questionPreviewIcon}>
+                {flowState.currentRound.question.icon}
               </Text>
-            </TouchableOpacity> */}
-
-            {/* <TouchableOpacity
-            style={styles.powerButton}
-            onPress={() => setShowPowerCardsModal(true)}
-            activeOpacity={0.9}
-          >
-            <IconSymbol name='sparkles' size={20} color='#FFFFFF' />
-            <Text style={styles.actionButtonText}>Poderes</Text>
-          </TouchableOpacity> */}
-          </View>
+              <Text style={styles.questionPreviewText}>
+                {flowState.currentRound.question.text}
+              </Text>
+              <Text style={styles.questionPreviewPoints}>
+                {flowState.currentRound.question.points} puntos
+              </Text>
+            </View>
+          )}
         </View>
-
-        {/* Special Game Mode Buttons */}
-        {/* <View style={styles.gameModeButtons}>
-        <TouchableOpacity
-          style={[styles.modeButton, styles.battleButton]}
-          onPress={() => handleSpecialMode('battle')}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name='sword.fill' size={16} color='#FFFFFF' />
-          <Text style={styles.modeButtonText}>Battle</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.modeButton, styles.speedButton]}
-          onPress={() => handleSpecialMode('speed')}
-          activeOpacity={0.8}
-        >
-          <IconSymbol name='bolt.fill' size={16} color='#FFFFFF' />
-          <Text style={styles.modeButtonText}>Speed</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.modeButton, styles.viralButton]}
-          onPress={() => handleSpecialMode('viral')}
-          activeOpacity={0.8}
-          disabled={!currentCard}
-        >
-          <IconSymbol name='flame.fill' size={16} color='#FFFFFF' />
-          <Text style={styles.modeButtonText}>Viral</Text>
-        </TouchableOpacity>
-      </View> */}
 
         {/* Players Scoreboard */}
         <PlayerScoreboard
@@ -635,45 +615,36 @@ export default function GameScreen() {
           highlightWinner={!!winner}
         />
 
-        {/* QR Scanner Modal */}
-        <Modal visible={showScanner} animationType='slide'>
-          <RealQRScanner
-            isVisible={showScanner}
-            onScanSuccess={handleScanCard}
-            onClose={() => setShowScanner(false)}
-          />
-        </Modal>
-
         {/* Points Award Modal */}
         <Modal visible={showPointsModal} transparent animationType='fade'>
           <View style={styles.modalOverlay}>
             <View style={styles.pointsModal}>
-              {currentCard && (
+              {flowState.currentRound && (
                 <>
                   <View style={styles.modalHeader}>
-                    <Text style={styles.modalTitle}>
-                      {currentCard.track.title}
+                    <Text style={styles.modalEmoji}>
+                      {flowState.currentRound.question.icon}
                     </Text>
-                    <Text style={styles.modalSubtitle}>
-                      {currentCard.track.artist} Ã¢â‚¬Â¢{' '}
-                      {currentCard.track.year}
+                    <Text style={styles.modalTitle}>
+                      {flowState.currentRound.question.type.toUpperCase()}
                     </Text>
                   </View>
 
                   <View style={styles.questionContainer}>
                     <Text style={styles.questionText}>
-                      {currentCard.question.text}
+                      {flowState.currentRound.question.text}
                     </Text>
-                    {showAnswer && (
+                    {flowState.answerRevealed && flowState.roundResult && (
                       <Text style={styles.answerText}>
-                        {currentCard.question.answer}
+                        {flowState.roundResult.correctAnswer}
                       </Text>
                     )}
                   </View>
 
                   <Text style={styles.pointsLabel}>
-                    ¿Quien respondio correctamente? (
-                    {currentCard.question.points} pts)
+                    <Text>¿Quién respondió correctamente? (</Text>
+                    <Text>{flowState.currentRound.question.points}</Text>
+                    <Text> pts)</Text>
                   </Text>
 
                   <FlatList
@@ -688,12 +659,17 @@ export default function GameScreen() {
                         <Text style={styles.playerButtonText}>
                           {player.name}
                         </Text>
-                        {player.currentBet > 0 && (
-                          <Text style={styles.playerBetIndicator}>
-                            Apuesta: {player.currentBet} Ã¢â€ â€™{' '}
-                            {getBettingMultiplier(player.currentBet)}x
-                          </Text>
-                        )}
+                        {player.currentBet !== undefined &&
+                          player.currentBet > 0 && (
+                            <Text style={styles.playerBetIndicator}>
+                              <Text>Apuesta: </Text>
+                              <Text>{player.currentBet}</Text>
+                              <Text> x</Text>
+                              <Text>
+                                {getBettingMultiplier(player.currentBet)}
+                              </Text>
+                            </Text>
+                          )}
                       </TouchableOpacity>
                     )}
                   />
@@ -703,7 +679,7 @@ export default function GameScreen() {
                     onPress={handleWrongAnswer}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.noWinnerText}>Nadie acerto</Text>
+                    <Text style={styles.noWinnerText}>Nadie acertó</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -711,15 +687,35 @@ export default function GameScreen() {
           </View>
         </Modal>
 
-        {/*  Betting Modal */}
+        {/* Betting Modal */}
         <BettingModal
           visible={showBettingModal}
           onClose={() => setShowBettingModal(false)}
           players={players}
-          currentCard={currentCard}
+          currentCard={
+            flowState.currentRound
+              ? {
+                  question: flowState.currentRound.question,
+                  track: { title: 'Canción actual', artist: '' },
+                }
+              : null
+          }
           onPlaceBet={handlePlaceBet}
           bettingTimeLeft={bettingStatus.timeLeft}
         />
+
+        {/* Reward Notification */}
+        {rewardData.data && (
+          <RewardNotification
+            visible={rewardData.show}
+            onClose={handleRewardClose}
+            playerName={rewardData.data.playerName}
+            difficulty={rewardData.data.difficulty}
+            powerCardWon={rewardData.data.powerCardWon}
+            bonusTokens={rewardData.data.bonusTokens}
+            combosAchieved={rewardData.data.combosAchieved}
+          />
+        )}
 
         {/* Game End Modal */}
         <GameEndModal
@@ -735,15 +731,9 @@ export default function GameScreen() {
   );
 }
 
-{
-  /* Helper function */
-}
-function getBettingMultiplier(betAmount: number): number {
-  if (betAmount === 1) return 2;
-  if (betAmount === 2) return 3;
-  if (betAmount >= 3) return 4;
-  return 1;
-}
+// ═══════════════════════════════════════════════════════════
+// STYLES
+// ═══════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
@@ -764,18 +754,14 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
   },
-  testConnectionButton: {
-    backgroundColor: '#8B5CF6',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 12,
-    marginTop: 20,
-  },
-  testConnectionText: {
-    color: '#FFFFFF',
+  setupSubtext: {
     fontSize: 14,
-    fontWeight: '600',
+    color: '#475569',
+    marginTop: 8,
+    textAlign: 'center',
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -825,7 +811,7 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
   },
 
-  //Betting Phase Styles
+  // Betting Phase
   bettingPhaseContainer: {
     backgroundColor: 'rgba(239, 68, 68, 0.1)',
     margin: 20,
@@ -847,11 +833,10 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   bettingPhaseTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     color: '#EF4444',
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   bettingPhaseTimer: {
     fontSize: 24,
@@ -864,8 +849,6 @@ const styles = StyleSheet.create({
   },
   timerUrgent: {
     backgroundColor: '#DC2626',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
   bettingPhaseInstructions: {
     fontSize: 14,
@@ -925,9 +908,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#DC2626',
   },
 
+  // Pot
   potContainer: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     margin: 20,
+    marginTop: 0,
     padding: 16,
     borderRadius: 16,
     alignItems: 'center',
@@ -939,8 +924,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#F59E0B',
     marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   potValue: {
     flexDirection: 'row',
@@ -952,11 +935,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#F8FAFC',
   },
-  potSubtext: {
-    fontSize: 10,
-    color: '#94A3B8',
-    marginTop: 4,
-  },
+
+  // Current Turn
   currentTurnContainer: {
     alignItems: 'center',
     marginVertical: 16,
@@ -978,93 +958,67 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 4,
   },
+
+  // Main Actions
   mainActions: {
     paddingHorizontal: 24,
     marginBottom: 16,
   },
-  scanButton: {
-    backgroundColor: '#3B82F6',
+  nextRoundButton: {
+    backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
     borderRadius: 16,
     marginBottom: 16,
-    shadowColor: '#3B82F6',
+    shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
+    gap: 12,
   },
-  scanButtonLoading: {
+  nextRoundButtonLoading: {
     backgroundColor: '#64748B',
   },
-  scanButtonText: {
-    marginLeft: 12,
+  nextRoundButtonDisabled: {
+    backgroundColor: '#475569',
+    opacity: 0.6,
+  },
+  nextRoundButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+
+  // Question Preview
+  questionPreview: {
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    alignItems: 'center',
+  },
+  questionPreviewIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  questionPreviewText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#F8FAFC',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  actionButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  bettingButton: {
-    flex: 1,
-    backgroundColor: '#EF4444',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-  },
-  bettingButtonDisabled: {
-    opacity: 0.5,
-  },
-  powerButton: {
-    flex: 1,
-    backgroundColor: '#8B5CF6',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 12,
-  },
-  actionButtonText: {
+  questionPreviewPoints: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 8,
+    color: '#F59E0B',
+    fontWeight: '700',
   },
-  gameModeButtons: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    gap: 12,
-    marginBottom: 24,
-  },
-  modeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
-    borderRadius: 12,
-  },
-  battleButton: {
-    backgroundColor: '#EF4444',
-  },
-  speedButton: {
-    backgroundColor: '#8B5CF6',
-  },
-  viralButton: {
-    backgroundColor: '#F59E0B',
-  },
-  modeButtonText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginLeft: 6,
-  },
+
+  // Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -1085,16 +1039,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
+  modalEmoji: {
+    fontSize: 48,
+    marginBottom: 8,
+  },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#F8FAFC',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#94A3B8',
     textAlign: 'center',
   },
   questionContainer: {
@@ -1111,7 +1063,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   answerText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#10B981',
     textAlign: 'center',
