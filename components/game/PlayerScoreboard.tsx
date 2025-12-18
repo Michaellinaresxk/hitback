@@ -1,471 +1,471 @@
+// components/game/PlayerScoreboard.tsx - HITBACK Player Scoreboard
+// ✅ Muestra puntos, tokens y estado de jugadores
+// ✅ Se actualiza automáticamente cuando cambia el gameStore
+
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Player } from '@/types/game.types';
-import React, { useCallback } from 'react';
-import {
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { SCORE_TO_WIN } from '@/constants/Points';
+import type { Player } from '@/store/gameStore';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TIPOS
+// ═══════════════════════════════════════════════════════════════════════════
 
 interface PlayerScoreboardProps {
   players: Player[];
-  currentTurn?: number;
-  onPlayerSelect?: (playerId: string) => void;
   showDetailedStats?: boolean;
   highlightWinner?: boolean;
+  compact?: boolean;
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// COMPONENTE PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════
 
 export default function PlayerScoreboard({
   players,
-  currentTurn = 0,
-  onPlayerSelect,
-  showDetailedStats = true,
+  showDetailedStats = false,
   highlightWinner = false,
+  compact = false,
 }: PlayerScoreboardProps) {
+  // Ordenar jugadores por puntuación (mayor a menor)
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const winner = highlightWinner ? sortedPlayers[0] : null;
 
-  // ✅ Memoized callback para evitar re-renders innecesarios
-  const handlePlayerPress = useCallback(
-    (playerId: string) => {
-      if (onPlayerSelect) {
-        onPlayerSelect(playerId);
-      }
-    },
-    [onPlayerSelect]
-  );
+  // Determinar el líder
+  const leader = sortedPlayers[0];
+  const isGameWon = leader && leader.score >= SCORE_TO_WIN;
 
-  const renderPlayer = ({
-    item: player,
-    index,
-  }: {
-    item: Player;
-    index: number;
-  }) => {
-    const isCurrentTurn = player.isCurrentTurn;
-    const isWinner =
-      highlightWinner && player.id === winner?.id && player.score >= 15;
-    const position = index + 1;
+  // ═══════════════════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    // ✅ Mueve helper functions fuera del render
-    const positionEmoji = getPositionEmoji(position);
-    const positionColor = getPositionColor(position);
-
-    return (
-      <TouchableOpacity
-        style={[
-          styles.playerCard,
-          isCurrentTurn && styles.currentTurnCard,
-          isWinner && styles.winnerCard,
-        ]}
-        onPress={() => handlePlayerPress(player.id)}
-        activeOpacity={onPlayerSelect ? 0.8 : 1}
-        disabled={!onPlayerSelect}
-      >
-        {/* Position & Status */}
-        <View style={styles.playerLeft}>
-          <View
-            style={[styles.positionBadge, { backgroundColor: positionColor }]}
-          >
-            <Text style={styles.positionText}>{positionEmoji}</Text>
-          </View>
-
-          {isCurrentTurn && (
-            <View style={styles.turnIndicator}>
-              <IconSymbol name='play.fill' size={12} color='#10B981' />
-            </View>
-          )}
-        </View>
-
-        {/* Player Info */}
-        <View style={styles.playerInfo}>
-          <Text style={[styles.playerName, isWinner && styles.winnerName]}>
-            {player.name}
-            {isWinner ? ' 👑' : ''}
-          </Text>
-
-          <View style={styles.playerStats}>
-            <View style={styles.statItem}>
-              <IconSymbol name='trophy.fill' size={14} color='#F59E0B' />
-              <Text style={styles.statText}>{player.score} pts</Text>
-            </View>
-
-            {showDetailedStats && (
-              <>
-                <View style={styles.statItem}>
-                  <IconSymbol
-                    name='bitcoinsign.circle.fill'
-                    size={14}
-                    color='#F59E0B'
-                  />
-                  <Text style={styles.statText}>{player.tokens || 0}</Text>
-                </View>
-
-                <View style={styles.statItem}>
-                  <IconSymbol name='sparkles' size={14} color='#8B5CF6' />
-                  <Text style={styles.statText}>
-                    {player.powerCards?.length || 0}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-
-          {/* Status Indicators */}
-          {showDetailedStats && (
-            <View style={styles.statusIndicators}>
-              {player.currentBet && player.currentBet > 0 && (
-                <View style={styles.statusBadge}>
-                  <IconSymbol name='dice.fill' size={10} color='#EF4444' />
-                  <Text style={styles.statusText}>
-                    Bet: {player.currentBet}
-                  </Text>
-                </View>
-              )}
-
-              {player.isImmune && (
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: 'rgba(245, 158, 11, 0.2)' },
-                  ]}
-                >
-                  <IconSymbol name='shield.fill' size={10} color='#F59E0B' />
-                  <Text style={styles.statusText}>Shield</Text>
-                </View>
-              )}
-
-              {player.boostActive && (
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: 'rgba(139, 92, 246, 0.2)' },
-                  ]}
-                >
-                  <IconSymbol name='bolt.fill' size={10} color='#8B5CF6' />
-                  <Text style={styles.statusText}>Boost</Text>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
-
-        {/* Score Display */}
-        <View style={styles.scoreDisplay}>
-          <Text style={[styles.scoreText, isWinner && styles.winnerScore]}>
-            {player.score}
-          </Text>
-          <Text style={styles.scoreLabel}>pts</Text>
-
-          {player.score >= 15 && (
-            <View style={styles.winBadge}>
-              <IconSymbol name='crown.fill' size={12} color='#F59E0B' />
-            </View>
-          )}
-        </View>
-      </TouchableOpacity>
-    );
+  const getPositionStyle = (index: number) => {
+    switch (index) {
+      case 0:
+        return styles.firstPlace;
+      case 1:
+        return styles.secondPlace;
+      case 2:
+        return styles.thirdPlace;
+      default:
+        return styles.otherPlace;
+    }
   };
 
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>🏆 LEADERBOARD</Text>
-      <Text style={styles.headerSubtitle}>
-        {players.length} jugador{players.length !== 1 ? 'es' : ''}
-        {highlightWinner &&
-          winner &&
-          winner.score >= 15 &&
-          ' • JUEGO TERMINADO'}
-      </Text>
-    </View>
-  );
-
-  const renderFooter = () => {
-    if (!showDetailedStats) return null;
-
-    const totalTokens = players.reduce((sum, p) => sum + (p.tokens || 0), 0);
-    const totalPowerCards = players.reduce(
-      (sum, p) => sum + (p.powerCards?.length || 0),
-      0
-    );
-    const currentPlayer = players.find((p) => p.isCurrentTurn);
-
-    return (
-      <View style={styles.footer}>
-        <View style={styles.gameStats}>
-          <View style={styles.statItem}>
-            <IconSymbol
-              name='bitcoinsign.circle.fill'
-              size={16}
-              color='#F59E0B'
-            />
-            <Text style={styles.footerStatText}>
-              Total: {totalTokens} tokens
-            </Text>
-          </View>
-          <View style={styles.statItem}>
-            <IconSymbol name='sparkles' size={16} color='#8B5CF6' />
-            <Text style={styles.footerStatText}>
-              Total: {totalPowerCards} poderes
-            </Text>
-          </View>
-        </View>
-
-        {currentPlayer && (
-          <View style={styles.currentTurnInfo}>
-            <Text style={styles.currentTurnText}>
-              🎯 Turno de:{' '}
-              <Text style={styles.currentPlayerName}>{currentPlayer.name}</Text>
-            </Text>
-          </View>
-        )}
-      </View>
-    );
+  const getPositionIcon = (index: number) => {
+    switch (index) {
+      case 0:
+        return '🥇';
+      case 1:
+        return '🥈';
+      case 2:
+        return '🥉';
+      default:
+        return `${index + 1}`;
+    }
   };
 
-  if (players.length === 0) {
+  const getProgressPercentage = (score: number) => {
+    return Math.min((score / SCORE_TO_WIN) * 100, 100);
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER: Modo Compacto
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  if (compact) {
     return (
-      <View style={styles.emptyContainer}>
-        <IconSymbol name='person.3' size={48} color='#64748B' />
-        <Text style={styles.emptyText}>No hay jugadores</Text>
-        <Text style={styles.emptySubtext}>Agrega jugadores para empezar</Text>
+      <View style={styles.compactContainer}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {sortedPlayers.map((player, index) => (
+            <View
+              key={player.id}
+              style={[
+                styles.compactCard,
+                player.isCurrentTurn && styles.compactCardActive,
+                index === 0 && styles.compactCardLeader,
+              ]}
+            >
+              <Text style={styles.compactPosition}>
+                {getPositionIcon(index)}
+              </Text>
+              <Text style={styles.compactName} numberOfLines={1}>
+                {player.name}
+              </Text>
+              <Text style={styles.compactScore}>{player.score}</Text>
+            </View>
+          ))}
+        </ScrollView>
       </View>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // RENDER: Modo Normal
+  // ═══════════════════════════════════════════════════════════════════════════
+
   return (
     <View style={styles.container}>
-      <FlatList
-        data={sortedPlayers}
-        keyExtractor={(item) => item.id}
-        renderItem={renderPlayer}
-        ListHeaderComponent={renderHeader}
-        ListFooterComponent={renderFooter}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      />
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>🏆 Puntuaciones</Text>
+        <Text style={styles.headerSubtitle}>Meta: {SCORE_TO_WIN} puntos</Text>
+      </View>
+
+      {/* Lista de Jugadores */}
+      <View style={styles.playersList}>
+        {sortedPlayers.map((player, index) => (
+          <View
+            key={player.id}
+            style={[
+              styles.playerCard,
+              getPositionStyle(index),
+              player.isCurrentTurn && styles.playerCardActive,
+              highlightWinner &&
+                isGameWon &&
+                index === 0 &&
+                styles.playerCardWinner,
+            ]}
+          >
+            {/* Posición */}
+            <View style={styles.positionContainer}>
+              <Text style={styles.positionText}>{getPositionIcon(index)}</Text>
+            </View>
+
+            {/* Info del Jugador */}
+            <View style={styles.playerInfo}>
+              <View style={styles.playerNameRow}>
+                <Text
+                  style={[
+                    styles.playerName,
+                    player.isCurrentTurn && styles.playerNameActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {player.name}
+                </Text>
+                {player.isCurrentTurn && (
+                  <View style={styles.turnIndicator}>
+                    <Text style={styles.turnText}>TURNO</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Barra de Progreso */}
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    { width: `${getProgressPercentage(player.score)}%` },
+                    index === 0 && styles.progressBarLeader,
+                  ]}
+                />
+              </View>
+
+              {/* Stats Detallados */}
+              {showDetailedStats && (
+                <View style={styles.detailedStats}>
+                  <View style={styles.statItem}>
+                    <IconSymbol name='flame.fill' size={12} color='#F59E0B' />
+                    <Text style={styles.statText}>
+                      {player.consecutiveWins || 0} racha
+                    </Text>
+                  </View>
+                  {player.currentBet > 0 && (
+                    <View style={styles.statItem}>
+                      <IconSymbol name='dice.fill' size={12} color='#EF4444' />
+                      <Text style={styles.statText}>
+                        Apuesta: {player.currentBet}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* Score y Tokens */}
+            <View style={styles.scoreContainer}>
+              {/* Puntuación */}
+              <View style={styles.scoreBox}>
+                <Text
+                  style={[
+                    styles.scoreValue,
+                    index === 0 && styles.scoreValueLeader,
+                  ]}
+                >
+                  {player.score}
+                </Text>
+                <Text style={styles.scoreLabel}>pts</Text>
+              </View>
+
+              {/* Tokens */}
+              <View style={styles.tokensBox}>
+                <IconSymbol
+                  name='bitcoinsign.circle.fill'
+                  size={16}
+                  color='#F59E0B'
+                />
+                <Text style={styles.tokensValue}>{player.tokens}</Text>
+              </View>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Footer con info del ganador */}
+      {highlightWinner && isGameWon && (
+        <View style={styles.winnerBanner}>
+          <Text style={styles.winnerText}>
+            🎉 ¡{leader.name} GANA LA PARTIDA! 🎉
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
 
-// ✅ Helper functions FUERA del componente (puro y memoizado)
-function getPositionEmoji(pos: number): string {
-  const emojis = ['🥇', '🥈', '🥉'];
-  return emojis[pos - 1] ?? `${pos}°`;
-}
-
-function getPositionColor(pos: number): string {
-  const colors: Record<number, string> = {
-    1: '#F59E0B',
-    2: '#94A3B8',
-    3: '#CD7F32',
-  };
-  return colors[pos] ?? '#64748B';
-}
+// ═══════════════════════════════════════════════════════════════════════════
+// ESTILOS
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
+  // Container
   container: {
-    flex: 1,
-  },
-  listContent: {
+    margin: 16,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 16,
     padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
+
+  // Header
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#F8FAFC',
-    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
+    fontSize: 12,
     color: '#94A3B8',
     fontWeight: '500',
   },
+
+  // Players List
+  playersList: {
+    gap: 10,
+  },
+
+  // Player Card
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
+    borderRadius: 12,
+    padding: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  currentTurnCard: {
-    borderColor: '#10B981',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    shadowColor: '#10B981',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+  playerCardActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
-  winnerCard: {
+  playerCardWinner: {
     borderColor: '#F59E0B',
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
   },
-  playerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 16,
+
+  // Position Styles
+  firstPlace: {
+    borderColor: 'rgba(245, 158, 11, 0.3)',
+    backgroundColor: 'rgba(245, 158, 11, 0.08)',
   },
-  positionBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  secondPlace: {
+    borderColor: 'rgba(148, 163, 184, 0.3)',
+    backgroundColor: 'rgba(148, 163, 184, 0.05)',
+  },
+  thirdPlace: {
+    borderColor: 'rgba(180, 83, 9, 0.3)',
+    backgroundColor: 'rgba(180, 83, 9, 0.05)',
+  },
+  otherPlace: {},
+
+  // Position Container
+  positionContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   positionText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 16,
   },
-  turnIndicator: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: '#10B981',
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
+  // Player Info
   playerInfo: {
     flex: 1,
+    marginRight: 12,
   },
-  playerName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 6,
-  },
-  winnerName: {
-    color: '#F59E0B',
-  },
-  playerStats: {
+  playerNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 6,
+  },
+  playerName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F8FAFC',
+    flex: 1,
+  },
+  playerNameActive: {
+    color: '#60A5FA',
+  },
+  turnIndicator: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  turnText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+
+  // Progress Bar
+  progressBarContainer: {
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 2,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: '#3B82F6',
+    borderRadius: 2,
+  },
+  progressBarLeader: {
+    backgroundColor: '#F59E0B',
+  },
+
+  // Detailed Stats
+  detailedStats: {
+    flexDirection: 'row',
     gap: 12,
-    marginBottom: 4,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
   statText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#CBD5E1',
-    marginLeft: 4,
+    fontSize: 11,
+    color: '#94A3B8',
   },
-  statusIndicators: {
+
+  // Score Container
+  scoreContainer: {
+    alignItems: 'flex-end',
+  },
+  scoreBox: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    alignItems: 'baseline',
+    marginBottom: 4,
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 9,
-    fontWeight: '600',
-    color: '#E2E8F0',
-    marginLeft: 2,
-  },
-  scoreDisplay: {
-    alignItems: 'center',
-    position: 'relative',
-  },
-  scoreText: {
+  scoreValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#3B82F6',
+    color: '#F8FAFC',
   },
-  winnerScore: {
+  scoreValueLeader: {
     color: '#F59E0B',
   },
   scoreLabel: {
-    fontSize: 10,
-    color: '#64748B',
+    fontSize: 11,
+    color: '#94A3B8',
+    marginLeft: 2,
     fontWeight: '500',
   },
-  winBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#F59E0B',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  footer: {
-    marginTop: 16,
-    padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-  },
-  gameStats: {
+  tokensBox: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: 12,
-  },
-  footerStatText: {
-    fontSize: 12,
-    color: '#CBD5E1',
-    fontWeight: '500',
-    marginLeft: 6,
-  },
-  currentTurnInfo: {
     alignItems: 'center',
-    padding: 8,
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    borderRadius: 8,
+    gap: 4,
   },
-  currentTurnText: {
-    fontSize: 14,
-    color: '#CBD5E1',
-    fontWeight: '500',
-  },
-  currentPlayerName: {
-    color: '#10B981',
-    fontWeight: '700',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 18,
+  tokensValue: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#64748B',
-    marginTop: 16,
-    marginBottom: 4,
+    color: '#F59E0B',
   },
-  emptySubtext: {
+
+  // Winner Banner
+  winnerBanner: {
+    marginTop: 16,
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  winnerText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F59E0B',
+    textAlign: 'center',
+  },
+
+  // Compact Mode
+  compactContainer: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  compactCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    gap: 6,
+  },
+  compactCardActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  compactCardLeader: {
+    borderColor: '#F59E0B',
+  },
+  compactPosition: {
     fontSize: 14,
-    color: '#64748B',
-    opacity: 0.8,
+  },
+  compactName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#F8FAFC',
+    maxWidth: 80,
+  },
+  compactScore: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#F59E0B',
   },
 });
