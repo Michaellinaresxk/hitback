@@ -68,6 +68,12 @@ export interface GameFlow {
   // Rewards
   showReward: boolean;
   rewardData: RewardData | null;
+
+  gameMasterAnswer: {
+    correctAnswer: string;
+    trackTitle: string;
+    trackArtist: string;
+  } | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -252,6 +258,7 @@ export const useGameFlow = () => {
           track: result.round!.track,
           question: result.round!.question,
         },
+        gameMasterAnswer: result.gameMasterData || null,
         audioPlaying: !!result.round!.track.audioUrl,
         audioUrl: result.round!.track.audioUrl || null,
       }));
