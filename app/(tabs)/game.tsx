@@ -240,12 +240,19 @@ export default function GameScreen() {
       return;
     }
 
-    if (player.tokens < amount) {
-      showError('Error', 'No tienes suficientes tokens');
+    // ✅ FIX: Verificar que tenga al menos 1 token (no "amount" tokens)
+    if (player.tokens < 1) {
+      showError('Sin Tokens', 'No tienes tokens disponibles');
       return;
     }
 
-    // Place bet locally
+    // ✅ FIX: Validar que amount sea 1, 2, o 3
+    if (amount < 1 || amount > 3) {
+      showError('Error', 'El valor del token debe ser 1, 2 o 3');
+      return;
+    }
+
+    // Place bet locally (resta 1 token, guarda valor)
     placeBet(playerId, amount);
 
     // Usar el ID del backend
@@ -255,14 +262,9 @@ export default function GameScreen() {
     const result = await placeBetBackend(backendPlayerId, amount);
 
     if (result.success) {
-      showSuccess(
-        'Apuesta Realizada',
-        `${player.name} apostó ${amount} token${amount > 1 ? 's' : ''} (${
-          result.multiplier
-        }x)`
-      );
+      showSuccess('Token Usado', `${player.name} usó token +${amount} puntos`);
     } else {
-      showError('Error', 'No se pudo registrar la apuesta en el servidor');
+      showError('Error', 'No se pudo registrar en el servidor');
     }
 
     setShowBettingModal(false);

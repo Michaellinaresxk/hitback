@@ -1,4 +1,10 @@
-// store/gameStore.ts - LIMPIO: Solo Backend Integration
+// store/gameStore.ts - HITBACK Game Store
+// ✅ FIX: Sistema de tokens únicos
+// - Cada jugador tiene 3 tokens ÚNICOS: +1, +2, +3
+// - Al apostar: el token se DESHABILITA (no se puede usar de nuevo)
+// - Si acierta: puntos base + valor del token
+// - Si falla: 0 puntos, pero el token ya está usado
+
 import { audioService } from '@/services/audioService';
 import { create } from 'zustand';
 import type { CurrentCard } from '@/types/game_types';
@@ -8,15 +14,16 @@ import {
   SPEED_ROUND_TIME_LIMIT,
 } from '@/constants/SpeedRound';
 
-// ðŸŽ® INTERFACES - Player se mantiene aquÃ­, Card viene de game_types
+// 🎮 INTERFACES
 export interface Player {
   id: string;
   name: string;
   score: number;
   isCurrentTurn: boolean;
-  tokens: number;
+  // ✅ NUEVO: Array de tokens disponibles [1, 2, 3] -> se remueven al usarse
+  availableTokens: number[];
   powerCards: any[];
-  currentBet: number;
+  currentBet: number; // Valor del token apostado (0 si no apostó)
   isImmune: boolean;
   boostActive: boolean;
   peekUsed: boolean;
@@ -25,7 +32,6 @@ export interface Player {
   difficultyStreaks: Record<string, number>;
 }
 
-// âœ… Re-exportar CurrentCard como Card para compatibilidad
 export type Card = CurrentCard;
 
 interface GameState {
@@ -40,8 +46,6 @@ interface GameState {
   isScanning: boolean;
   error: string | null;
   timerInterval: NodeJS.Timeout | null;
-
-  // Game Features
   gamePot: { tokens: number; powerCards: any[] };
   viralMomentActive: boolean;
   speedRoundCards: Card[];
@@ -49,77 +53,46 @@ interface GameState {
   battleRound: any;
   currentSpeedRoundIndex: number;
   speedRoundTimeLeft: number;
-
-  // Audio State
   audioFinished: boolean;
   showQuestion: boolean;
   showAnswer: boolean;
   showGameEndModal: boolean;
-
-  // Special Modes State
   battleModeActive: boolean;
   speedRoundActive: boolean;
   selectedBattlePlayers: { player1Id: string; player2Id: string } | null;
-
-  // Backend Connection State
   backendConnected: boolean;
   lastBackendCheck: string | null;
 }
 
 interface GameActions {
-  // Core actions
   addPlayer: (name: string) => void;
   removePlayer: (id: string) => void;
   startGame: () => void;
   endGame: () => void;
   createNewGame: () => void;
   nextTurn: () => void;
-
-  // Card & Audio - Backend Integration
   scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;
   setAudioFinished: (finished: boolean) => void;
   setShowQuestion: (show: boolean) => void;
   setShowAnswer: (show: boolean) => void;
   setShowGameEndModal: (show: boolean) => void;
-
-  // Scoring
   awardPoints: (playerId: string, points?: number, answerTime?: number) => void;
-
-  // UI States
   setScanning: (scanning: boolean) => void;
   setError: (error: string | null) => void;
-
-  // Timer
   startTimer: (duration: number) => void;
   stopTimer: () => void;
-
-  // Betting System
-  placeBet: (playerId: string, amount: number) => void;
+  placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;
-
-  // Power Cards
   usePowerCard: (
     playerId: string,
     powerCardId: string,
     targetPlayerId?: string
   ) => void;
-
-  // Special Modes
   startBattleMode: (player1Id: string, player2Id: string) => void;
   startSpeedRound: () => void;
   startViralMoment: () => void;
-
-  // Backend Integration
   checkBackendConnection: () => Promise<boolean>;
   syncWithBackend: () => Promise<void>;
-}
-
-// ðŸ”§ Helper Functions
-function getBettingMultiplier(betAmount: number): number {
-  if (betAmount === 1) return 2;
-  if (betAmount === 2) return 3;
-  if (betAmount >= 3) return 4;
-  return 1;
 }
 
 export const useGameStore = create<GameState & GameActions>((set, get) => ({
@@ -135,8 +108,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   isScanning: false,
   error: null,
   timerInterval: null,
-
-  // Game Features
   gamePot: { tokens: 0, powerCards: [] },
   viralMomentActive: false,
   speedRoundCards: [],
@@ -144,23 +115,17 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   battleRound: null,
   currentSpeedRoundIndex: CURRENT_SPEED_ROUND_INDEX,
   speedRoundTimeLeft: SPEED_ROUND_TIME_LIMIT,
-
-  // Audio State
   audioFinished: false,
   showQuestion: false,
   showAnswer: false,
   showGameEndModal: false,
-
-  // Special Modes State
   battleModeActive: false,
   speedRoundActive: false,
   selectedBattlePlayers: null,
-
-  // Backend Connection State
   backendConnected: false,
   lastBackendCheck: null,
 
-  // ðŸ‘¥ PLAYER MANAGEMENT
+  // 👥 PLAYER MANAGEMENT
   addPlayer: (name: string) => {
     const { players } = get();
 
@@ -169,7 +134,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     if (players.length >= 8) {
-      throw new Error('MÃ¡ximo 8 jugadores');
+      throw new Error('Máximo 8 jugadores');
     }
 
     if (
@@ -183,7 +148,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       name: name.trim(),
       score: 0,
       isCurrentTurn: false,
-      tokens: 5,
+      availableTokens: [1, 2, 3], // ✅ 3 tokens únicos: +1, +2, +3
       powerCards: [],
       currentBet: 0,
       isImmune: false,
@@ -199,7 +164,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       error: null,
     }));
 
-    console.log(`âœ… Player added: ${newPlayer.name}`);
+    console.log(`✅ Player added: ${newPlayer.name} with tokens [1, 2, 3]`);
   },
 
   removePlayer: (id: string) => {
@@ -213,7 +178,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         newCurrentTurn = Math.max(0, state.currentTurn - 1);
       }
 
-      console.log(`âŒ Player removed: ${removedPlayer?.name}`);
+      console.log(`❌ Player removed: ${removedPlayer?.name}`);
 
       return {
         players: newPlayers,
@@ -222,11 +187,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     });
   },
 
-  // ðŸŽ® GAME MANAGEMENT
+  // 🎮 GAME MANAGEMENT
   createNewGame: () => {
-    console.log('ðŸŽ® Creating new game...');
+    console.log('🎮 Creating new game...');
 
-    // Stop any running audio/timers
     audioService.stopAudio();
     const { timerInterval } = get();
     if (timerInterval) {
@@ -255,7 +219,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       lastBackendCheck: null,
     });
 
-    console.log('âœ… New game created');
+    console.log('✅ New game created');
   },
 
   startGame: async () => {
@@ -266,25 +230,21 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     }
 
     try {
-      console.log('ðŸŽ® Starting game...');
+      console.log('🎮 Starting game...');
 
-      // âœ… CHECK BACKEND CONNECTION FIRST
       const backendConnected = await get().checkBackendConnection();
       if (!backendConnected) {
-        console.warn(
-          'âš ï¸ Backend not connected - some features may not work'
-        );
+        console.warn('⚠️ Backend not connected');
       }
 
-      // Initialize audio
       await audioService.initializeAudio();
 
-      // Setup players
+      // ✅ Reset: cada jugador empieza con tokens [1, 2, 3]
       const updatedPlayers = players.map((player, index) => ({
         ...player,
         isCurrentTurn: index === 0,
         score: 0,
-        tokens: 5,
+        availableTokens: [1, 2, 3], // ✅ Tokens únicos
         powerCards: [],
         currentBet: 0,
         consecutiveWins: 0,
@@ -296,7 +256,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         players: updatedPlayers,
         isActive: true,
         currentTurn: 0,
-        timeLeft: 1200, // 20 minutes
+        timeLeft: 1200,
         gameMode: 'normal',
         round: 1,
         error: null,
@@ -304,29 +264,25 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       });
 
       get().startTimer(1200);
-      console.log('âœ… Game started successfully');
+      console.log('✅ Game started - Each player has tokens: [+1, +2, +3]');
     } catch (error) {
-      console.error('âŒ Error starting game:', error);
+      console.error('❌ Error starting game:', error);
       set({ error: 'No se pudo iniciar el juego' });
     }
   },
 
   endGame: async () => {
-    console.log('ðŸ Ending game...');
+    console.log('🏁 Ending game...');
 
     await audioService.stopAudio();
     get().stopTimer();
 
-    const { players, timeLeft, round } = get();
+    const { players } = get();
     const winner = players.reduce((max, player) =>
       player.score > max.score ? player : max
     );
 
-    // Log game stats (sin llamar a saveGameStats)
-    console.log('ðŸ“Š Game ended!');
-    console.log(`   Winner: ${winner.name} (${winner.score} pts)`);
-    console.log(`   Duration: ${Math.floor((1200 - timeLeft) / 60)}min`);
-    console.log(`   Rounds: ${round}`);
+    console.log(`🏆 Winner: ${winner.name} (${winner.score} pts)`);
 
     set({
       isActive: false,
@@ -338,16 +294,12 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       showAnswer: false,
       showGameEndModal: true,
     });
-
-    console.log(
-      `ðŸ† Game ended - Winner: ${winner.name} with ${winner.score} points`
-    );
   },
 
-  // ðŸŽ¯ CARD SCANNING - Backend Integration
+  // 🎯 CARD SCANNING
   scanCard: async (qrCode: string, gameCard?: Card) => {
     try {
-      console.log(`ðŸ” Scanning card: ${qrCode}`);
+      console.log(`📱 Scanning card: ${qrCode}`);
 
       set({
         isScanning: true,
@@ -357,123 +309,85 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
         showAnswer: false,
       });
 
-      let card: Card;
-
       if (gameCard) {
-        // Use card from useGameFlow (already processed from backend)
-        card = gameCard;
-        console.log('âœ… Using card from backend:', card.track.title);
+        set({
+          currentCard: gameCard,
+          isScanning: false,
+          backendConnected: true,
+          lastBackendCheck: new Date().toISOString(),
+        });
       } else {
-        // Fallback: try to get from backend directly
-        console.log(
-          'âš ï¸ No gameCard provided, trying direct backend call...'
-        );
-        throw new Error('Card data not provided - use scanQRAndPlay first');
+        throw new Error('Card data not provided');
       }
-
-      set({
-        currentCard: card,
-        isScanning: false,
-        backendConnected: true,
-        lastBackendCheck: new Date().toISOString(),
-      });
-
-      console.log(
-        `âœ… Card ready for play: ${card.track.title} by ${card.track.artist}`
-      );
     } catch (error) {
-      console.error('âŒ Error in scanCard:', error);
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido';
-
+      console.error('❌ Error in scanCard:', error);
       set({
         isScanning: false,
-        error: errorMessage,
+        error: error instanceof Error ? error.message : 'Error desconocido',
         backendConnected: false,
       });
     }
   },
 
-  // ðŸŽµ AUDIO STATE MANAGEMENT
-  setAudioFinished: (finished: boolean) => {
-    console.log(`ðŸŽµ Audio finished: ${finished}`);
-    set({ audioFinished: finished });
-  },
+  // 🎵 AUDIO STATE
+  setAudioFinished: (finished: boolean) => set({ audioFinished: finished }),
+  setShowQuestion: (show: boolean) => set({ showQuestion: show }),
+  setShowAnswer: (show: boolean) => set({ showAnswer: show }),
+  setShowGameEndModal: (show: boolean) => set({ showGameEndModal: show }),
 
-  setShowQuestion: (show: boolean) => {
-    console.log(`â“ Show question: ${show}`);
-    set({ showQuestion: show });
-  },
-
-  setShowAnswer: (show: boolean) => {
-    console.log(`âœ… Show answer: ${show}`);
-    set({ showAnswer: show });
-  },
-
-  setShowGameEndModal: (show: boolean) => {
-    set({ showGameEndModal: show });
-  },
-
-  // ðŸ† SCORING SYSTEM
+  // 🏆 SCORING - Puntos = base + valor del token (si acertó)
   awardPoints: (playerId: string, points?: number, answerTime?: number) => {
     const { currentCard, players } = get();
     const player = players.find((p) => p.id === playerId);
 
     if (!player || !currentCard) {
-      console.error('âŒ Cannot award points: player or card not found');
+      console.error('❌ Cannot award points: player or card not found');
       return;
     }
 
-    // âœ… CORREGIDO: Usar currentCard.question.points
     let basePoints = points || currentCard.question.points || 0;
 
-    // Apply betting multiplier
-    if (player.currentBet > 0) {
-      const multiplier = getBettingMultiplier(player.currentBet);
-      basePoints = basePoints * multiplier;
-      console.log(
-        `ðŸ’° Betting multiplier applied: ${player.currentBet} tokens = ${multiplier}x`
-      );
-    }
+    // ✅ Token SUMA puntos extra
+    let tokenBonus = player.currentBet; // currentBet = valor del token usado
 
-    // Apply boost power card
+    // Boost power card (multiplica x2)
     if (player.boostActive) {
       basePoints = basePoints * 2;
-      console.log(`âš¡ Boost multiplier applied: 2x`);
+      console.log(`⚡ Boost: 2x`);
     }
+
+    const totalPoints = basePoints + tokenBonus;
+
+    console.log(
+      `🏆 ${player.name}: base=${basePoints} + token=${tokenBonus} = ${totalPoints} pts`
+    );
 
     set((state) => ({
       players: state.players.map((p) => {
         if (p.id === playerId) {
-          // âœ… CORREGIDO: Usar currentCard.question.type y currentCard.scan.difficulty
-          const cardType = currentCard.question.type;
-          const difficulty = currentCard.scan.difficulty;
-
-          const newPlayer = {
+          return {
             ...p,
-            score: p.score + basePoints,
+            score: p.score + totalPoints,
             consecutiveWins: p.consecutiveWins + 1,
-            currentBet: 0, // Clear bet after use
-            boostActive: false, // Clear boost after use
+            currentBet: 0, // Limpiar apuesta
+            boostActive: false,
             cardTypeStreaks: {
               ...p.cardTypeStreaks,
-              [cardType]: (p.cardTypeStreaks[cardType] || 0) + 1,
+              [currentCard.question.type]:
+                (p.cardTypeStreaks[currentCard.question.type] || 0) + 1,
             },
             difficultyStreaks: {
               ...p.difficultyStreaks,
-              [difficulty]: (p.difficultyStreaks[difficulty] || 0) + 1,
+              [currentCard.scan.difficulty]:
+                (p.difficultyStreaks[currentCard.scan.difficulty] || 0) + 1,
             },
           };
-
-          console.log(
-            `ðŸ† Points awarded: ${player.name} +${basePoints} pts (total: ${newPlayer.score})`
-          );
-          return newPlayer;
         } else {
-          // Reset streaks for other players
+          // Los demás pierden su racha y se limpia su apuesta
           return {
             ...p,
             consecutiveWins: 0,
+            currentBet: 0,
             cardTypeStreaks: {},
             difficultyStreaks: {},
           };
@@ -481,11 +395,10 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       }),
     }));
 
-    // Auto advance to next turn
     get().nextTurn();
   },
 
-  // â­ï¸ NEXT TURN
+  // ➡️ NEXT TURN
   nextTurn: () => {
     const { players, currentTurn } = get();
     const nextTurnIndex = (currentTurn + 1) % players.length;
@@ -493,11 +406,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     const updatedPlayers = players.map((player, index) => ({
       ...player,
       isCurrentTurn: index === nextTurnIndex,
-      isImmune: player.isImmune && Math.random() > 0.5, // 50% chance to lose immunity
-      peekUsed: false, // Reset peek
+      isImmune: player.isImmune && Math.random() > 0.5,
+      peekUsed: false,
     }));
-
-    const nextPlayer = updatedPlayers[nextTurnIndex];
 
     set({
       players: updatedPlayers,
@@ -509,42 +420,43 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
       showAnswer: false,
     });
 
-    console.log(`â­ï¸ Next turn: ${nextPlayer.name} (Round ${get().round})`);
+    console.log(`➡️ Next turn: ${updatedPlayers[nextTurnIndex].name}`);
 
-    // Clear all bets
     get().clearBets();
 
-    // Check win condition (15 points)
     const winner = updatedPlayers.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) {
-      console.log(
-        `ðŸ† Winner found: ${winner.name} with ${winner.score} points!`
-      );
+      console.log(`🏆 Winner: ${winner.name} with ${winner.score} points!`);
       get().endGame();
     }
   },
 
-  // ðŸ’° BETTING SYSTEM
-  placeBet: (playerId: string, amount: number) => {
+  // 💰 BETTING SYSTEM - Token Único
+  // ✅ FIX: El token se DESHABILITA al usarlo (se remueve del array)
+  placeBet: (playerId: string, tokenValue: number) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
 
       if (!player) {
-        console.error('âŒ Player not found for betting');
+        console.error('❌ Player not found');
         return { ...state, error: 'Jugador no encontrado' };
       }
 
-      if (player.tokens < amount) {
-        console.error('âŒ Not enough tokens for bet');
-        return { ...state, error: 'No tienes suficientes tokens' };
+      // ✅ Verificar que el token específico está disponible
+      if (!player.availableTokens.includes(tokenValue)) {
+        console.error(`❌ Token +${tokenValue} not available`);
+        return { ...state, error: `Token +${tokenValue} ya fue usado` };
       }
 
-      if (amount < 1 || amount > 3) {
-        console.error('âŒ Invalid bet amount');
-        return { ...state, error: 'Apuesta debe ser entre 1 y 3 tokens' };
-      }
+      console.log(`🪙 ${player.name} usa token +${tokenValue}`);
+      console.log(`   Tokens antes: [${player.availableTokens.join(', ')}]`);
 
-      console.log(`ðŸ’° Player ${player.name} bet ${amount} tokens`);
+      // ✅ Remover el token del array (ya no estará disponible)
+      const newAvailableTokens = player.availableTokens.filter(
+        (t) => t !== tokenValue
+      );
+
+      console.log(`   Tokens después: [${newAvailableTokens.join(', ')}]`);
 
       return {
         ...state,
@@ -552,8 +464,8 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           p.id === playerId
             ? {
                 ...p,
-                tokens: p.tokens - amount,
-                currentBet: amount,
+                availableTokens: newAvailableTokens, // ✅ Token removido
+                currentBet: tokenValue, // ✅ Valor del token usado
               }
             : p
         ),
@@ -566,10 +478,9 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     set((state) => ({
       players: state.players.map((p) => ({ ...p, currentBet: 0 })),
     }));
-    console.log('ðŸ§¹ All bets cleared');
   },
 
-  // âš¡ POWER CARDS
+  // ⚡ POWER CARDS
   usePowerCard: (
     playerId: string,
     powerCardId: string,
@@ -589,18 +500,24 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
 
       let newPlayers = [...state.players];
 
-      // Apply power card effects
       switch (powerCard.type) {
-        case 'robo': // Steal 1 token
+        case 'robo':
           if (targetPlayerId) {
             newPlayers = newPlayers.map((p) => {
-              if (p.id === targetPlayerId && p.tokens > 0) {
-                return { ...p, tokens: p.tokens - 1 };
-              }
-              if (p.id === playerId) {
+              if (p.id === targetPlayerId && p.availableTokens.length > 0) {
+                // Robar el token más alto disponible
+                const stolenToken = Math.max(...p.availableTokens);
                 return {
                   ...p,
-                  tokens: p.tokens + 1,
+                  availableTokens: p.availableTokens.filter(
+                    (t) => t !== stolenToken
+                  ),
+                };
+              }
+              if (p.id === playerId) {
+                // TODO: Agregar el token robado
+                return {
+                  ...p,
                   powerCards: p.powerCards.map((pc) =>
                     pc.id === powerCardId
                       ? { ...pc, currentUses: pc.currentUses + 1 }
@@ -613,7 +530,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           }
           break;
 
-        case 'escudo': // Immunity shield
+        case 'escudo':
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
               ? {
@@ -629,7 +546,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           );
           break;
 
-        case 'boost': // Double points next round
+        case 'boost':
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
               ? {
@@ -645,7 +562,7 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
           );
           break;
 
-        case 'peek': // See answer early
+        case 'peek':
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
               ? {
@@ -659,29 +576,18 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
                 }
               : p
           );
-          set({ showAnswer: true }); // Show answer immediately
+          set({ showAnswer: true });
           break;
       }
 
-      console.log(`âš¡ Power card used: ${powerCard.name} by ${player.name}`);
+      console.log(`⚡ Power card: ${powerCard.name} by ${player.name}`);
 
-      return {
-        ...state,
-        players: newPlayers,
-        error: null,
-      };
+      return { ...state, players: newPlayers, error: null };
     });
   },
 
-  // ðŸŽ¯ SPECIAL GAME MODES
+  // 🎯 SPECIAL GAME MODES
   startBattleMode: (player1Id: string, player2Id: string) => {
-    const player1 = get().players.find((p) => p.id === player1Id);
-    const player2 = get().players.find((p) => p.id === player2Id);
-
-    console.log(
-      `âš”ï¸ Starting Battle Mode: ${player1?.name} vs ${player2?.name}`
-    );
-
     set({
       gameMode: 'battle',
       battleModeActive: true,
@@ -691,7 +597,6 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   startSpeedRound: () => {
-    console.log('âš¡ Starting Speed Round');
     set({
       gameMode: 'speed',
       speedRoundActive: true,
@@ -702,39 +607,30 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
   },
 
   startViralMoment: () => {
-    console.log('ðŸ”¥ Starting Viral Moment');
     set({
       gameMode: 'viral',
       viralMomentActive: true,
     });
   },
 
-  // â° TIMER MANAGEMENT
+  // ⏰ TIMER
   startTimer: (duration: number) => {
     const { timerInterval } = get();
-    if (timerInterval) {
-      clearInterval(timerInterval);
-    }
+    if (timerInterval) clearInterval(timerInterval);
 
     set({ timeLeft: duration });
 
     const newInterval = setInterval(() => {
       const { timeLeft, isActive } = get();
-
       if (!isActive || timeLeft <= 0) {
         get().stopTimer();
-        if (timeLeft <= 0) {
-          console.log('â° Game time expired');
-          get().endGame();
-        }
+        if (timeLeft <= 0) get().endGame();
         return;
       }
-
       set((state) => ({ timeLeft: state.timeLeft - 1 }));
     }, 1000);
 
     set({ timerInterval: newInterval });
-    console.log(`â° Timer started: ${duration} seconds`);
   },
 
   stopTimer: () => {
@@ -742,73 +638,56 @@ export const useGameStore = create<GameState & GameActions>((set, get) => ({
     if (timerInterval) {
       clearInterval(timerInterval);
       set({ timerInterval: null });
-      console.log('â° Timer stopped');
     }
   },
 
-  // ðŸŒ BACKEND INTEGRATION
+  // 🔌 BACKEND
   checkBackendConnection: async (): Promise<boolean> => {
     try {
-      console.log('ðŸ”— Checking backend connection...');
-
       const isConnected = await audioService.testConnection();
-      const timestamp = new Date().toISOString();
-
       set({
         backendConnected: isConnected,
-        lastBackendCheck: timestamp,
+        lastBackendCheck: new Date().toISOString(),
       });
-
-      console.log(`ðŸ”— Backend connection: ${isConnected ? 'OK' : 'FAILED'}`);
       return isConnected;
     } catch (error) {
-      console.error('âŒ Backend connection check failed:', error);
-
       set({
         backendConnected: false,
         lastBackendCheck: new Date().toISOString(),
-        error: 'No se puede conectar al servidor',
       });
-
       return false;
     }
   },
 
   syncWithBackend: async () => {
     try {
-      console.log('ðŸ”„ Syncing with backend...');
-
-      const [connectionInfo, tracks] = await Promise.all([
+      const [connectionInfo] = await Promise.all([
         audioService.getConnectionInfo(),
-        audioService.getAllTracks(),
       ]);
-
-      console.log(
-        `âœ… Backend sync complete: ${tracks.length} tracks available`
-      );
-
       set({
         backendConnected: connectionInfo.backendConnected,
         lastBackendCheck: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('âŒ Backend sync failed:', error);
-      set({
-        backendConnected: false,
-        error: 'Error sincronizando con servidor',
-      });
+      set({ backendConnected: false });
     }
   },
 
-  // ðŸ”§ UI STATES
-  setScanning: (scanning: boolean) => {
-    set({ isScanning: scanning });
-  },
-
-  setError: (error: string | null) => {
-    set({ error });
-  },
+  setScanning: (scanning: boolean) => set({ isScanning: scanning }),
+  setError: (error: string | null) => set({ error }),
 }));
 
-// Exportar helper para uso externo
-export { getBettingMultiplier };
+// ✅ Helper para verificar tokens disponibles
+export function getAvailableTokens(player: Player): number[] {
+  return player.availableTokens || [];
+}
+
+// ✅ Helper para verificar si un token específico está disponible
+export function isTokenAvailable(player: Player, tokenValue: number): boolean {
+  return player.availableTokens?.includes(tokenValue) || false;
+}
+
+// Compatibilidad con código antiguo (tokens como número)
+export function getPlayerTokenCount(player: Player): number {
+  return player.availableTokens?.length || 0;
+}
