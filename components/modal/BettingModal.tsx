@@ -1,5 +1,8 @@
 // components/modal/BettingModal.tsx
-// ✅ FIX: Agregar countdown visual para el tiempo de apuestas
+// ✅ FIX: Sistema de tokens ÚNICOS
+// - Cada jugador tiene 3 tokens: +1, +2, +3
+// - Cada token se muestra disponible o disabled
+// - Una vez usado, el botón se deshabilita permanentemente
 
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import React from 'react';
@@ -16,13 +19,23 @@ import {
 
 const { width } = Dimensions.get('window');
 
+interface Player {
+  id: string;
+  name: string;
+  score: number;
+  availableTokens: number[]; // ✅ NUEVO: Array de tokens disponibles [1, 2, 3]
+  currentBet: number;
+  // Compatibilidad
+  tokens?: number;
+}
+
 interface BettingModalProps {
   visible: boolean;
   onClose: () => void;
-  players: any[];
+  players: Player[];
   currentCard: any;
-  onPlaceBet: (playerId: string, amount: number) => void;
-  bettingTimeLeft?: number; // ✅ NUEVO: Tiempo restante
+  onPlaceBet: (playerId: string, tokenValue: number) => void;
+  bettingTimeLeft?: number;
 }
 
 export default function BettingModal({
@@ -31,58 +44,102 @@ export default function BettingModal({
   players,
   currentCard,
   onPlaceBet,
-  bettingTimeLeft = 10, // ✅ Default 10 segundos
+  bettingTimeLeft = 10,
 }: BettingModalProps) {
   const { t } = useTranslation();
 
-  const getBettingMultiplier = (betAmount: number): number => {
-    if (betAmount === 1) return 2;
-    if (betAmount === 2) return 3;
-    if (betAmount >= 3) return 4;
-    return 1;
-  };
-
-  // ✅ Determinar si es tiempo urgente (menos de 5 segundos)
   const isUrgent = bettingTimeLeft <= 5;
 
-  const renderPlayer = ({ item: player }: { item: any }) => {
+  // ✅ Helper para verificar si un token está disponible
+  const isTokenAvailable = (player: Player, tokenValue: number): boolean => {
+    // Usar availableTokens si existe, sino fallback a lógica antigua
+    if (player.availableTokens) {
+      return player.availableTokens.includes(tokenValue);
+    }
+    // Fallback: si tiene suficientes tokens (lógica antigua)
+    return (player.tokens || 0) >= tokenValue;
+  };
+
+  // ✅ Helper para obtener tokens disponibles
+  const getAvailableTokens = (player: Player): number[] => {
+    return player.availableTokens || [];
+  };
+
+  const renderPlayer = ({ item: player }: { item: Player }) => {
+    // Si ya apostó en esta ronda
     if (player.currentBet > 0) {
       return (
         <View style={styles.playerItem}>
           <Text style={styles.playerName}>{player.name}</Text>
-          <Text style={styles.alreadyBet}>
-            ✅ Apostó {player.currentBet} token
-            {player.currentBet > 1 ? 's' : ''}
-          </Text>
+          <View style={styles.betPlacedContainer}>
+            <Text style={styles.alreadyBet}>
+              ✅ Usó token +{player.currentBet}
+            </Text>
+          </View>
         </View>
       );
     }
+
+    const availableTokens = getAvailableTokens(player);
+    const hasNoTokens = availableTokens.length === 0;
 
     return (
       <View style={styles.playerItem}>
         <View style={styles.playerInfo}>
           <Text style={styles.playerName}>{player.name}</Text>
-          <Text style={styles.playerTokens}>🪙 {player.tokens} tokens</Text>
+          <Text style={styles.playerTokens}>
+            🪙{' '}
+            {availableTokens.length > 0
+              ? `Tokens: [${availableTokens.join(', ')}]`
+              : 'Sin tokens'}
+          </Text>
         </View>
 
-        <View style={styles.bettingOptions}>
-          {[1, 2, 3].map((amount) => (
-            <TouchableOpacity
-              key={amount}
-              style={[
-                styles.betButton,
-                player.tokens < amount && styles.betButtonDisabled,
-              ]}
-              onPress={() => onPlaceBet(player.id, amount)}
-              disabled={player.tokens < amount}
-            >
-              <Text style={styles.betAmount}>{amount}</Text>
-              <Text style={styles.betMultiplier}>
-                {getBettingMultiplier(amount)}x
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {hasNoTokens ? (
+          <View style={styles.noTokensContainer}>
+            <Text style={styles.noTokensText}>
+              😅 No tiene tokens disponibles
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.bettingOptions}>
+            {/* ✅ Mostrar los 3 botones, pero disabled si ya se usó ese token */}
+            {[1, 2, 3].map((tokenValue) => {
+              const isAvailable = isTokenAvailable(player, tokenValue);
+
+              return (
+                <TouchableOpacity
+                  key={tokenValue}
+                  style={[
+                    styles.betButton,
+                    !isAvailable && styles.betButtonUsed,
+                  ]}
+                  onPress={() =>
+                    isAvailable && onPlaceBet(player.id, tokenValue)
+                  }
+                  disabled={!isAvailable}
+                >
+                  <Text
+                    style={[
+                      styles.betAmount,
+                      !isAvailable && styles.betAmountUsed,
+                    ]}
+                  >
+                    +{tokenValue}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.betLabel,
+                      !isAvailable && styles.betLabelUsed,
+                    ]}
+                  >
+                    {isAvailable ? 'punto' : 'usado'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
     );
   };
@@ -93,15 +150,15 @@ export default function BettingModal({
     <Modal visible={visible} transparent animationType='fade'>
       <View style={styles.overlay}>
         <View style={styles.container}>
-          {/* ✅ NUEVO: Header con countdown */}
+          {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>🎲 Sistema de Apuestas</Text>
+            <Text style={styles.title}>🎲 Usar Token</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <IconSymbol name='xmark' size={24} color='#64748B' />
             </TouchableOpacity>
           </View>
 
-          {/* ✅ NUEVO: Countdown prominente */}
+          {/* Countdown */}
           <View
             style={[
               styles.countdownContainer,
@@ -133,45 +190,8 @@ export default function BettingModal({
             )}
           </View>
 
-          {/* Card Info */}
-          <View style={styles.cardInfo}>
-            <Text style={styles.cardTitle}>
-              {currentCard.track?.title || 'Canción actual'}
-            </Text>
-            <Text style={styles.cardArtist}>
-              {currentCard.track?.artist || ''}
-            </Text>
-            <View style={styles.cardPointsContainer}>
-              <Text style={styles.cardPoints}>
-                Puntos base:{' '}
-                {currentCard.question?.points || currentCard.points || 0}
-              </Text>
-            </View>
-          </View>
-
-          {/* Multipliers Info */}
-          <View style={styles.multipliers}>
-            <Text style={styles.multipliersTitle}>🎯 Multiplicadores</Text>
-            <View style={styles.multiplierRow}>
-              <View style={styles.multiplierItem}>
-                <Text style={styles.multiplierTokens}>1 token</Text>
-                <Text style={styles.multiplierValue}>×2</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <Text style={styles.multiplierTokens}>2 tokens</Text>
-                <Text style={styles.multiplierValue}>×3</Text>
-              </View>
-              <View style={styles.multiplierItem}>
-                <Text style={styles.multiplierTokens}>3 tokens</Text>
-                <Text style={styles.multiplierValue}>×4</Text>
-              </View>
-            </View>
-          </View>
-
           {/* Players Title */}
-          <Text style={styles.playersTitle}>
-            👥 Selecciona jugador para apostar
-          </Text>
+          <Text style={styles.playersTitle}>👥 Selecciona jugador y token</Text>
 
           {/* Players List */}
           <FlatList
@@ -184,7 +204,7 @@ export default function BettingModal({
 
           {/* Cancel Button */}
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cerrar (sin apostar)</Text>
+            <Text style={styles.cancelText}>Cerrar (sin usar token)</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -202,7 +222,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: '#1E293B',
     width: width * 0.92,
-    maxHeight: '88%',
+    maxHeight: '90%',
     borderRadius: 20,
     padding: 20,
     borderWidth: 1,
@@ -223,7 +243,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
 
-  // ✅ NUEVO: Countdown styles
+  // Countdown styles
   countdownContainer: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
     borderRadius: 16,
@@ -308,36 +328,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Multipliers
-  multipliers: {
+  // ✅ Token explanation
+  tokenExplanation: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
   },
-  multipliersTitle: {
+  explanationTitle: {
     fontSize: 14,
     fontWeight: '700',
     color: '#F59E0B',
-    marginBottom: 12,
+    marginBottom: 8,
     textAlign: 'center',
   },
-  multiplierRow: {
+  explanationText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginBottom: 12,
+    lineHeight: 18,
+  },
+  tokenExamples: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
-  multiplierItem: {
+  tokenExample: {
     alignItems: 'center',
   },
-  multiplierTokens: {
-    fontSize: 12,
-    color: '#94A3B8',
+  tokenBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 4,
   },
-  multiplierValue: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#F59E0B',
+  tokenBronze: {
+    backgroundColor: '#CD7F32',
+  },
+  tokenSilver: {
+    backgroundColor: '#C0C0C0',
+  },
+  tokenGold: {
+    backgroundColor: '#FFD700',
+  },
+  tokenBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  tokenExampleText: {
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
 
   // Players
@@ -348,7 +392,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   playersList: {
-    maxHeight: 200,
+    maxHeight: 220,
     marginBottom: 16,
   },
   playerItem: {
@@ -369,50 +413,70 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
   },
   playerTokens: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
     fontWeight: '500',
+  },
+  betPlacedContainer: {
+    marginTop: 8,
+    alignItems: 'center',
   },
   alreadyBet: {
     fontSize: 14,
     color: '#10B981',
     fontWeight: '600',
-    textAlign: 'center',
-    marginTop: 4,
+  },
+  noTokensContainer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  noTokensText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
   },
   bettingOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
+
+  // ✅ Token buttons
   betButton: {
-    backgroundColor: '#EF4444',
     paddingVertical: 14,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
     minWidth: 70,
-    shadowColor: '#EF4444',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+    backgroundColor: '#10B981', // Verde para disponible
+    shadowColor: '#10B981',
   },
-  betButtonDisabled: {
-    backgroundColor: '#475569',
+  betButtonUsed: {
+    backgroundColor: '#334155',
     opacity: 0.5,
     shadowOpacity: 0,
     elevation: 0,
   },
   betAmount: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: '#FFFFFF',
-    marginBottom: 2,
   },
-  betMultiplier: {
-    fontSize: 11,
+  betAmountUsed: {
+    color: '#64748B',
+    textDecorationLine: 'line-through',
+  },
+  betLabel: {
+    fontSize: 10,
     color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '600',
+    marginTop: 2,
+  },
+  betLabelUsed: {
+    color: '#64748B',
   },
 
   // Cancel
