@@ -639,10 +639,20 @@ export default function GameScreen() {
                     <Text style={styles.questionText}>
                       {flowState.currentRound.question.text}
                     </Text>
-                    {flowState.answerRevealed && flowState.roundResult && (
-                      <Text style={styles.answerText}>
-                        {flowState.roundResult.correctAnswer}
-                      </Text>
+                    {/* ✅ NUEVO: Mostrar respuesta SIEMPRE para Game Master */}
+                    {flowState.gameMasterAnswer && (
+                      <View style={styles.gameMasterAnswerContainer}>
+                        <Text style={styles.gameMasterLabel}>
+                          🔑 RESPUESTA:
+                        </Text>
+                        <Text style={styles.gameMasterAnswer}>
+                          {flowState.gameMasterAnswer.correctAnswer}
+                        </Text>
+                        <Text style={styles.trackInfoText}>
+                          "{flowState.gameMasterAnswer.trackTitle}" -{' '}
+                          {flowState.gameMasterAnswer.trackArtist}
+                        </Text>
+                      </View>
                     )}
                   </View>
 
@@ -1094,5 +1104,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+
+  gameMasterAnswerContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 12,
+    borderWidth: 2,
+    borderColor: '#10B981',
+  },
+  gameMasterLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+    marginBottom: 4,
+  },
+  gameMasterAnswer: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#10B981',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  trackInfoText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });
