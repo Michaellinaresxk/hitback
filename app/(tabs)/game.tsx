@@ -1,6 +1,6 @@
 // app/(tabs)/game.tsx - HITBACK Game Screen
+// ✅ INTEGRADO: Sistema de Power Cards
 // ✅ CORREGIDO: Sincronización de puntos con backend
-// ✅ CORREGIDO: getRewardData y closeRewardNotification
 // ✅ CORREGIDO: Player IDs sync con backend
 
 import AudioPlayer from '@/components/game/AudioPlayer';
@@ -9,7 +9,13 @@ import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 
 import BettingModal from '@/components/modal/BettingModal';
-// import RewardNotification from '@/components/rewards/RewardNotification'; // TODO: Adaptar para nuevo flujo
+import NewPowerCardModal from '@/components/powerCard/NewPowerCardModal';
+import PowerCardChallengeModal from '@/components/powerCard/PowerCardChallengeModal';
+import PowerCardInventory from '@/components/powerCard/PowerCardInventory';
+import PowerCardPrecisionModal from '@/components/powerCard/PowerCardPrecisionModal';
+import PowerCardResurrectModal from '@/components/powerCard/PowerCardResurrectModal';
+import PowerCardStealTargetModal from '@/components/powerCard/PowerCardStealTargetModal';
+
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
@@ -17,7 +23,8 @@ import { useGameFlow } from '@/hooks/useGameFlow';
 import { gameSessionService } from '@/services/GameSessionService';
 import { soundEffects } from '@/services/SoundEffectsService';
 import { useGameStore } from '@/store/gameStore';
-import React, { useEffect, useState } from 'react';
+import { usePowerCardStore } from '@/store/powerCardStore';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
@@ -34,9 +41,9 @@ import {
 const { width } = Dimensions.get('window');
 
 export default function GameScreen() {
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // STORE & HOOKS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const {
     players,
@@ -68,9 +75,28 @@ export default function GameScreen() {
     getCurrentPhase,
     canStartNextRound,
     testConnection,
-    // getRewardData,        // TODO: Reactivar cuando se adapte RewardNotification
-    // closeRewardNotification,
   } = useGameFlow();
+
+  // ⚡ POWER CARDS STORE
+  const {
+    newCardModal,
+    hideNewCardModal,
+    steal,
+    precision,
+    challenge,
+    resurrect,
+    useSteal,
+    submitPrecisionAnswers,
+    submitChallengeResult,
+    useResurrect,
+    scanCard: scanPowerCard,
+    useCard: usePowerCard,
+    getPlayerInventory,
+    getPlayerActiveEffects,
+    resetStore: resetPowerCardStore,
+    inventories,
+    lastActionResult,
+  } = usePowerCardStore();
 
   const {
     messages,
@@ -83,28 +109,34 @@ export default function GameScreen() {
 
   const { t } = useTranslation();
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // LOCAL STATE
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
-  // ═══════════════════════════════════════════════════════════
+  // ⚡ POWER CARDS STATE
+  const [showPowerCardsPanel, setShowPowerCardsPanel] = useState(false);
+  const [selectedPlayerForCards, setSelectedPlayerForCards] = useState<
+    string | null
+  >(null);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // DERIVED STATE
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const currentPlayer = players.find((p) => p.isCurrentTurn);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const winner = players.find((p) => p.score >= SCORE_TO_WIN);
   const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
-  // const rewardData = getRewardData(); // TODO: Reactivar cuando se adapte RewardNotification
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // EFFECTS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     if (isActive) {
@@ -118,6 +150,11 @@ export default function GameScreen() {
       });
       setPlayerIdMap(idMap);
       console.log('📋 Player ID Map created:', idMap);
+
+      // Crear session ID para Power Cards
+      const newSessionId = `session_${Date.now()}`;
+      setSessionId(newSessionId);
+      console.log('🎴 Power Cards session:', newSessionId);
     }
   }, [isActive, players.length]);
 
@@ -168,9 +205,20 @@ export default function GameScreen() {
     }
   }, [winner, isActive]);
 
-  // ═══════════════════════════════════════════════════════════
+  // ⚡ POWER CARDS: Mostrar feedback de última acción
+  useEffect(() => {
+    if (lastActionResult) {
+      if (lastActionResult.success) {
+        showSuccess('Power Card', lastActionResult.message);
+      } else {
+        showError('Power Card', lastActionResult.message);
+      }
+    }
+  }, [lastActionResult]);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // HELPERS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const getBackendPlayerId = (frontendId: string): string => {
     if (playerIdMap[frontendId]) {
@@ -185,9 +233,16 @@ export default function GameScreen() {
     return frontendId;
   };
 
-  // ═══════════════════════════════════════════════════════════
+  // ⚡ POWER CARDS: Obtener nombre del jugador
+  const getPlayerName = (playerId: string | null): string => {
+    if (!playerId) return 'Jugador';
+    const player = players.find((p) => p.id === playerId);
+    return player?.name || 'Jugador';
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // HANDLERS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const checkBackendConnection = async () => {
     const isConnected = await testConnection();
@@ -240,8 +295,8 @@ export default function GameScreen() {
       return;
     }
 
-    // ✅ FIX: Verificar que tenga al menos 1 token (no "amount" tokens)
-    if (player.tokens < 1) {
+    // ✅ FIX: Verificar que tenga al menos 1 token
+    if (player.availableTokens.length < 1) {
       showError('Sin Tokens', 'No tienes tokens disponibles');
       return;
     }
@@ -312,6 +367,14 @@ export default function GameScreen() {
 
     soundEffects.playCorrect();
 
+    // ⚡ POWER CARDS: Verificar si tiene BOOST activo
+    const playerEffects = getPlayerActiveEffects(playerId);
+    const hasBoost = playerEffects.boost;
+
+    if (hasBoost) {
+      console.log(`⚡ ${player.name} tiene BOOST activo - puntos x2!`);
+    }
+
     // Usar el ID del backend para revealAnswer
     const backendPlayerId = getBackendPlayerId(playerId);
     console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
@@ -319,10 +382,11 @@ export default function GameScreen() {
     const result = await revealAnswer(backendPlayerId);
 
     if (result) {
-      // Los puntos ya se sincronizan automáticamente en useGameFlow.revealAnswer
+      // ⚡ POWER CARDS: Mensaje incluye info de boost si aplica
+      const boostInfo = hasBoost ? ' (x2 BOOST!)' : '';
       showSuccess(
         '🎉 ¡Correcto!',
-        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+        `${player.name} gana ${result.pointsAwarded} puntos${boostInfo}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
       );
 
       // Check game over
@@ -344,18 +408,10 @@ export default function GameScreen() {
     }, 2000);
   };
 
-  // handleRewardClose - Desactivado temporalmente
-  // const handleRewardClose = () => {
-  //   closeRewardNotification();
-  //   setTimeout(() => {
-  //     nextTurn();
-  //     prepareNextRound();
-  //   }, 500);
-  // };
-
   const handleNewGame = () => {
     setShowGameEndModal(false);
     resetFlow();
+    resetPowerCardStore(); // ⚡ Reset Power Cards
     soundEffects.dispose();
     gameSessionService.clearCurrentSession();
     createNewGame();
@@ -364,13 +420,124 @@ export default function GameScreen() {
   const handleBackToMenu = () => {
     setShowGameEndModal(false);
     resetFlow();
+    resetPowerCardStore(); // ⚡ Reset Power Cards
     gameSessionService.clearCurrentSession();
     createNewGame();
   };
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
+  // ⚡ POWER CARDS HANDLERS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  const handleUsePowerCard = useCallback(
+    async (playerId: string, cardId: string) => {
+      if (!sessionId) {
+        showError('Error', 'No hay sesión activa');
+        return;
+      }
+
+      console.log(`⚡ Using power card: ${cardId} by ${playerId}`);
+      await usePowerCard(cardId, playerId, sessionId);
+    },
+    [sessionId, usePowerCard, showError]
+  );
+
+  // Handler para seleccionar target de STEAL
+  const handleStealTarget = useCallback(
+    async (targetId: string) => {
+      if (!steal.attackerId || !steal.cardId || !sessionId) return;
+      await useSteal(steal.cardId, steal.attackerId, sessionId, targetId);
+    },
+    [steal, sessionId, useSteal]
+  );
+
+  // Handler para cancelar STEAL
+  const handleCancelSteal = useCallback(() => {
+    usePowerCardStore.setState({
+      steal: {
+        isSelectingTarget: false,
+        attackerId: null,
+        cardId: null,
+        validTargets: [],
+      },
+    });
+  }, []);
+
+  // Handler para submit de PRECISION
+  const handlePrecisionSubmit = useCallback(
+    async (answers: any[]) => {
+      if (!sessionId) return;
+      await submitPrecisionAnswers(sessionId, answers);
+    },
+    [sessionId, submitPrecisionAnswers]
+  );
+
+  // Handler para timeout de PRECISION
+  const handlePrecisionTimeout = useCallback(() => {
+    console.log('⏰ PRECISION timeout');
+  }, []);
+
+  // Handler para resultado de CHALLENGE
+  const handleChallengeComplete = useCallback(
+    async (completed: boolean) => {
+      if (!sessionId) return;
+      await submitChallengeResult(sessionId, completed);
+    },
+    [sessionId, submitChallengeResult]
+  );
+
+  // Handler para cancelar CHALLENGE
+  const handleCancelChallenge = useCallback(() => {
+    usePowerCardStore.setState({
+      challenge: {
+        isActive: false,
+        playerId: null,
+        type: null,
+        name: '',
+        icon: '',
+        instruction: '',
+        startedAt: null,
+        completed: null,
+      },
+    });
+  }, []);
+
+  // Handler para seleccionar carta en RESURRECT
+  const handleResurrectSelect = useCallback(
+    async (cardId: string) => {
+      if (!resurrect.playerId || !sessionId) return;
+
+      const inventory = inventories[resurrect.playerId];
+      const resurrectCard = inventory?.cards.find(
+        (c) => c.type === 'RESURRECT'
+      );
+
+      if (resurrectCard) {
+        await useResurrect(
+          resurrectCard.id,
+          resurrect.playerId,
+          sessionId,
+          cardId
+        );
+      }
+    },
+    [resurrect, sessionId, inventories, useResurrect]
+  );
+
+  // Handler para cancelar RESURRECT
+  const handleCancelResurrect = useCallback(() => {
+    usePowerCardStore.setState({
+      resurrect: {
+        isSelectingCard: false,
+        playerId: null,
+        availableCards: [],
+      },
+    });
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // UTILITY FUNCTIONS
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -416,9 +583,9 @@ export default function GameScreen() {
     return gameSessionService.getBettingMultiplier(amount);
   };
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // RENDER: Setup Screen
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   if (!isActive && !showGameEndModal) {
     return (
@@ -432,9 +599,9 @@ export default function GameScreen() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // RENDER: Game End Screen
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   if (!isActive && showGameEndModal) {
     return (
@@ -452,9 +619,9 @@ export default function GameScreen() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
   // RENDER: Main Game Screen
-  // ═══════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════════
 
   return (
     <View style={styles.container}>
@@ -471,11 +638,43 @@ export default function GameScreen() {
               <Text style={styles.gameModeText}>{getPhaseLabel()}</Text>
             </View>
           </View>
-          <View style={styles.timerContainer}>
-            <IconSymbol name='clock' size={16} color='#F8FAFC' />
-            <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+          <View style={styles.headerRight}>
+            {/* ⚡ Power Cards Button */}
+            <TouchableOpacity
+              style={styles.powerCardsButton}
+              onPress={() => setShowPowerCardsPanel(!showPowerCardsPanel)}
+            >
+              <Text style={styles.powerCardsButtonText}>🎴</Text>
+            </TouchableOpacity>
+            <View style={styles.timerContainer}>
+              <IconSymbol name='clock' size={16} color='#F8FAFC' />
+              <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+            </View>
           </View>
         </View>
+
+        {/* ⚡ Power Cards Panel (Collapsible) */}
+        {showPowerCardsPanel && currentPlayer && (
+          <View style={styles.powerCardsPanel}>
+            <View style={styles.powerCardsPanelHeader}>
+              <Text style={styles.powerCardsPanelTitle}>⚡ Power Cards</Text>
+              <TouchableOpacity onPress={() => setShowPowerCardsPanel(false)}>
+                <Text style={styles.powerCardsPanelClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <PowerCardInventory
+              playerId={currentPlayer.id}
+              playerName={currentPlayer.name}
+              cards={getPlayerInventory(currentPlayer.id)?.cards || []}
+              activeEffects={getPlayerActiveEffects(currentPlayer.id)}
+              usedCards={getPlayerInventory(currentPlayer.id)?.usedCards || []}
+              onUseCard={(cardId) =>
+                handleUsePowerCard(currentPlayer.id, cardId)
+              }
+              compact={true}
+            />
+          </View>
+        )}
 
         {/* Betting Phase UI */}
         {bettingStatus.isActive && (
@@ -567,6 +766,27 @@ export default function GameScreen() {
             {currentPlayer?.name || 'Nadie'} - Ronda {round}
           </Text>
           <Text style={styles.phaseInfo}>Fase: {getPhaseLabel()}</Text>
+
+          {/* ⚡ Mostrar efectos activos del jugador actual */}
+          {currentPlayer && (
+            <View style={styles.activeEffectsRow}>
+              {getPlayerActiveEffects(currentPlayer.id).boost && (
+                <View style={styles.effectBadge}>
+                  <Text style={styles.effectBadgeText}>⚡ BOOST x2</Text>
+                </View>
+              )}
+              {getPlayerActiveEffects(currentPlayer.id).shield && (
+                <View style={[styles.effectBadge, styles.effectBadgeShield]}>
+                  <Text style={styles.effectBadgeText}>🛡️ SHIELD</Text>
+                </View>
+              )}
+              {getPlayerActiveEffects(currentPlayer.id).counter && (
+                <View style={[styles.effectBadge, styles.effectBadgeCounter]}>
+                  <Text style={styles.effectBadgeText}>⚔️ COUNTER</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Main Action: Next Round Button */}
@@ -639,20 +859,10 @@ export default function GameScreen() {
                     <Text style={styles.questionText}>
                       {flowState.currentRound.question.text}
                     </Text>
-                    {/* ✅ NUEVO: Mostrar respuesta SIEMPRE para Game Master */}
-                    {flowState.gameMasterAnswer && (
-                      <View style={styles.gameMasterAnswerContainer}>
-                        <Text style={styles.gameMasterLabel}>
-                          🔑 RESPUESTA:
-                        </Text>
-                        <Text style={styles.gameMasterAnswer}>
-                          {flowState.gameMasterAnswer.correctAnswer}
-                        </Text>
-                        <Text style={styles.trackInfoText}>
-                          "{flowState.gameMasterAnswer.trackTitle}" -{' '}
-                          {flowState.gameMasterAnswer.trackArtist}
-                        </Text>
-                      </View>
+                    {flowState.answerRevealed && flowState.roundResult && (
+                      <Text style={styles.answerText}>
+                        {flowState.roundResult.correctAnswer}
+                      </Text>
                     )}
                   </View>
 
@@ -664,23 +874,37 @@ export default function GameScreen() {
                   <FlatList
                     data={players}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item: player }) => (
-                      <TouchableOpacity
-                        style={styles.playerButton}
-                        onPress={() => handleAwardPoints(player.id)}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={styles.playerButtonText}>
-                          {player.name}
-                        </Text>
-                        {player.currentBet > 0 && (
-                          <Text style={styles.playerBetIndicator}>
-                            Apuesta: {player.currentBet} x
-                            {getBettingMultiplier(player.currentBet)}
+                    renderItem={({ item: player }) => {
+                      const playerEffects = getPlayerActiveEffects(player.id);
+                      const hasBoost = playerEffects.boost;
+
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.playerButton,
+                            hasBoost && styles.playerButtonBoost,
+                          ]}
+                          onPress={() => handleAwardPoints(player.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.playerButtonText}>
+                            {player.name}
+                            {hasBoost && ' ⚡'}
                           </Text>
-                        )}
-                      </TouchableOpacity>
-                    )}
+                          {player.currentBet > 0 && (
+                            <Text style={styles.playerBetIndicator}>
+                              Apuesta: {player.currentBet} x
+                              {getBettingMultiplier(player.currentBet)}
+                            </Text>
+                          )}
+                          {hasBoost && (
+                            <Text style={styles.boostIndicator}>
+                              BOOST ACTIVO - Puntos x2!
+                            </Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    }}
                   />
 
                   <TouchableOpacity
@@ -713,11 +937,6 @@ export default function GameScreen() {
           bettingTimeLeft={bettingStatus.timeLeft}
         />
 
-        {/* Reward Notification - Desactivado temporalmente
-            Los puntos se muestran en el toast de showSuccess
-            TODO: Adaptar RewardNotification para el nuevo flujo
-        */}
-
         {/* Game End Modal */}
         <GameEndModal
           visible={showGameEndModal}
@@ -728,13 +947,66 @@ export default function GameScreen() {
           onBackToMenu={handleBackToMenu}
         />
       </ScrollView>
+
+      {/* ═══════════════════════════════════════════════════════════════════════
+          ⚡ POWER CARDS MODALS
+      ═══════════════════════════════════════════════════════════════════════ */}
+
+      {/* Modal: Nueva carta obtenida */}
+      <NewPowerCardModal
+        visible={newCardModal.visible}
+        card={newCardModal.card}
+        playerName={newCardModal.playerName}
+        onClose={hideNewCardModal}
+        reason='scan'
+      />
+
+      {/* Modal: Seleccionar víctima para STEAL */}
+      <PowerCardStealTargetModal
+        visible={steal.isSelectingTarget}
+        targets={steal.validTargets}
+        attackerName={getPlayerName(steal.attackerId)}
+        onSelectTarget={handleStealTarget}
+        onCancel={handleCancelSteal}
+      />
+
+      {/* Modal: Preguntas rápidas de PRECISION */}
+      <PowerCardPrecisionModal
+        visible={precision.isActive}
+        questions={precision.questions}
+        timeLimit={precision.timeLeft}
+        playerName={getPlayerName(precision.playerId)}
+        onSubmit={handlePrecisionSubmit}
+        onTimeout={handlePrecisionTimeout}
+      />
+
+      {/* Modal: Reto musical de CHALLENGE */}
+      <PowerCardChallengeModal
+        visible={challenge.isActive}
+        challengeType={challenge.type}
+        challengeName={challenge.name}
+        challengeIcon={challenge.icon}
+        instruction={challenge.instruction}
+        playerName={getPlayerName(challenge.playerId)}
+        onComplete={handleChallengeComplete}
+        onCancel={handleCancelChallenge}
+      />
+
+      {/* Modal: Seleccionar carta para RESURRECT */}
+      <PowerCardResurrectModal
+        visible={resurrect.isSelectingCard}
+        availableCards={resurrect.availableCards}
+        playerName={getPlayerName(resurrect.playerId)}
+        onSelectCard={handleResurrectSelect}
+        onCancel={handleCancelResurrect}
+      />
     </View>
   );
 }
 
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 // STYLES
-// ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
   container: {
@@ -797,6 +1069,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   timerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -809,6 +1086,72 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     fontSize: 14,
     fontWeight: '600',
+    color: '#F8FAFC',
+  },
+
+  // ⚡ Power Cards Button & Panel
+  powerCardsButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  powerCardsButtonText: {
+    fontSize: 18,
+  },
+  powerCardsPanel: {
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    margin: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    borderColor: 'rgba(139, 92, 246, 0.3)',
+  },
+  powerCardsPanelHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  powerCardsPanelTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8B5CF6',
+  },
+  powerCardsPanelClose: {
+    fontSize: 18,
+    color: '#94A3B8',
+    padding: 4,
+  },
+
+  // Active Effects
+  activeEffectsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    justifyContent: 'center',
+  },
+  effectBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  effectBadgeShield: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#3B82F6',
+  },
+  effectBadgeCounter: {
+    backgroundColor: 'rgba(139, 92, 246, 0.2)',
+    borderColor: '#8B5CF6',
+  },
+  effectBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
     color: '#F8FAFC',
   },
 
@@ -1083,6 +1426,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignItems: 'center',
   },
+  playerButtonBoost: {
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+  },
   playerButtonText: {
     fontSize: 16,
     fontWeight: '600',
@@ -1091,6 +1439,12 @@ const styles = StyleSheet.create({
   playerBetIndicator: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
+  },
+  boostIndicator: {
+    fontSize: 11,
+    color: '#F59E0B',
+    fontWeight: '700',
     marginTop: 4,
   },
   noWinnerButton: {
@@ -1104,33 +1458,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-
-  gameMasterAnswerContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  gameMasterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#10B981',
-    marginBottom: 4,
-  },
-  gameMasterAnswer: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#10B981',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  trackInfoText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    textAlign: 'center',
-    fontStyle: 'italic',
   },
 });
