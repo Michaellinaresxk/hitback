@@ -1,0 +1,285 @@
+// store/slices/playerSlice.ts
+import { StateCreator } from 'zustand';
+import { GameStore, Player } from '../types/gameTypes';
+import { SCORE_TO_WIN } from '@/constants/Points';
+
+export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
+  set,
+  get
+) => ({
+  players: [],
+
+  addPlayer: (name: string) => {
+    const { players } = get();
+
+    if (name.trim().length < 2) {
+      throw new Error('El nombre debe tener al menos 2 caracteres');
+    }
+
+    if (players.length >= 8) {
+      throw new Error('Máximo 8 jugadores');
+    }
+
+    if (
+      players.some((p) => p.name.toLowerCase() === name.toLowerCase().trim())
+    ) {
+      throw new Error('Ya existe un jugador con ese nombre');
+    }
+
+    const newPlayer: Player = {
+      id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: name.trim(),
+      score: 0,
+      isCurrentTurn: false,
+      availableTokens: [1, 2, 3],
+      powerCards: [],
+      currentBet: 0,
+      isImmune: false,
+      boostActive: false,
+      peekUsed: false,
+      consecutiveWins: 0,
+      cardTypeStreaks: {},
+      difficultyStreaks: {},
+    };
+
+    set((state) => ({
+      players: [...state.players, newPlayer],
+      error: null,
+    }));
+
+    console.log(`✅ Player added: ${newPlayer.name} with tokens [1, 2, 3]`);
+  },
+
+  removePlayer: (id: string) => {
+    set((state) => {
+      const removedPlayer = state.players.find((p) => p.id === id);
+      const newPlayers = state.players.filter((p) => p.id !== id);
+      const currentPlayerIndex = state.players.findIndex((p) => p.id === id);
+
+      let newCurrentTurn = state.currentTurn;
+      if (currentPlayerIndex <= state.currentTurn && newPlayers.length > 0) {
+        newCurrentTurn = Math.max(0, state.currentTurn - 1);
+      }
+
+      console.log(`❌ Player removed: ${removedPlayer?.name}`);
+
+      return {
+        players: newPlayers,
+        currentTurn: newCurrentTurn,
+      };
+    });
+  },
+
+  placeBet: (playerId: string, tokenValue: number) => {
+    set((state) => {
+      const player = state.players.find((p) => p.id === playerId);
+
+      if (!player) {
+        console.error('❌ Player not found');
+        return { ...state, error: 'Jugador no encontrado' };
+      }
+
+      if (!player.availableTokens.includes(tokenValue)) {
+        console.error(`❌ Token +${tokenValue} not available`);
+        return { ...state, error: `Token +${tokenValue} ya fue usado` };
+      }
+
+      console.log(`🪙 ${player.name} usa token +${tokenValue}`);
+      console.log(`   Tokens antes: [${player.availableTokens.join(', ')}]`);
+
+      const newAvailableTokens = player.availableTokens.filter(
+        (t) => t !== tokenValue
+      );
+
+      console.log(`   Tokens después: [${newAvailableTokens.join(', ')}]`);
+
+      return {
+        ...state,
+        players: state.players.map((p) =>
+          p.id === playerId
+            ? {
+                ...p,
+                availableTokens: newAvailableTokens,
+                currentBet: tokenValue,
+              }
+            : p
+        ),
+        error: null,
+      };
+    });
+  },
+
+  clearBets: () => {
+    set((state) => ({
+      players: state.players.map((p) => ({ ...p, currentBet: 0 })),
+    }));
+  },
+
+  usePowerCard: (
+    playerId: string,
+    powerCardId: string,
+    targetPlayerId?: string
+  ) => {
+    set((state) => {
+      const player = state.players.find((p) => p.id === playerId);
+      const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
+
+      if (!player || !powerCard) {
+        return { ...state, error: 'Carta de poder no encontrada' };
+      }
+
+      if (powerCard.currentUses >= powerCard.usageLimit) {
+        return { ...state, error: 'Carta de poder ya usada' };
+      }
+
+      let newPlayers = [...state.players];
+
+      switch (powerCard.type) {
+        case 'robo':
+          if (targetPlayerId) {
+            newPlayers = newPlayers.map((p) => {
+              if (p.id === targetPlayerId && p.availableTokens.length > 0) {
+                const stolenToken = Math.max(...p.availableTokens);
+                return {
+                  ...p,
+                  availableTokens: p.availableTokens.filter(
+                    (t) => t !== stolenToken
+                  ),
+                };
+              }
+              if (p.id === playerId) {
+                return {
+                  ...p,
+                  powerCards: p.powerCards.map((pc) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1 }
+                      : pc
+                  ),
+                };
+              }
+              return p;
+            });
+          }
+          break;
+
+        case 'escudo':
+          newPlayers = newPlayers.map((p) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  isImmune: true,
+                  powerCards: p.powerCards.map((pc) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1 }
+                      : pc
+                  ),
+                }
+              : p
+          );
+          break;
+
+        case 'boost':
+          newPlayers = newPlayers.map((p) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  boostActive: true,
+                  powerCards: p.powerCards.map((pc) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1 }
+                      : pc
+                  ),
+                }
+              : p
+          );
+          break;
+
+        case 'peek':
+          newPlayers = newPlayers.map((p) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  peekUsed: true,
+                  powerCards: p.powerCards.map((pc) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1 }
+                      : pc
+                  ),
+                }
+              : p
+          );
+          set({ showAnswer: true });
+          break;
+      }
+
+      console.log(`⚡ Power card: ${powerCard.name} by ${player.name}`);
+
+      return { ...state, players: newPlayers, error: null };
+    });
+  },
+
+  awardPoints: (playerId: string, points?: number, answerTime?: number) => {
+    const { currentCard, players } = get();
+    const player = players.find((p) => p.id === playerId);
+
+    if (!player || !currentCard) {
+      console.error('❌ Cannot award points: player or card not found');
+      return;
+    }
+
+    let basePoints = points || currentCard.question.points || 0;
+    let tokenBonus = player.currentBet;
+
+    if (player.boostActive) {
+      basePoints = basePoints * 2;
+      console.log(`⚡ Boost: 2x`);
+    }
+
+    const totalPoints = basePoints + tokenBonus;
+
+    console.log(
+      `🏆 ${player.name}: base=${basePoints} + token=${tokenBonus} = ${totalPoints} pts`
+    );
+
+    set((state) => ({
+      players: state.players.map((p) => {
+        if (p.id === playerId) {
+          return {
+            ...p,
+            score: p.score + totalPoints,
+            consecutiveWins: p.consecutiveWins + 1,
+            currentBet: 0,
+            boostActive: false,
+            cardTypeStreaks: {
+              ...p.cardTypeStreaks,
+              [currentCard.question.type]:
+                (p.cardTypeStreaks[currentCard.question.type] || 0) + 1,
+            },
+            difficultyStreaks: {
+              ...p.difficultyStreaks,
+              [currentCard.scan.difficulty]:
+                (p.difficultyStreaks[currentCard.scan.difficulty] || 0) + 1,
+            },
+          };
+        } else {
+          return {
+            ...p,
+            consecutiveWins: 0,
+            currentBet: 0,
+            cardTypeStreaks: {},
+            difficultyStreaks: {},
+          };
+        }
+      }),
+    }));
+
+    get().nextTurn();
+
+    // Check for winner
+    const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
+    if (winner) {
+      console.log(`🏆 Winner: ${winner.name} with ${winner.score} points!`);
+      get().endGame();
+    }
+  },
+});
