@@ -197,6 +197,20 @@ export const useGameFlow = () => {
     };
   }, [flowState]);
 
+  const confirmBetsAndContinue = useCallback(() => {
+    console.log('✅ Confirmando apuestas y continuando...');
+
+    // Cambiar a fase de audio
+    setFlowState((prev) => ({
+      ...prev,
+      phase: 'audio',
+      audioPlaying: true,
+      showBettingButton: false,
+    }));
+
+    console.log('🎵 Iniciando audio después de confirmar apuestas');
+  }, []);
+
   const getCurrentPhase = useCallback(() => {
     return flowState.phase;
   }, [flowState]);
@@ -220,6 +234,7 @@ export const useGameFlow = () => {
     placeBet,
     skipBetting,
     prepareNextRound,
+    confirmBetsAndContinue,
 
     // Getters
     getBettingStatus,

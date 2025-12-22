@@ -237,15 +237,25 @@ export default function GameScreen() {
     }
   };
 
+  const handleConfirmBets = () => {
+    console.log('✅ Confirmando apuestas y continuando con audio...');
+
+    // 1. Verificar si hay apuestas
+    const playersWithBets = players.filter((p) => p.currentBet > 0);
+    if (playersWithBets.length === 0) {
+      showInfo('Sin apuestas', 'No se realizaron apuestas para esta ronda');
+    }
+
+    // 2. Cerrar modal
+    setShowBettingModal(false);
+
+    console.log('🎵 Iniciando audio después de confirmar apuestas');
+    skipBetting(); // Esta función ya cambia a fase de audio
+  };
+
   const handleSkipBetting = () => {
     console.log('⏭️ Skipping betting phase');
     skipBetting();
-    setShowBettingModal(false);
-  };
-
-  const handleStartAudio = () => {
-    console.log('🎵 Starting audio manually');
-    startAudioAfterBets();
     setShowBettingModal(false);
   };
 
@@ -451,9 +461,7 @@ export default function GameScreen() {
           }
           onPlaceBet={handlePlaceBet}
           onSkipBetting={handleSkipBetting}
-          onStartAudio={handleStartAudio}
-          betsPlaced={flowState.betsPlaced}
-          allBetsPlaced={flowState.allBetsPlaced}
+          onConfirmBets={handleConfirmBets} // ✅ NUEVA PROP
         />
 
         <GameEndModal

@@ -1,5 +1,5 @@
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
@@ -28,6 +28,7 @@ interface BettingModalProps {
   currentCard: any;
   onPlaceBet: (playerId: string, tokenValue: number) => void;
   onSkipBetting?: () => void;
+  onConfirmBets?: () => void; // ✅ NUEVA: Para confirmar y continuar
 }
 
 export default function BettingModal({
@@ -37,8 +38,17 @@ export default function BettingModal({
   currentCard,
   onPlaceBet,
   onSkipBetting,
+  onConfirmBets, // ✅ NUEVA
 }: BettingModalProps) {
   const { t } = useTranslation();
+  const [hasAnyBet, setHasAnyBet] = useState(false);
+
+  // Efecto para verificar si hay alguna apuesta
+  useEffect(() => {
+    const anyBetPlaced = players.some((player) => player.currentBet > 0);
+    setHasAnyBet(anyBetPlaced);
+    console.log(`🎰 BettingModal: any bet placed = ${anyBetPlaced}`);
+  }, [players]);
 
   const isTokenAvailable = (player: Player, tokenValue: number): boolean => {
     return (
@@ -50,16 +60,35 @@ export default function BettingModal({
     return player.availableTokens || [];
   };
 
+  const getBetsSummary = () => {
+    const playersWithBets = players.filter((p) => p.currentBet > 0);
+    if (playersWithBets.length === 0) return 'Ninguna apuesta aún';
+
+    return playersWithBets.map((p) => `${p.name}: +${p.currentBet}`).join(', ');
+  };
+
   const renderPlayer = ({ item: player }: { item: Player }) => {
     // Si ya apostó en esta ronda
     if (player.currentBet > 0) {
       return (
         <View style={styles.playerItem}>
-          <Text style={styles.playerName}>{player.name}</Text>
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerName}>{player.name}</Text>
+            <View style={styles.betBadge}>
+              <Text style={styles.betBadgeText}>+{player.currentBet}</Text>
+            </View>
+          </View>
           <View style={styles.betPlacedContainer}>
-            <Text style={styles.alreadyBet}>
-              ✅ Ya apostó +{player.currentBet}
-            </Text>
+            <Text style={styles.alreadyBet}>✅ Token apostado</Text>
+            <TouchableOpacity
+              style={styles.changeBetButton}
+              onPress={() => {
+                // ✅ Permitir cambiar apuesta
+                console.log(`🔄 ${player.name} quiere cambiar apuesta`);
+              }}
+            >
+              <Text style={styles.changeBetText}>Cambiar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
@@ -75,7 +104,7 @@ export default function BettingModal({
           <Text style={styles.playerTokens}>
             🪙{' '}
             {availableTokens.length > 0
-              ? `Tokens: [${availableTokens.join(', ')}]`
+              ? `Disponibles: ${availableTokens.join(', ')}`
               : 'Sin tokens'}
           </Text>
         </View>
@@ -117,7 +146,7 @@ export default function BettingModal({
                       !isAvailable && styles.betLabelUsed,
                     ]}
                   >
-                    {isAvailable ? 'punto' : 'usado'}
+                    {isAvailable ? 'Apostar' : 'Usado'}
                   </Text>
                 </TouchableOpacity>
               );
@@ -130,16 +159,28 @@ export default function BettingModal({
 
   if (!visible || !currentCard) return null;
 
+  const roundNumber = currentCard?.roundNumber || '?';
+  const betsSummary = getBetsSummary();
+
   return (
     <Modal visible={visible} transparent animationType='fade'>
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>🎲 Usar Token</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.roundBadge}>Ronda {roundNumber}</Text>
+              <Text style={styles.title}>🎲 Apuestas de Tokens</Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <IconSymbol name='xmark' size={24} color='#64748B' />
             </TouchableOpacity>
+          </View>
+
+          {/* Resumen de apuestas */}
+          <View style={styles.summaryContainer}>
+            <Text style={styles.summaryTitle}>Resumen de Apuestas</Text>
+            <Text style={styles.summaryText}>{betsSummary}</Text>
           </View>
 
           {/* Mensaje informativo */}
@@ -149,12 +190,12 @@ export default function BettingModal({
               <Text style={styles.highlight}>1 token por ronda</Text>
             </Text>
             <Text style={styles.infoSubtext}>
-              Tokens son personales y no se comparten
-            </Text>
-            <Text style={styles.infoSubtext}>
-              Si aciertas: Puntos base + valor del token
+              Los tokens apostados se sumarán a tus puntos si aciertas
             </Text>
           </View>
+
+          {/* Players Title */}
+          <Text style={styles.playersTitle}>👥 Jugadores</Text>
 
           {/* Players List */}
           <FlatList
@@ -165,17 +206,36 @@ export default function BettingModal({
             showsVerticalScrollIndicator={false}
           />
 
+          {/* ✅ NUEVO: Botón para confirmar apuestas y continuar */}
+          {hasAnyBet && onConfirmBets && (
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={() => {
+                console.log('✅ Confirmando apuestas y continuando...');
+                onConfirmBets();
+                onClose();
+              }}
+            >
+              <IconSymbol name='check.circle' size={22} color='#FFFFFF' />
+              <Text style={styles.confirmText}>
+                CONFIRMAR APUESTAS Y CONTINUAR
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Botón para saltar apuestas */}
           {onSkipBetting && (
             <TouchableOpacity
               style={styles.skipButton}
               onPress={() => {
+                console.log('⏭️ Saltando apuestas...');
                 onSkipBetting();
                 onClose();
               }}
             >
+              <IconSymbol name='forward' size={18} color='#94A3B8' />
               <Text style={styles.skipText}>
-                ⏭️ Saltar apuesta y escuchar audio
+                Saltar apuestas y escuchar audio
               </Text>
             </TouchableOpacity>
           )}
@@ -209,16 +269,50 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 20,
+  headerLeft: {
+    flex: 1,
+  },
+  roundBadge: {
+    fontSize: 12,
+    color: '#F59E0B',
     fontWeight: '700',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
     color: '#F8FAFC',
   },
   closeButton: {
     padding: 8,
+    marginTop: 4,
+  },
+  summaryContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  summaryTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 6,
+  },
+  summaryText: {
+    fontSize: 13,
+    color: '#94A3B8',
+    lineHeight: 18,
   },
   infoContainer: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
@@ -233,20 +327,24 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     fontWeight: '600',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     lineHeight: 20,
   },
   highlight: {
     color: '#F59E0B',
     fontWeight: '800',
-    textTransform: 'uppercase',
   },
   infoSubtext: {
     fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 4,
     lineHeight: 18,
+  },
+  playersTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#F8FAFC',
+    marginBottom: 12,
   },
   playersList: {
     maxHeight: 300,
@@ -266,7 +364,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#F8FAFC',
   },
   playerTokens: {
@@ -274,31 +372,67 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+  betBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  betBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   betPlacedContainer: {
-    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
   },
   alreadyBet: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#10B981',
     fontWeight: '600',
+  },
+  changeBetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  changeBetText: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  noTokensContainer: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  noTokensText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontStyle: 'italic',
   },
   bettingOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: 8,
   },
   betButton: {
+    flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
-    minWidth: 70,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    backgroundColor: '#10B981',
-    shadowColor: '#10B981',
+    backgroundColor: '#3B82F6',
+    shadowColor: '#3B82F6',
   },
   betButtonUsed: {
     backgroundColor: '#334155',
@@ -324,30 +458,41 @@ const styles = StyleSheet.create({
   betLabelUsed: {
     color: '#64748B',
   },
-  startAudioButton: {
-    backgroundColor: '#3B82F6',
+  // ✅ NUEVO: Botón de confirmar
+  confirmButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    marginBottom: 12,
+    gap: 12,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  confirmText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 16,
     paddingHorizontal: 20,
     borderRadius: 12,
-    marginBottom: 12,
-    gap: 12,
-  },
-  startAudioText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  skipButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    alignItems: 'center',
     marginBottom: 12,
+    gap: 10,
   },
   skipText: {
     fontSize: 14,
