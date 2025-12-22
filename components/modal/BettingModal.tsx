@@ -1,11 +1,5 @@
-// components/modal/BettingModal.tsx
-// ✅ FIX: Sistema de tokens ÚNICOS
-// - Cada jugador tiene 3 tokens: +1, +2, +3
-// - Cada token se muestra disponible o disabled
-// - Una vez usado, el botón se deshabilita permanentemente
-
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dimensions,
@@ -23,10 +17,8 @@ interface Player {
   id: string;
   name: string;
   score: number;
-  availableTokens: number[]; // ✅ NUEVO: Array de tokens disponibles [1, 2, 3]
+  availableTokens: number[];
   currentBet: number;
-  // Compatibilidad
-  tokens?: number;
 }
 
 interface BettingModalProps {
@@ -35,7 +27,8 @@ interface BettingModalProps {
   players: Player[];
   currentCard: any;
   onPlaceBet: (playerId: string, tokenValue: number) => void;
-  bettingTimeLeft?: number;
+  onSkipBetting?: () => void;
+  onConfirmBets?: () => void; // ✅ NUEVA: Para confirmar y continuar
 }
 
 export default function BettingModal({
@@ -44,25 +37,34 @@ export default function BettingModal({
   players,
   currentCard,
   onPlaceBet,
-  bettingTimeLeft = 10,
+  onSkipBetting,
+  onConfirmBets, // ✅ NUEVA
 }: BettingModalProps) {
   const { t } = useTranslation();
+  const [hasAnyBet, setHasAnyBet] = useState(false);
 
-  const isUrgent = bettingTimeLeft <= 5;
+  // Efecto para verificar si hay alguna apuesta
+  useEffect(() => {
+    const anyBetPlaced = players.some((player) => player.currentBet > 0);
+    setHasAnyBet(anyBetPlaced);
+    console.log(`🎰 BettingModal: any bet placed = ${anyBetPlaced}`);
+  }, [players]);
 
-  // ✅ Helper para verificar si un token está disponible
   const isTokenAvailable = (player: Player, tokenValue: number): boolean => {
-    // Usar availableTokens si existe, sino fallback a lógica antigua
-    if (player.availableTokens) {
-      return player.availableTokens.includes(tokenValue);
-    }
-    // Fallback: si tiene suficientes tokens (lógica antigua)
-    return (player.tokens || 0) >= tokenValue;
+    return (
+      player.availableTokens.includes(tokenValue) && player.currentBet === 0
+    );
   };
 
-  // ✅ Helper para obtener tokens disponibles
   const getAvailableTokens = (player: Player): number[] => {
     return player.availableTokens || [];
+  };
+
+  const getBetsSummary = () => {
+    const playersWithBets = players.filter((p) => p.currentBet > 0);
+    if (playersWithBets.length === 0) return 'Ninguna apuesta aún';
+
+    return playersWithBets.map((p) => `${p.name}: +${p.currentBet}`).join(', ');
   };
 
   const renderPlayer = ({ item: player }: { item: Player }) => {
@@ -70,11 +72,23 @@ export default function BettingModal({
     if (player.currentBet > 0) {
       return (
         <View style={styles.playerItem}>
-          <Text style={styles.playerName}>{player.name}</Text>
+          <View style={styles.playerInfo}>
+            <Text style={styles.playerName}>{player.name}</Text>
+            <View style={styles.betBadge}>
+              <Text style={styles.betBadgeText}>+{player.currentBet}</Text>
+            </View>
+          </View>
           <View style={styles.betPlacedContainer}>
-            <Text style={styles.alreadyBet}>
-              ✅ Usó token +{player.currentBet}
-            </Text>
+            <Text style={styles.alreadyBet}>✅ Token apostado</Text>
+            <TouchableOpacity
+              style={styles.changeBetButton}
+              onPress={() => {
+                // ✅ Permitir cambiar apuesta
+                console.log(`🔄 ${player.name} quiere cambiar apuesta`);
+              }}
+            >
+              <Text style={styles.changeBetText}>Cambiar</Text>
+            </TouchableOpacity>
           </View>
         </View>
       );
@@ -90,7 +104,7 @@ export default function BettingModal({
           <Text style={styles.playerTokens}>
             🪙{' '}
             {availableTokens.length > 0
-              ? `Tokens: [${availableTokens.join(', ')}]`
+              ? `Disponibles: ${availableTokens.join(', ')}`
               : 'Sin tokens'}
           </Text>
         </View>
@@ -103,7 +117,6 @@ export default function BettingModal({
           </View>
         ) : (
           <View style={styles.bettingOptions}>
-            {/* ✅ Mostrar los 3 botones, pero disabled si ya se usó ese token */}
             {[1, 2, 3].map((tokenValue) => {
               const isAvailable = isTokenAvailable(player, tokenValue);
 
@@ -133,7 +146,7 @@ export default function BettingModal({
                       !isAvailable && styles.betLabelUsed,
                     ]}
                   >
-                    {isAvailable ? 'punto' : 'usado'}
+                    {isAvailable ? 'Apostar' : 'Usado'}
                   </Text>
                 </TouchableOpacity>
               );
@@ -146,52 +159,43 @@ export default function BettingModal({
 
   if (!visible || !currentCard) return null;
 
+  const roundNumber = currentCard?.roundNumber || '?';
+  const betsSummary = getBetsSummary();
+
   return (
     <Modal visible={visible} transparent animationType='fade'>
       <View style={styles.overlay}>
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.title}>🎲 Usar Token</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.roundBadge}>Ronda {roundNumber}</Text>
+              <Text style={styles.title}>🎲 Apuestas de Tokens</Text>
+            </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <IconSymbol name='xmark' size={24} color='#64748B' />
             </TouchableOpacity>
           </View>
 
-          {/* Countdown */}
-          <View
-            style={[
-              styles.countdownContainer,
-              isUrgent && styles.countdownUrgent,
-            ]}
-          >
-            <View style={styles.countdownContent}>
-              <Text style={styles.countdownIcon}>⏱️</Text>
-              <Text
-                style={[
-                  styles.countdownText,
-                  isUrgent && styles.countdownTextUrgent,
-                ]}
-              >
-                {bettingTimeLeft}s
-              </Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${(bettingTimeLeft / 10) * 100}%` },
-                  isUrgent && styles.progressBarUrgent,
-                ]}
-              />
-            </View>
-            {isUrgent && (
-              <Text style={styles.urgentText}>¡Apura! Tiempo casi agotado</Text>
-            )}
+          {/* Resumen de apuestas */}
+          <View style={styles.summaryContainer}>
+            <Text style={styles.summaryTitle}>Resumen de Apuestas</Text>
+            <Text style={styles.summaryText}>{betsSummary}</Text>
+          </View>
+
+          {/* Mensaje informativo */}
+          <View style={styles.infoContainer}>
+            <Text style={styles.infoText}>
+              Cada jugador puede apostar{' '}
+              <Text style={styles.highlight}>1 token por ronda</Text>
+            </Text>
+            <Text style={styles.infoSubtext}>
+              Los tokens apostados se sumarán a tus puntos si aciertas
+            </Text>
           </View>
 
           {/* Players Title */}
-          <Text style={styles.playersTitle}>👥 Selecciona jugador y token</Text>
+          <Text style={styles.playersTitle}>👥 Jugadores</Text>
 
           {/* Players List */}
           <FlatList
@@ -202,9 +206,43 @@ export default function BettingModal({
             showsVerticalScrollIndicator={false}
           />
 
+          {/* ✅ NUEVO: Botón para confirmar apuestas y continuar */}
+          {hasAnyBet && onConfirmBets && (
+            <TouchableOpacity
+              style={styles.confirmButton}
+              onPress={() => {
+                console.log('✅ Confirmando apuestas y continuando...');
+                onConfirmBets();
+                onClose();
+              }}
+            >
+              <IconSymbol name='check.circle' size={22} color='#FFFFFF' />
+              <Text style={styles.confirmText}>
+                CONFIRMAR APUESTAS Y CONTINUAR
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Botón para saltar apuestas */}
+          {onSkipBetting && (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => {
+                console.log('⏭️ Saltando apuestas...');
+                onSkipBetting();
+                onClose();
+              }}
+            >
+              <IconSymbol name='forward' size={18} color='#94A3B8' />
+              <Text style={styles.skipText}>
+                Saltar apuestas y escuchar audio
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Cancel Button */}
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cerrar (sin usar token)</Text>
+            <Text style={styles.cancelText}>Cerrar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -231,168 +269,85 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  title: {
-    fontSize: 20,
+  headerLeft: {
+    flex: 1,
+  },
+  roundBadge: {
+    fontSize: 12,
+    color: '#F59E0B',
     fontWeight: '700',
+    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '800',
     color: '#F8FAFC',
   },
   closeButton: {
     padding: 8,
+    marginTop: 4,
   },
-
-  // Countdown styles
-  countdownContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-  },
-  countdownUrgent: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderColor: '#EF4444',
-  },
-  countdownContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  countdownIcon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  countdownText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#3B82F6',
-  },
-  countdownTextUrgent: {
-    color: '#EF4444',
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 3,
-  },
-  progressBarUrgent: {
-    backgroundColor: '#EF4444',
-  },
-  urgentText: {
-    textAlign: 'center',
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-
-  // Card Info
-  cardInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  summaryContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
-    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  cardArtist: {
+  summaryTitle: {
     fontSize: 14,
+    fontWeight: '700',
+    color: '#10B981',
+    marginBottom: 6,
+  },
+  summaryText: {
+    fontSize: 13,
     color: '#94A3B8',
-    marginBottom: 8,
+    lineHeight: 18,
   },
-  cardPointsContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  cardPoints: {
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '600',
-  },
-
-  // ✅ Token explanation
-  tokenExplanation: {
+  infoContainer: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
-  explanationTitle: {
+  infoText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#F59E0B',
-    marginBottom: 8,
+    color: '#F8FAFC',
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 6,
+    lineHeight: 20,
   },
-  explanationText: {
+  highlight: {
+    color: '#F59E0B',
+    fontWeight: '800',
+  },
+  infoSubtext: {
     fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 12,
     lineHeight: 18,
   },
-  tokenExamples: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  tokenExample: {
-    alignItems: 'center',
-  },
-  tokenBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  tokenBronze: {
-    backgroundColor: '#CD7F32',
-  },
-  tokenSilver: {
-    backgroundColor: '#C0C0C0',
-  },
-  tokenGold: {
-    backgroundColor: '#FFD700',
-  },
-  tokenBadgeText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  tokenExampleText: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-
-  // Players
   playersTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#F8FAFC',
     marginBottom: 12,
   },
   playersList: {
-    maxHeight: 220,
+    maxHeight: 300,
     marginBottom: 16,
   },
   playerItem: {
@@ -409,7 +364,7 @@ const styles = StyleSheet.create({
   },
   playerName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     color: '#F8FAFC',
   },
   playerTokens: {
@@ -417,13 +372,39 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
+  betBadge: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  betBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
   betPlacedContainer: {
-    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
   },
   alreadyBet: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#10B981',
+    fontWeight: '600',
+  },
+  changeBetButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  changeBetText: {
+    fontSize: 11,
+    color: '#94A3B8',
     fontWeight: '600',
   },
   noTokensContainer: {
@@ -438,21 +419,20 @@ const styles = StyleSheet.create({
   bettingOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    gap: 8,
   },
-
-  // ✅ Token buttons
   betButton: {
+    flex: 1,
     paddingVertical: 14,
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
     borderRadius: 12,
     alignItems: 'center',
-    minWidth: 70,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    backgroundColor: '#10B981', // Verde para disponible
-    shadowColor: '#10B981',
+    backgroundColor: '#3B82F6',
+    shadowColor: '#3B82F6',
   },
   betButtonUsed: {
     backgroundColor: '#334155',
@@ -478,8 +458,47 @@ const styles = StyleSheet.create({
   betLabelUsed: {
     color: '#64748B',
   },
-
-  // Cancel
+  // ✅ NUEVO: Botón de confirmar
+  confirmButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    marginBottom: 12,
+    gap: 12,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  confirmText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 12,
+    gap: 10,
+  },
+  skipText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
   cancelButton: {
     backgroundColor: '#475569',
     padding: 16,

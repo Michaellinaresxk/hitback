@@ -21,6 +21,8 @@ export const initialState: GameFlow = {
   showReward: false,
   rewardData: null,
   gameMasterAnswer: null,
+  hasPlacedBet: false, // ✅ INICIALIZAR
+  showBettingButton: false,
 };
 
 export const getResetState = (): Partial<GameFlow> => ({
@@ -68,6 +70,12 @@ export const getAudioState = (
   gameMasterAnswer: gameMasterData,
   audioPlaying: !!round?.track?.audioUrl,
   audioUrl: round?.track?.audioUrl || null,
+});
+
+export const getPreRoundState = (): Partial<GameFlow> => ({
+  phase: 'pre-round',
+  bettingPhase: true,
+  showBettingButton: true, // ✅ NUEVO
 });
 
 export const getBettingState = (): Partial<GameFlow> => ({

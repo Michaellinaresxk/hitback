@@ -58,6 +58,9 @@ export interface GameFlow {
     trackTitle: string;
     trackArtist: string;
   } | null;
+
+  hasPlacedBet?: boolean; // ✅ AGREGAR esta propiedad
+  showBettingButton?: boolean;
 }
 
 export interface BettingStatus {

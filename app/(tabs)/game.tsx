@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { View, ScrollView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  ScrollView,
+  StatusBar,
+  TouchableOpacity,
+  StyleSheet,
+  Text,
+} from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 // External Components
@@ -25,34 +32,11 @@ import { getBackendPlayerId, validateBet } from '@/utils/game/gameHelpers';
 import GameSetupScreen from '../setup-game';
 import { styles } from '@/components/game/gameScreen/styles';
 import { GameHeader } from '@/components/game/gameScreen/GameHeader';
-import { BettingPhase } from '@/components/game/gameScreen/BettingPhase';
 import { GamePot } from '@/components/game/gameScreen/GamePot';
 import { CurrentTurn } from '@/components/game/gameScreen/CurrentTurn';
 import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
-
-// Custom hook para efectos
-const useGameEffects = () => {
-  const { flowState, getBettingStatus, getCurrentPhase, testConnection } =
-    useGameFlow();
-  const { isActive, error, setError, setShowGameEndModal } = useGameStore();
-  const { showError, showWarning } = useFeedback();
-
-  const bettingStatus = getBettingStatus();
-  const currentPhase = getCurrentPhase();
-
-  // Aquí irían los useEffect originales...
-  // Pero para simplificar, los mantendremos en el componente principal
-  // O puedes moverlos aquí
-
-  return {
-    shouldShowPointsModal:
-      flowState.questionVisible &&
-      flowState.currentRound &&
-      !bettingStatus.isActive &&
-      currentPhase === 'question',
-  };
-};
+import { IconSymbol } from '@/components/ui/IconSymbol';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -64,12 +48,15 @@ export default function GameScreen() {
     timeLeft,
     showGameEndModal,
     round,
-    placeBet,
+    placeBet: placeBetStore,
     setShowGameEndModal,
     createNewGame,
+    startGame,
     nextTurn,
     clearBets,
     gamePot,
+    setGameActive,
+    syncPlayersFromBackend, // ✅ AÑADIR si existe en tu store
   } = useGameStore();
 
   // Game Flow
@@ -79,9 +66,10 @@ export default function GameScreen() {
     handleAudioFinished,
     revealAnswer,
     placeBet: placeBetBackend,
-    endBettingPhase,
+    skipBetting,
     prepareNextRound,
-    resetFlow,
+    startAudioAfterBets,
+    registerBet,
     testConnection,
     getBettingStatus,
     getCurrentPhase,
@@ -102,6 +90,7 @@ export default function GameScreen() {
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
+  const [gameStarted, setGameStarted] = useState(false);
 
   // Derived state
   const currentPlayer = players.find((p) => p.isCurrentTurn);
@@ -110,10 +99,48 @@ export default function GameScreen() {
   const currentPhase = getCurrentPhase();
 
   // Effects
-  React.useEffect(() => {
-    if (isActive) {
-      checkBackendConnection();
-      soundEffects.initialize();
+  useEffect(() => {
+    console.log(
+      `🎮 GameScreen: isActive=${isActive}, gameStarted=${gameStarted}, players=${players.length}`
+    );
+
+    if (isActive && players.length >= 2 && !gameStarted) {
+      initializeGame();
+    }
+  }, [isActive, players.length]);
+
+  useEffect(() => {
+    console.log(
+      `🔄 Flow state changed: phase=${flowState.phase}, round=${flowState.roundNumber}`
+    );
+
+    // Mostrar modal de puntos cuando se termina el audio
+    if (flowState.phase === 'question' && flowState.currentRound) {
+      console.log('🎯 Showing points modal');
+      setShowPointsModal(true);
+    }
+  }, [flowState.phase, flowState.roundNumber, flowState.currentRound]);
+
+  // Helper function para determinar si mostrar apuestas
+  const shouldShowBettingButton = (): boolean => {
+    const roundNumber = flowState.currentRound?.number || 0;
+    const shouldShow =
+      roundNumber > 1 &&
+      flowState.phase === 'betting' &&
+      !flowState.hasPlacedBet &&
+      !flowState.audioPlaying;
+
+    console.log(
+      `🎰 shouldShowBettingButton: round=${roundNumber}, phase=${flowState.phase}, hasBet=${flowState.hasPlacedBet}, audio=${flowState.audioPlaying} => ${shouldShow}`
+    );
+
+    return shouldShow;
+  };
+
+  // Handlers
+  const initializeGame = async () => {
+    try {
+      console.log('🎮 Initializing game...');
 
       // Crear mapa de IDs
       const idMap: Record<string, string> = {};
@@ -121,28 +148,18 @@ export default function GameScreen() {
         idMap[player.id] = `player_${index + 1}`;
       });
       setPlayerIdMap(idMap);
-      console.log('📋 Player ID Map created:', idMap);
-    }
-  }, [isActive, players.length]);
 
-  React.useEffect(() => {
-    // Show points modal effect
-    if (
-      flowState.questionVisible &&
-      flowState.currentRound &&
-      !bettingStatus.isActive &&
-      currentPhase === 'question'
-    ) {
-      setShowPointsModal(true);
-    }
-  }, [
-    flowState.questionVisible,
-    flowState.currentRound,
-    bettingStatus.isActive,
-    currentPhase,
-  ]);
+      await soundEffects.initialize();
+      await checkBackendConnection();
 
-  // Handlers (mantén los mismos handlers que en tu código original)
+      setGameStarted(true);
+      console.log('✅ Game initialized');
+    } catch (error) {
+      console.error('❌ Error initializing game:', error);
+      showError('Error', 'No se pudo inicializar el juego');
+    }
+  };
+
   const checkBackendConnection = async () => {
     const isConnected = await testConnection();
     if (!isConnected) {
@@ -167,48 +184,78 @@ export default function GameScreen() {
     }
   };
 
-  const handleOpenBetting = () => {
-    if (!flowState.currentRound) {
-      showWarning('Error', 'Necesitas iniciar una ronda primero');
+  const handleStartBetting = () => {
+    if (!flowState.currentRound || flowState.currentRound.number === 1) {
       return;
     }
-
-    if (!bettingStatus.canBet) {
-      if (currentPhase === 'audio') {
-        showWarning('Espera', 'Espera a que termine el audio');
-      } else {
-        showWarning('Error', 'No es momento de apostar');
-      }
-      return;
-    }
-
+    console.log(
+      `🎰 Opening betting modal for round ${flowState.currentRound.number}`
+    );
     setShowBettingModal(true);
   };
 
-  const handlePlaceBet = async (playerId: string, amount: number) => {
+  const handlePlaceBet = async (playerId: string, tokenValue: number) => {
     const player = players.find((p) => p.id === playerId);
-    const validation = validateBet(player, amount);
 
-    if (!validation.valid) {
-      showError('Error', validation.error!);
+    if (!player) {
+      showError('Error', 'Jugador no encontrado');
       return;
     }
 
-    // Place bet locally
-    placeBet(playerId, amount);
-
-    // Use backend ID
-    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-    console.log(`🎰 Mapping ID: ${playerId} -> ${backendPlayerId}`);
-
-    const result = await placeBetBackend(backendPlayerId, amount);
-
-    if (result.success) {
-      showSuccess('Token Usado', `${player!.name} usó token +${amount} puntos`);
-    } else {
-      showError('Error', 'No se pudo registrar en el servidor');
+    // ✅ Validar que el jugador no haya apostado ya en esta ronda
+    if (player.currentBet > 0) {
+      showError('Error', `${player.name} ya apostó en esta ronda`);
+      return;
     }
 
+    if (!player.availableTokens.includes(tokenValue)) {
+      showError('Error', `Token +${tokenValue} ya fue usado o no disponible`);
+      return;
+    }
+
+    console.log(`🎯 Betting: ${player.name} -> +${tokenValue}`);
+
+    // 1. Place bet localmente en el store
+    placeBetStore(playerId, tokenValue);
+
+    // 2. Enviar al backend
+    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
+
+    const result = await placeBetBackend(backendPlayerId, tokenValue);
+
+    if (result.success) {
+      showSuccess(
+        'Token Usado',
+        `${player.name} usó token +${tokenValue} puntos`
+      );
+      // ✅ NO cerrar modal automáticamente - dejar que otros apuesten
+      // setShowBettingModal(false);
+    } else {
+      showError('Error', 'No se pudo registrar en el servidor');
+      // ✅ Revertir apuesta local si falla en backend
+      // Podrías necesitar una función para revertir
+    }
+  };
+
+  const handleConfirmBets = () => {
+    console.log('✅ Confirmando apuestas y continuando con audio...');
+
+    // 1. Verificar si hay apuestas
+    const playersWithBets = players.filter((p) => p.currentBet > 0);
+    if (playersWithBets.length === 0) {
+      showInfo('Sin apuestas', 'No se realizaron apuestas para esta ronda');
+    }
+
+    // 2. Cerrar modal
+    setShowBettingModal(false);
+
+    console.log('🎵 Iniciando audio después de confirmar apuestas');
+    skipBetting(); // Esta función ya cambia a fase de audio
+  };
+
+  const handleSkipBetting = () => {
+    console.log('⏭️ Skipping betting phase');
+    skipBetting();
     setShowBettingModal(false);
   };
 
@@ -221,6 +268,11 @@ export default function GameScreen() {
         'Nadie Acertó',
         `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
       );
+
+      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
+      if (result.players && Array.isArray(result.players)) {
+        syncPlayersFromBackend(result.players);
+      }
     }
 
     const playersWithBets = players.filter(
@@ -237,6 +289,7 @@ export default function GameScreen() {
     clearBets();
     setShowPointsModal(false);
 
+    // Preparar para siguiente ronda
     setTimeout(() => {
       nextTurn();
       prepareNextRound();
@@ -251,8 +304,10 @@ export default function GameScreen() {
 
     soundEffects.playCorrect();
     const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
+
     console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
 
+    // 1. Revelar respuesta en backend
     const result = await revealAnswer(backendPlayerId);
 
     if (result) {
@@ -260,6 +315,11 @@ export default function GameScreen() {
         '🎉 ¡Correcto!',
         `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
       );
+
+      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
+      if (result.players && Array.isArray(result.players)) {
+        syncPlayersFromBackend(result.players);
+      }
 
       if (result.gameOver && result.gameWinner) {
         setTimeout(() => {
@@ -271,6 +331,8 @@ export default function GameScreen() {
     }
 
     setShowPointsModal(false);
+
+    // 3. Preparar siguiente ronda
     setTimeout(() => {
       nextTurn();
       prepareNextRound();
@@ -279,7 +341,8 @@ export default function GameScreen() {
 
   const handleNewGame = () => {
     setShowGameEndModal(false);
-    resetFlow();
+    setGameActive(false);
+    setGameStarted(false);
     soundEffects.dispose();
     gameSessionService.clearCurrentSession();
     createNewGame();
@@ -287,7 +350,8 @@ export default function GameScreen() {
 
   const handleBackToMenu = () => {
     setShowGameEndModal(false);
-    resetFlow();
+    setGameActive(false);
+    setGameStarted(false);
     gameSessionService.clearCurrentSession();
     createNewGame();
   };
@@ -323,13 +387,6 @@ export default function GameScreen() {
         {/* Header */}
         <GameHeader timeLeft={timeLeft} currentPhase={currentPhase} />
 
-        {/* Betting Phase */}
-        <BettingPhase
-          bettingStatus={bettingStatus}
-          onOpenBetting={handleOpenBetting}
-          onEndBetting={endBettingPhase}
-        />
-
         {/* Game Pot */}
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}
 
@@ -362,6 +419,10 @@ export default function GameScreen() {
           onNextRound={handleNextRound}
           questionVisible={flowState.questionVisible}
           currentRound={flowState.currentRound}
+          hasPlacedBet={flowState.hasPlacedBet}
+          onStartBetting={handleStartBetting}
+          onSkipBetting={handleSkipBetting}
+          showBettingButton={shouldShowBettingButton()}
         />
 
         {/* Players Scoreboard */}
@@ -388,13 +449,19 @@ export default function GameScreen() {
           currentCard={
             flowState.currentRound
               ? {
+                  roundNumber: flowState.currentRound.number,
                   question: flowState.currentRound.question,
-                  track: { title: 'Canción actual', artist: '' },
+                  track: {
+                    title:
+                      flowState.currentRound.track.title || 'Canción actual',
+                    artist: flowState.currentRound.track.artist || '',
+                  },
                 }
               : null
           }
           onPlaceBet={handlePlaceBet}
-          bettingTimeLeft={bettingStatus.timeLeft}
+          onSkipBetting={handleSkipBetting}
+          onConfirmBets={handleConfirmBets} // ✅ NUEVA PROP
         />
 
         <GameEndModal
@@ -409,3 +476,65 @@ export default function GameScreen() {
     </View>
   );
 }
+
+// Estilos locales
+const localStyles = StyleSheet.create({
+  bettingOpportunityContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+  },
+
+  bettingOpportunityButton: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+    borderRadius: 16,
+    width: '100%',
+    marginBottom: 12,
+    gap: 12,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+
+  bettingOpportunityText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
+
+  bettingOpportunitySubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+
+  skipBettingButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+
+  skipBettingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+});
