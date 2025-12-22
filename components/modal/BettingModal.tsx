@@ -1,9 +1,3 @@
-// components/modal/BettingModal.tsx
-// ✅ FIX: Sistema de tokens ÚNICOS
-// - Cada jugador tiene 3 tokens: +1, +2, +3
-// - Cada token se muestra disponible o disabled
-// - Una vez usado, el botón se deshabilita permanentemente
-
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +17,8 @@ interface Player {
   id: string;
   name: string;
   score: number;
-  availableTokens: number[]; // ✅ NUEVO: Array de tokens disponibles [1, 2, 3]
+  availableTokens: number[];
   currentBet: number;
-  // Compatibilidad
-  tokens?: number;
 }
 
 interface BettingModalProps {
@@ -35,7 +27,7 @@ interface BettingModalProps {
   players: Player[];
   currentCard: any;
   onPlaceBet: (playerId: string, tokenValue: number) => void;
-  bettingTimeLeft?: number;
+  onSkipBetting?: () => void;
 }
 
 export default function BettingModal({
@@ -44,23 +36,16 @@ export default function BettingModal({
   players,
   currentCard,
   onPlaceBet,
-  bettingTimeLeft = 10,
+  onSkipBetting,
 }: BettingModalProps) {
   const { t } = useTranslation();
 
-  const isUrgent = bettingTimeLeft <= 5;
-
-  // ✅ Helper para verificar si un token está disponible
   const isTokenAvailable = (player: Player, tokenValue: number): boolean => {
-    // Usar availableTokens si existe, sino fallback a lógica antigua
-    if (player.availableTokens) {
-      return player.availableTokens.includes(tokenValue);
-    }
-    // Fallback: si tiene suficientes tokens (lógica antigua)
-    return (player.tokens || 0) >= tokenValue;
+    return (
+      player.availableTokens.includes(tokenValue) && player.currentBet === 0
+    );
   };
 
-  // ✅ Helper para obtener tokens disponibles
   const getAvailableTokens = (player: Player): number[] => {
     return player.availableTokens || [];
   };
@@ -73,7 +58,7 @@ export default function BettingModal({
           <Text style={styles.playerName}>{player.name}</Text>
           <View style={styles.betPlacedContainer}>
             <Text style={styles.alreadyBet}>
-              ✅ Usó token +{player.currentBet}
+              ✅ Ya apostó +{player.currentBet}
             </Text>
           </View>
         </View>
@@ -103,7 +88,6 @@ export default function BettingModal({
           </View>
         ) : (
           <View style={styles.bettingOptions}>
-            {/* ✅ Mostrar los 3 botones, pero disabled si ya se usó ese token */}
             {[1, 2, 3].map((tokenValue) => {
               const isAvailable = isTokenAvailable(player, tokenValue);
 
@@ -158,40 +142,19 @@ export default function BettingModal({
             </TouchableOpacity>
           </View>
 
-          {/* Countdown */}
-          <View
-            style={[
-              styles.countdownContainer,
-              isUrgent && styles.countdownUrgent,
-            ]}
-          >
-            <View style={styles.countdownContent}>
-              <Text style={styles.countdownIcon}>⏱️</Text>
-              <Text
-                style={[
-                  styles.countdownText,
-                  isUrgent && styles.countdownTextUrgent,
-                ]}
-              >
-                {bettingTimeLeft}s
-              </Text>
-            </View>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  { width: `${(bettingTimeLeft / 10) * 100}%` },
-                  isUrgent && styles.progressBarUrgent,
-                ]}
-              />
-            </View>
-            {isUrgent && (
-              <Text style={styles.urgentText}>¡Apura! Tiempo casi agotado</Text>
-            )}
+          {/* Mensaje informativo */}
+          <View style={styles.infoContainer}>
+            <Text style={styles.infoText}>
+              Cada jugador puede apostar{' '}
+              <Text style={styles.highlight}>1 token por ronda</Text>
+            </Text>
+            <Text style={styles.infoSubtext}>
+              Tokens son personales y no se comparten
+            </Text>
+            <Text style={styles.infoSubtext}>
+              Si aciertas: Puntos base + valor del token
+            </Text>
           </View>
-
-          {/* Players Title */}
-          <Text style={styles.playersTitle}>👥 Selecciona jugador y token</Text>
 
           {/* Players List */}
           <FlatList
@@ -202,9 +165,24 @@ export default function BettingModal({
             showsVerticalScrollIndicator={false}
           />
 
+          {/* Botón para saltar apuestas */}
+          {onSkipBetting && (
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={() => {
+                onSkipBetting();
+                onClose();
+              }}
+            >
+              <Text style={styles.skipText}>
+                ⏭️ Saltar apuesta y escuchar audio
+              </Text>
+            </TouchableOpacity>
+          )}
+
           {/* Cancel Button */}
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cerrar (sin usar token)</Text>
+            <Text style={styles.cancelText}>Cerrar</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -242,157 +220,36 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
   },
-
-  // Countdown styles
-  countdownContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: '#3B82F6',
-  },
-  countdownUrgent: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderColor: '#EF4444',
-  },
-  countdownContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  countdownIcon: {
-    fontSize: 28,
-    marginRight: 12,
-  },
-  countdownText: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#3B82F6',
-  },
-  countdownTextUrgent: {
-    color: '#EF4444',
-  },
-  progressBarContainer: {
-    height: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#3B82F6',
-    borderRadius: 3,
-  },
-  progressBarUrgent: {
-    backgroundColor: '#EF4444',
-  },
-  urgentText: {
-    textAlign: 'center',
-    color: '#EF4444',
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 8,
-  },
-
-  // Card Info
-  cardInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F8FAFC',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  cardArtist: {
-    fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 8,
-  },
-  cardPointsContainer: {
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 20,
-  },
-  cardPoints: {
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '600',
-  },
-
-  // ✅ Token explanation
-  tokenExplanation: {
+  infoContainer: {
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.3)',
   },
-  explanationTitle: {
+  infoText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#F59E0B',
-    marginBottom: 8,
+    color: '#F8FAFC',
+    fontWeight: '600',
     textAlign: 'center',
+    marginBottom: 8,
+    lineHeight: 20,
   },
-  explanationText: {
+  highlight: {
+    color: '#F59E0B',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  infoSubtext: {
     fontSize: 12,
     color: '#94A3B8',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 4,
     lineHeight: 18,
   },
-  tokenExamples: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  tokenExample: {
-    alignItems: 'center',
-  },
-  tokenBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  tokenBronze: {
-    backgroundColor: '#CD7F32',
-  },
-  tokenSilver: {
-    backgroundColor: '#C0C0C0',
-  },
-  tokenGold: {
-    backgroundColor: '#FFD700',
-  },
-  tokenBadgeText: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  tokenExampleText: {
-    fontSize: 10,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-
-  // Players
-  playersTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-    marginBottom: 12,
-  },
   playersList: {
-    maxHeight: 220,
+    maxHeight: 300,
     marginBottom: 16,
   },
   playerItem: {
@@ -426,21 +283,10 @@ const styles = StyleSheet.create({
     color: '#10B981',
     fontWeight: '600',
   },
-  noTokensContainer: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  noTokensText: {
-    fontSize: 13,
-    color: '#64748B',
-    fontStyle: 'italic',
-  },
   bettingOptions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
   },
-
-  // ✅ Token buttons
   betButton: {
     paddingVertical: 14,
     paddingHorizontal: 20,
@@ -451,7 +297,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
-    backgroundColor: '#10B981', // Verde para disponible
+    backgroundColor: '#10B981',
     shadowColor: '#10B981',
   },
   betButtonUsed: {
@@ -478,8 +324,36 @@ const styles = StyleSheet.create({
   betLabelUsed: {
     color: '#64748B',
   },
-
-  // Cancel
+  startAudioButton: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 12,
+  },
+  startAudioText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  skipButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  skipText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
   cancelButton: {
     backgroundColor: '#475569',
     padding: 16,

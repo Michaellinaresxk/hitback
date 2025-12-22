@@ -32,3 +32,16 @@ export const getRewardData = (flowState: GameFlow): RewardInfo => ({
   show: flowState.showReward,
   data: flowState.rewardData,
 });
+
+export const shouldShowBetting = (flowState: GameFlow): boolean => {
+  // Mostrar apuestas solo si:
+  // 1. Es ronda 2+ (round > 1)
+  // 2. Estamos en fase 'idle' o 'pre-round'
+  // 3. No hay apuesta registrada
+  const roundNumber = flowState.currentRound?.number || 0;
+  return (
+    roundNumber > 1 &&
+    ['idle', 'pre-round'].includes(flowState.phase) &&
+    !flowState.hasPlacedBet
+  );
+};

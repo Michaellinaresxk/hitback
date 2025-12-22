@@ -1,5 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 interface MainActionProps {
@@ -8,13 +14,11 @@ interface MainActionProps {
   canStartNextRound: boolean;
   onNextRound: () => void;
   questionVisible: boolean;
-  currentRound?: {
-    question: {
-      icon: string;
-      text: string;
-      points: number;
-    };
-  };
+  currentRound: any;
+  hasPlacedBet: boolean;
+  onStartBetting: () => void;
+  onSkipBetting: () => void;
+  showBettingButton: boolean;
 }
 
 export const MainAction: React.FC<MainActionProps> = ({
@@ -24,105 +28,293 @@ export const MainAction: React.FC<MainActionProps> = ({
   onNextRound,
   questionVisible,
   currentRound,
+  hasPlacedBet,
+  onStartBetting,
+  onSkipBetting,
+  showBettingButton,
 }) => {
-  const getButtonText = () => {
-    if (isLoading) return 'Cargando...';
-    if (currentPhase === 'idle') return 'Siguiente Canción';
-    if (currentPhase === 'answer') return 'Siguiente Ronda';
-    return 'Ronda en Curso...';
-  };
+  console.log(
+    `🎯 MainAction: phase=${currentPhase}, showBettingButton=${showBettingButton}, round=${currentRound?.number}`
+  );
 
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size='large' color='#3B82F6' />
+        <Text style={styles.loadingText}>Cargando ronda...</Text>
+      </View>
+    );
+  }
+
+  // ✅ FASE DE APUESTAS (Ronda 2+)
+  if (showBettingButton && currentPhase === 'betting') {
+    return (
+      <View style={styles.bettingOpportunityContainer}>
+        <TouchableOpacity
+          style={styles.bettingOpportunityButton}
+          onPress={onStartBetting}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name='plus.square' size={24} color='#FFFFFF' />
+          <Text style={styles.bettingOpportunityText}>
+            🎰 USAR TOKEN (+1, +2, +3)
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.skipBettingButton}
+          onPress={onSkipBetting}
+        >
+          <Text style={styles.skipBettingText}>
+            ⏭️ Saltar apuesta y escuchar audio
+          </Text>
+        </TouchableOpacity>
+
+        <Text style={styles.bettingOpportunitySubtext}>
+          Apuesta ANTES de escuchar la canción. Tokens son únicos y no se
+          recuperan.
+        </Text>
+        <Text style={styles.bettingRoundInfo}>
+          Ronda {currentRound?.number || '?'} -{' '}
+          {currentRound?.question?.type?.toUpperCase() || ''}
+        </Text>
+      </View>
+    );
+  }
+
+  // ✅ BOTÓN PARA SIGUIENTE RONDA
+  if (canStartNextRound && !questionVisible) {
+    return (
+      <View style={styles.nextRoundContainer}>
+        <TouchableOpacity
+          style={styles.nextRoundButton}
+          onPress={onNextRound}
+          activeOpacity={0.8}
+        >
+          <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
+          <Text style={styles.nextRoundText}>
+            {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
+          </Text>
+        </TouchableOpacity>
+        <Text style={styles.nextRoundSubtext}>
+          {currentRound
+            ? `Ronda ${currentRound.number} completada`
+            : 'Preparado para empezar'}
+        </Text>
+      </View>
+    );
+  }
+
+  // ✅ SI ESTÁ SONANDO AUDIO O MOSTRANDO PREGUNTA
+  if (currentPhase === 'audio' || questionVisible) {
+    return (
+      <View style={styles.activeRoundContainer}>
+        <Text style={styles.activeRoundText}>
+          {currentPhase === 'audio'
+            ? '🎵 Escuchando...'
+            : '❓ Responde la pregunta'}
+        </Text>
+        <Text style={styles.activeRoundSubtext}>
+          Ronda {currentRound?.number || '?'} -{' '}
+          {currentRound?.question?.type?.toUpperCase() || ''}
+        </Text>
+      </View>
+    );
+  }
+
+  // ✅ SI ESTÁ MOSTRANDO RESPUESTA
+  if (currentPhase === 'answer') {
+    return (
+      <View style={styles.answerContainer}>
+        <Text style={styles.answerText}>✅ Respuesta revelada</Text>
+        <Text style={styles.answerSubtext}>
+          Presiona "Siguiente ronda" para continuar
+        </Text>
+      </View>
+    );
+  }
+
+  // ✅ ESTADO POR DEFECTO
   return (
-    <View style={styles.container}>
-      <TouchableOpacity
-        style={[
-          styles.nextRoundButton,
-          isLoading && styles.nextRoundButtonLoading,
-          !canStartNextRound && styles.nextRoundButtonDisabled,
-        ]}
-        onPress={onNextRound}
-        activeOpacity={0.9}
-        disabled={isLoading || !canStartNextRound}
-      >
-        <IconSymbol
-          name={isLoading ? 'hourglass' : 'play.circle.fill'}
-          size={32}
-          color='#FFFFFF'
-        />
-        <Text style={styles.nextRoundButtonText}>{getButtonText()}</Text>
-      </TouchableOpacity>
-
-      {questionVisible && currentRound && (
-        <View style={styles.questionPreview}>
-          <Text style={styles.questionPreviewIcon}>
-            {currentRound.question.icon}
-          </Text>
-          <Text style={styles.questionPreviewText}>
-            {currentRound.question.text}
-          </Text>
-          <Text style={styles.questionPreviewPoints}>
-            {currentRound.question.points} puntos
-          </Text>
-        </View>
-      )}
+    <View style={styles.defaultContainer}>
+      <Text style={styles.defaultText}>Esperando acción...</Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    padding: 24,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  bettingOpportunityContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#3B82F6',
+    alignItems: 'center',
+  },
+  bettingOpportunityButton: {
+    backgroundColor: '#3B82F6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
     paddingHorizontal: 24,
-    marginBottom: 16,
+    borderRadius: 16,
+    width: '100%',
+    marginBottom: 12,
+    gap: 12,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  bettingOpportunityText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
+  },
+  bettingRoundInfo: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.6)',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  skipBettingButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 12,
+  },
+  skipBettingText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  bettingOpportunitySubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 4,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  nextRoundContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#10B981',
+    alignItems: 'center',
   },
   nextRoundButton: {
     backgroundColor: '#10B981',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    paddingVertical: 18,
+    paddingHorizontal: 24,
     borderRadius: 16,
-    marginBottom: 16,
+    width: '100%',
+    marginBottom: 12,
+    gap: 12,
     shadowColor: '#10B981',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
     elevation: 8,
-    gap: 12,
   },
-  nextRoundButtonLoading: {
-    backgroundColor: '#64748B',
-  },
-  nextRoundButtonDisabled: {
-    backgroundColor: '#475569',
-    opacity: 0.6,
-  },
-  nextRoundButtonText: {
+  nextRoundText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#FFFFFF',
+    flex: 1,
+    textAlign: 'center',
   },
-  questionPreview: {
+  nextRoundSubtext: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  activeRoundContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
     backgroundColor: 'rgba(245, 158, 11, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.3)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
     alignItems: 'center',
   },
-  questionPreviewIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  questionPreviewText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  questionPreviewPoints: {
-    fontSize: 14,
-    color: '#F59E0B',
+  activeRoundText: {
+    fontSize: 18,
     fontWeight: '700',
+    color: '#F59E0B',
+    marginBottom: 8,
+  },
+  activeRoundSubtext: {
+    fontSize: 12,
+    color: 'rgba(245, 158, 11, 0.8)',
+    fontWeight: '600',
+  },
+  answerContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    alignItems: 'center',
+  },
+  answerText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#8B5CF6',
+    marginBottom: 8,
+  },
+  answerSubtext: {
+    fontSize: 12,
+    color: 'rgba(139, 92, 246, 0.8)',
+    fontWeight: '600',
+  },
+  defaultContainer: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    backgroundColor: 'rgba(30, 41, 59, 0.8)',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+  },
+  defaultText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
 });

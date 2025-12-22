@@ -1,9 +1,8 @@
-// store/slices/playerSlice.ts
 import { StateCreator } from 'zustand';
 import { GameStore, Player } from '../types/gameTypes';
 import { SCORE_TO_WIN } from '@/constants/Points';
 
-export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
+export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   set,
   get
 ) => ({
@@ -31,7 +30,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
       name: name.trim(),
       score: 0,
       isCurrentTurn: false,
-      availableTokens: [1, 2, 3],
+      availableTokens: [1, 2, 3], // ✅ Cada jugador tiene sus propios tokens
       powerCards: [],
       currentBet: 0,
       isImmune: false,
@@ -71,6 +70,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
   },
 
   placeBet: (playerId: string, tokenValue: number) => {
+    console.log(`🎯 placeBet called: ${playerId} -> ${tokenValue}`);
+
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
 
@@ -79,9 +80,21 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
         return { ...state, error: 'Jugador no encontrado' };
       }
 
+      console.log(`🎯 Player found: ${player.name}`);
+      console.log(
+        `🎯 Available tokens: [${player.availableTokens.join(', ')}]`
+      );
+      console.log(`🎯 Token to use: ${tokenValue}`);
+      console.log(
+        `🎯 Is token available: ${player.availableTokens.includes(tokenValue)}`
+      );
+
       if (!player.availableTokens.includes(tokenValue)) {
         console.error(`❌ Token +${tokenValue} not available`);
-        return { ...state, error: `Token +${tokenValue} ya fue usado` };
+        return {
+          ...state,
+          error: `Token +${tokenValue} ya fue usado o no disponible`,
+        };
       }
 
       console.log(`🪙 ${player.name} usa token +${tokenValue}`);
@@ -93,25 +106,44 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
 
       console.log(`   Tokens después: [${newAvailableTokens.join(', ')}]`);
 
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id === playerId) {
+          return {
+            ...p,
+            availableTokens: newAvailableTokens,
+            currentBet: tokenValue,
+          };
+        }
+        // ✅ NO MODIFICAR LOS TOKENS DE OTROS JUGADORES
+        return p;
+      });
+
+      console.log(
+        `🎯 Updated players state:`,
+        updatedPlayers.map(
+          (p) =>
+            `${p.name}: tokens=[${p.availableTokens.join(',')}], bet=${
+              p.currentBet
+            }`
+        )
+      );
+
       return {
         ...state,
-        players: state.players.map((p) =>
-          p.id === playerId
-            ? {
-                ...p,
-                availableTokens: newAvailableTokens,
-                currentBet: tokenValue,
-              }
-            : p
-        ),
+        players: updatedPlayers,
         error: null,
       };
     });
   },
 
   clearBets: () => {
+    console.log('🔄 Clearing all bets');
     set((state) => ({
-      players: state.players.map((p) => ({ ...p, currentBet: 0 })),
+      players: state.players.map((p) => ({
+        ...p,
+        currentBet: 0,
+        // ✅ NO limpiar availableTokens - se mantienen igual
+      })),
     }));
   },
 
@@ -208,7 +240,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
                 }
               : p
           );
-          set({ showAnswer: true });
           break;
       }
 
@@ -228,7 +259,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
     }
 
     let basePoints = points || currentCard.question.points || 0;
-    let tokenBonus = player.currentBet;
+    let tokenBonus = player.currentBet || 0;
 
     if (player.boostActive) {
       basePoints = basePoints * 2;
@@ -240,6 +271,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
     console.log(
       `🏆 ${player.name}: base=${basePoints} + token=${tokenBonus} = ${totalPoints} pts`
     );
+    console.log(`🏆 Previous score: ${player.score}`);
+    console.log(`🏆 New score: ${player.score + totalPoints}`);
 
     set((state) => ({
       players: state.players.map((p) => {
@@ -248,7 +281,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
             ...p,
             score: p.score + totalPoints,
             consecutiveWins: p.consecutiveWins + 1,
-            currentBet: 0,
+            currentBet: 0, // ✅ Resetear apuesta después de usar
             boostActive: false,
             cardTypeStreaks: {
               ...p.cardTypeStreaks,
@@ -262,12 +295,12 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
             },
           };
         } else {
+          // ✅ Solo resetear currentBet de otros jugadores, mantener sus tokens
           return {
             ...p,
             consecutiveWins: 0,
             currentBet: 0,
-            cardTypeStreaks: {},
-            difficultyStreaks: {},
+            // ✅ NO resetear cardTypeStreaks y difficultyStreaks si quieres mantener estadísticas
           };
         }
       }),
@@ -281,5 +314,63 @@ export const createPlayerSlice: StateCreator<GameStore, [], [], PlayerSlice> = (
       console.log(`🏆 Winner: ${winner.name} with ${winner.score} points!`);
       get().endGame();
     }
+  },
+
+  // ✅ NUEVA FUNCIÓN: Sincronizar jugadores desde backend
+  syncPlayersFromBackend: (
+    backendPlayers: Array<{
+      id: string;
+      name: string;
+      score: number;
+      availableTokens: number[];
+    }>
+  ) => {
+    console.log('🔄 Syncing players from backend:', backendPlayers);
+
+    set((state) => {
+      const updatedPlayers = state.players.map((localPlayer, index) => {
+        // Buscar jugador por índice o por nombre si no coincide el índice
+        const backendPlayer =
+          backendPlayers.find(
+            (bp) =>
+              bp.name === localPlayer.name ||
+              bp.id === localPlayer.id ||
+              backendPlayers[index]?.name === localPlayer.name
+          ) || backendPlayers[index];
+
+        if (backendPlayer) {
+          console.log(
+            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`
+          );
+          console.log(
+            `   Tokens: [${localPlayer.availableTokens.join(',')}] → [${
+              backendPlayer.availableTokens?.join(',') || 'no data'
+            }]`
+          );
+
+          return {
+            ...localPlayer,
+            score: backendPlayer.score || localPlayer.score,
+            availableTokens:
+              backendPlayer.availableTokens || localPlayer.availableTokens,
+          };
+        }
+
+        console.log(`   ⚠️ No backend data for ${localPlayer.name}`);
+        return localPlayer;
+      });
+
+      console.log(
+        '🔄 Players after sync:',
+        updatedPlayers.map(
+          (p) =>
+            `${p.name}: score=${p.score}, tokens=[${p.availableTokens.join(
+              ','
+            )}]`
+        )
+      );
+
+      return { players: updatedPlayers };
+    });
   },
 });

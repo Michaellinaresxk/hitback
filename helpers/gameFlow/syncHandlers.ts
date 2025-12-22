@@ -1,12 +1,20 @@
-// gameFlow/syncHandlers.ts
+// gameFlow/syncHandlers.ts - VERSIÓN CORREGIDA
 import { PlayerSyncData } from './types';
 import { useGameStore } from '@/store/gameStore';
 
+// ✅ Asegurar que la función retorna un objeto con syncPlayersWithStore
 export const createSyncHandler = () => {
   const syncPlayersWithStore = (backendPlayers: PlayerSyncData[]): void => {
     console.log(`\n📊 ═══ SYNC PLAYERS START ═══`);
     console.log(`📊 Backend players received: ${backendPlayers.length}`);
-    console.log(`📊 Backend data:`, JSON.stringify(backendPlayers, null, 2));
+
+    // Solo loggear si hay datos para no saturar
+    if (backendPlayers.length > 0) {
+      console.log(
+        `📊 Backend data (primer jugador):`,
+        JSON.stringify(backendPlayers[0], null, 2)
+      );
+    }
 
     useGameStore.setState((state) => {
       console.log(`📊 Local players count: ${state.players.length}`);
@@ -32,6 +40,8 @@ export const createSyncHandler = () => {
             ...localPlayer,
             score: backendPlayer.score,
             tokens: backendPlayer.tokens,
+            // ✅ Asegurar que availableTokens se sincroniza
+            availableTokens: backendPlayer.availableTokens || [],
           };
         }
 
@@ -46,5 +56,14 @@ export const createSyncHandler = () => {
     });
   };
 
+  // ✅ IMPORTANTE: Retornar un objeto con syncPlayersWithStore
   return { syncPlayersWithStore };
+};
+
+// ✅ También exportar la función directamente para uso alternativo
+export const syncPlayersWithStore = (
+  backendPlayers: PlayerSyncData[]
+): void => {
+  const handler = createSyncHandler();
+  handler.syncPlayersWithStore(backendPlayers);
 };

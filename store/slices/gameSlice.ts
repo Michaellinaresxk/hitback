@@ -1,4 +1,3 @@
-// store/slices/gameSlice.ts
 import { StateCreator } from 'zustand';
 import { GameStore } from '../types/gameTypes';
 import { audioService } from '@/services/audioService';
@@ -7,10 +6,7 @@ import {
   CURRENT_SPEED_ROUND_INDEX,
 } from '@/constants/SpeedRound';
 
-export const createGameSlice: StateCreator<GameStore, [], [], GameSlice> = (
-  set,
-  get
-) => ({
+export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   id: '',
   currentTurn: 0,
   gameMode: 'normal',
@@ -108,6 +104,43 @@ export const createGameSlice: StateCreator<GameStore, [], [], GameSlice> = (
     }
   },
 
+  setGameActive: (active: boolean) => {
+    set({ isActive: active });
+  },
+
+  syncPlayersFromBackend: (
+    backendPlayers: Array<{
+      id: string;
+      name: string;
+      score: number;
+      availableTokens: number[];
+    }>
+  ) => {
+    console.log('🔄 Syncing players from backend');
+
+    set((state) => {
+      const updatedPlayers = state.players.map((localPlayer, index) => {
+        const backendPlayer = backendPlayers[index];
+
+        if (backendPlayer) {
+          console.log(
+            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`
+          );
+
+          return {
+            ...localPlayer,
+            score: backendPlayer.score || localPlayer.score,
+            availableTokens:
+              backendPlayer.availableTokens || localPlayer.availableTokens,
+          };
+        }
+
+        return localPlayer;
+      });
+
+      return { players: updatedPlayers };
+    });
+  },
   endGame: async () => {
     console.log('🏁 Ending game...');
 

@@ -1,244 +1,232 @@
-// useGameFlow.ts (REFACTORIZADO)
-import { useCallback, useEffect, useRef, useState } from 'react';
-
+import { useCallback, useState } from 'react';
 import { gameSessionService } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
-import { GameFlow } from '@/helpers/gameFlow/types';
-import {
-  getAudioState,
-  getLoadingState,
-  initialState,
-} from '@/helpers/gameFlow/state';
-import { createSyncHandler } from '@/helpers/gameFlow/syncHandlers';
-import { createBettingHandler } from '@/helpers/gameFlow/bettingHandlers';
-import { createPhaseHandlers } from '@/helpers/gameFlow/phaseHandlers';
-import {
-  canStartNextRound,
-  getBettingStatus,
-  getCorrectAnswer,
-  getCurrentPhase,
-  getRewardData,
-  isRoundActive,
-} from '@/helpers/gameFlow/utils';
+
+export interface GameFlow {
+  phase: 'idle' | 'audio' | 'question' | 'answer' | 'loading' | 'betting';
+  isLoading: boolean;
+  currentRound: any;
+  audioPlaying: boolean;
+  audioUrl: string | null;
+  questionVisible: boolean;
+  showBettingButton: boolean;
+  hasPlacedBet: boolean;
+  roundNumber: number;
+}
+
+const initialState: GameFlow = {
+  phase: 'idle',
+  isLoading: false,
+  currentRound: null,
+  audioPlaying: false,
+  audioUrl: null,
+  questionVisible: false,
+  showBettingButton: false,
+  hasPlacedBet: false,
+  roundNumber: 0,
+};
 
 export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
-  const { players, endGame, setShowGameEndModal } = useGameStore();
+  const { clearBets, syncPlayersFromBackend } = useGameStore();
 
-  // Inicializar handlers con dependencias
-  const { syncPlayersWithStore } = createSyncHandler();
-  const bettingHandler = createBettingHandler(setFlowState);
-  const phaseHandlers = createPhaseHandlers(setFlowState, {
-    endGame,
-    setShowGameEndModal,
-    syncPlayersWithStore,
-    endBettingPhase: bettingHandler.endBettingPhase,
-  });
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SIGUIENTE RONDA
-  // ═══════════════════════════════════════════════════════════════════════════
-
+  // SIGUIENTE RONDA - VERSIÓN SIMPLE QUE FUNCIONA
   const nextRound = useCallback(async (): Promise<boolean> => {
-    console.log(`\n🎵 ═══ NEXT ROUND START ═══`);
+    console.log('🎵 Getting next round...');
 
     try {
-      setFlowState((prev) => ({ ...prev, ...getLoadingState() }));
+      setFlowState((prev) => ({ ...prev, isLoading: true, phase: 'loading' }));
 
       const result = await gameSessionService.nextRound();
 
       if (!result.success) {
-        throw new Error(
-          result.error || 'No se pudo obtener la siguiente ronda'
-        );
+        console.error('❌ Error getting next round:', result.error);
+        setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
+        return false;
       }
 
-      if (result.gameOver) {
-        console.log(`🏆 Game Over! Winner: ${result.winner?.name}`);
-        setFlowState((prev) => ({
-          ...prev,
-          phase: 'idle',
+      // Limpiar apuestas de la ronda anterior
+      clearBets();
+
+      const roundNumber = result.round?.number || 0;
+      console.log(`✅ Round ${roundNumber} received`);
+
+      if (roundNumber === 1) {
+        // RONDA 1: Audio directo (sin apuestas)
+        setFlowState({
+          phase: 'audio',
           isLoading: false,
-          gameOver: true,
-          gameWinner: result.winner || null,
-        }));
-
-        endGame();
-        setShowGameEndModal(true);
-        return true;
+          currentRound: result.round,
+          audioPlaying: true,
+          audioUrl: result.round?.track?.audioUrl || null,
+          questionVisible: false,
+          showBettingButton: false,
+          hasPlacedBet: false,
+          roundNumber: roundNumber,
+        });
+        console.log('🎵 Ronda 1: Audio directo');
+      } else {
+        // RONDA 2+: Mostrar opción de apuestas
+        setFlowState({
+          phase: 'betting',
+          isLoading: false,
+          currentRound: result.round,
+          audioPlaying: false,
+          audioUrl: result.round?.track?.audioUrl || null,
+          questionVisible: false,
+          showBettingButton: true,
+          hasPlacedBet: false,
+          roundNumber: roundNumber,
+        });
+        console.log('🎰 Ronda 2+: Fase de apuestas');
       }
 
-      if (!result.round) {
-        throw new Error('Ronda inválida');
-      }
-
-      console.log(`🎵 Round ${result.round.number} received`);
-      console.log(`   Question: ${result.round.question.type}`);
-      console.log(`   Audio: ${result.round.track.audioUrl ? '✅' : '❌'}`);
-
-      if (!result.round.track.audioUrl) {
-        console.warn(
-          `⚠️ No audio URL for this track - Deezer may not have found it`
-        );
-      }
-
-      setFlowState((prev) => ({
-        ...prev,
-        ...getAudioState(result.round!, result.gameMasterData),
-      }));
-
-      if (!result.round.track.audioUrl) {
-        console.log(`⏭️ No audio, skipping to betting phase`);
-        setTimeout(() => {
-          phaseHandlers.handleAudioFinished();
-        }, 1000);
-      }
-
-      console.log(`🎵 ═══ NEXT ROUND END ═══\n`);
       return true;
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Error desconocido';
-      console.error(`❌ nextRound failed: ${errorMessage}`);
-
-      setFlowState((prev) => ({
-        ...prev,
-        phase: 'idle',
-        isLoading: false,
-        currentError: errorMessage,
-      }));
-
+      console.error('❌ Error in nextRound:', error);
+      setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
       return false;
     }
-  }, [endGame, setShowGameEndModal]);
+  }, [clearBets]);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // SYNC CON BACKEND
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const syncPlayersFromBackend = useCallback(async () => {
-    try {
-      console.log(`🔄 Fetching players from backend...`);
-      const status = await gameSessionService.getStatus();
-
-      if (status.success && status.session) {
-        console.log(`🔄 Backend session status:`, status.session.players);
-
-        if (status.session.players && Array.isArray(status.session.players)) {
-          syncPlayersWithStore(status.session.players);
-        }
-
-        return status.session.players;
-      }
-    } catch (error) {
-      console.error(`❌ Failed to sync players:`, error);
-    }
-    return null;
-  }, [syncPlayersWithStore]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RESET Y PREPARACIÓN
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const resetFlow = useCallback(() => {
-    console.log(`🔄 Resetting game flow completely`);
-    bettingHandler.cleanupBettingTimer();
-    setFlowState(initialState);
-  }, [bettingHandler]);
-
-  // ═══════════════════════════════════════════════════════════════════════════
-  // GETTERS Y HELPERS
-  // ═══════════════════════════════════════════════════════════════════════════
-
-  const getBettingStatusCallback = useCallback(
-    () => getBettingStatus(flowState),
-    [flowState]
-  );
-
-  const getCurrentPhaseCallback = useCallback(
-    () => getCurrentPhase(flowState),
-    [flowState]
-  );
-
-  const isRoundActiveCallback = useCallback(
-    () => isRoundActive(flowState),
-    [flowState]
-  );
-
-  const canStartNextRoundCallback = useCallback(
-    () => canStartNextRound(flowState),
-    [flowState]
-  );
-
-  const getCorrectAnswerCallback = useCallback(
-    () => getCorrectAnswer(flowState),
-    [flowState]
-  );
-
-  const getRewardDataCallback = useCallback(
-    () => getRewardData(flowState),
-    [flowState]
-  );
-
-  const closeRewardNotification = useCallback(() => {
+  // MANEJAR FIN DE AUDIO
+  const handleAudioFinished = useCallback(() => {
+    console.log('🎵 Audio finished, showing question');
     setFlowState((prev) => ({
       ...prev,
-      showReward: false,
-      rewardData: null,
+      phase: 'question',
+      audioPlaying: false,
+      questionVisible: true,
     }));
   }, []);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // TEST DE CONEXIÓN
-  // ═══════════════════════════════════════════════════════════════════════════
+  // REGISTRAR APUESTA
+  const placeBet = useCallback(async (playerId: string, tokens: number) => {
+    console.log(`🎰 Placing bet: ${playerId} -> ${tokens}`);
 
-  const testConnection = useCallback(async (): Promise<boolean> => {
-    return gameSessionService.testConnection();
+    try {
+      const result = await gameSessionService.placeBet(playerId, tokens);
+
+      if (result.success) {
+        console.log('✅ Bet placed successfully in backend');
+        return { success: true, multiplier: tokens };
+      } else {
+        console.error('❌ Backend bet failed:', result.error);
+        return { success: false, multiplier: 1 };
+      }
+    } catch (error) {
+      console.error('❌ Error placing bet in backend:', error);
+      return { success: false, multiplier: 1 };
+    }
   }, []);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // CLEANUP
-  // ═══════════════════════════════════════════════════════════════════════════
+  // SALTAR APUESTAS
+  const skipBetting = useCallback(() => {
+    console.log('⏭️ Skipping betting, starting audio');
+    setFlowState((prev) => ({
+      ...prev,
+      hasPlacedBet: false,
+      showBettingButton: false,
+      phase: 'audio',
+      audioPlaying: true,
+    }));
+  }, []);
 
-  useEffect(() => {
-    return () => {
-      bettingHandler.cleanupBettingTimer();
+  // REVELAR RESPUESTA Y SINCRONIZAR PUNTOS
+  const revealAnswer = useCallback(
+    async (winnerId: string | null) => {
+      console.log(`✅ Revealing answer, winner: ${winnerId || 'none'}`);
+
+      try {
+        const result = await gameSessionService.revealAnswer(winnerId);
+
+        if (result.success) {
+          console.log('✅ Answer revealed successfully');
+
+          // ✅ IMPORTANTE: Sincronizar jugadores desde backend
+          if (result.players && Array.isArray(result.players)) {
+            console.log('🔄 Syncing players data from backend...');
+            syncPlayersFromBackend(result.players);
+          } else if (result.results?.players) {
+            console.log('🔄 Syncing players from results...');
+            syncPlayersFromBackend(result.results.players);
+          } else {
+            console.warn('⚠️ No players data received from backend');
+          }
+
+          setFlowState((prev) => ({
+            ...prev,
+            phase: 'answer',
+            questionVisible: false,
+          }));
+
+          return result.results;
+        } else {
+          console.error('❌ Error revealing answer:', result.error);
+          return null;
+        }
+      } catch (error) {
+        console.error('❌ Error revealing answer:', error);
+        return null;
+      }
+    },
+    [syncPlayersFromBackend]
+  );
+
+  // PREPARAR SIGUIENTE RONDA
+  const prepareNextRound = useCallback(() => {
+    console.log('🔄 Preparing for next round');
+    setFlowState((prev) => ({
+      ...prev,
+      phase: 'idle',
+      questionVisible: false,
+      hasPlacedBet: false,
+      showBettingButton: false,
+      audioPlaying: false,
+      audioUrl: null,
+    }));
+  }, []);
+
+  // GETTERS
+  const getBettingStatus = useCallback(() => {
+    return {
+      isActive: flowState.phase === 'betting',
+      canBet: flowState.phase === 'betting' && !flowState.hasPlacedBet,
+      timeLeft: 0,
+      urgentTime: false,
     };
-  }, [bettingHandler]);
+  }, [flowState]);
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // RETURN
-  // ═══════════════════════════════════════════════════════════════════════════
+  const getCurrentPhase = useCallback(() => {
+    return flowState.phase;
+  }, [flowState]);
+
+  const canStartNextRound = useCallback(() => {
+    return (
+      !flowState.isLoading &&
+      (flowState.phase === 'answer' || flowState.phase === 'idle')
+    );
+  }, [flowState]);
 
   return {
     // Estado
     flowState,
+    setFlowState,
 
     // Acciones principales
     nextRound,
-    handleAudioFinished: phaseHandlers.handleAudioFinished,
-    revealAnswer: phaseHandlers.revealAnswer,
-    placeBet: phaseHandlers.placeBet,
-
-    // Control de fases
-    endBettingPhase: bettingHandler.endBettingPhase,
-    prepareNextRound: phaseHandlers.prepareNextRound,
-    resetFlow,
+    handleAudioFinished,
+    revealAnswer,
+    placeBet,
+    skipBetting,
+    prepareNextRound,
 
     // Getters
-    getBettingStatus: getBettingStatusCallback,
-    getCurrentPhase: getCurrentPhaseCallback,
-    isRoundActive: isRoundActiveCallback,
-    canStartNextRound: canStartNextRoundCallback,
-    getCorrectAnswer: getCorrectAnswerCallback,
-    getRewardData: getRewardDataCallback,
-    closeRewardNotification,
-
-    // Sync
-    syncPlayersFromBackend,
-    syncPlayersWithStore,
+    getBettingStatus,
+    getCurrentPhase,
+    canStartNextRound,
 
     // Utils
-    testConnection,
+    testConnection: () => gameSessionService.testConnection(),
   };
 };
