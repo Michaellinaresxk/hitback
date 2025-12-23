@@ -236,22 +236,6 @@ export default function AudioPlayer({
           <Text style={styles.artist} numberOfLines={1}>
             {artist}
           </Text>
-
-          <View style={styles.statusContainer}>
-            {isLoading ? (
-              <Text style={styles.statusText}>Cargando audio...</Text>
-            ) : error ? (
-              <Text style={[styles.statusText, styles.errorText]}>{error}</Text>
-            ) : isPlaying ? (
-              <Text style={styles.statusText}>
-                🎵 Reproduciendo... {timeLeft}s
-              </Text>
-            ) : (
-              <Text style={[styles.statusText, styles.finishedText]}>
-                ✅ Audio completado
-              </Text>
-            )}
-          </View>
         </View>
 
         {/* Countdown */}

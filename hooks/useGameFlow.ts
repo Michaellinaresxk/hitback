@@ -12,6 +12,11 @@ export interface GameFlow {
   showBettingButton: boolean;
   hasPlacedBet: boolean;
   roundNumber: number;
+  correctAnswer?: string | null;
+  trackInfo?: {
+    title: string;
+    artist: string;
+  } | null;
 }
 
 const initialState: GameFlow = {
@@ -38,7 +43,15 @@ export const useGameFlow = () => {
       setFlowState((prev) => ({ ...prev, isLoading: true, phase: 'loading' }));
 
       const result = await gameSessionService.nextRound();
-
+      console.log('🔍 Backend response round:', result.round);
+      console.log(
+        '🔍 GameMasterAnswer in round:',
+        result.round?.gameMasterAnswer
+      ); // ← Debería existir
+      console.log(
+        '🔍 Correct answer:',
+        result.round?.gameMasterAnswer?.correct
+      );
       if (!result.success) {
         console.error('❌ Error getting next round:', result.error);
         setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
@@ -63,6 +76,15 @@ export const useGameFlow = () => {
           showBettingButton: false,
           hasPlacedBet: false,
           roundNumber: roundNumber,
+
+          // ✅ NUEVO: Guardar respuesta para el Game Master
+          correctAnswer: result.round?.gameMasterAnswer?.correct || null,
+          trackInfo: result.round?.gameMasterAnswer
+            ? {
+                title: result.round.gameMasterAnswer.trackTitle,
+                artist: result.round.gameMasterAnswer.trackArtist,
+              }
+            : null,
         });
         console.log('🎵 Ronda 1: Audio directo');
       } else {

@@ -66,21 +66,21 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
             <Text style={styles.modalTitle}>{question.type.toUpperCase()}</Text>
           </View>
 
-          <View style={styles.questionContainer}>
-            <Text style={styles.questionText}>{question.text}</Text>
-
-            {/* Mostrar respuesta para Game Master */}
-            {flowState.gameMasterAnswer && (
-              <View style={styles.gameMasterAnswerContainer}>
-                <Text style={styles.gameMasterLabel}>🔑 RESPUESTA:</Text>
-                <Text style={styles.gameMasterAnswer}>
-                  {flowState.gameMasterAnswer.correctAnswer}
-                </Text>
-                <Text style={styles.trackInfoText}>
-                  "{flowState.gameMasterAnswer.trackTitle}" -{' '}
-                  {flowState.gameMasterAnswer.trackArtist}
-                </Text>
-              </View>
+          {/* ✅ RESPUESTA - SIEMPRE VISIBLE */}
+          <View style={styles.answerContainer}>
+            {/* <Text style={styles.answerLabel}>✅ Respuesta Correcta:</Text> */}
+            <Text style={styles.answerText}>
+              {flowState.correctAnswer ||
+                flowState.currentRound?.gameMasterAnswer?.correct ||
+                '(Cargando...)'}
+            </Text>
+            {(flowState.trackInfo ||
+              flowState.currentRound?.gameMasterAnswer) && (
+              <Text style={styles.trackInfoText}>
+                🎵{' '}
+                {flowState.trackInfo?.artist ||
+                  flowState.currentRound?.gameMasterAnswer?.trackArtist}
+              </Text>
             )}
           </View>
 
@@ -233,6 +233,34 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+
+  answerContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
+  answerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+
+  questionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#3B82F6',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });
 

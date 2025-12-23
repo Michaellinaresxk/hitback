@@ -55,7 +55,6 @@ export const MainAction: React.FC<MainActionProps> = ({
           onPress={onStartBetting}
           activeOpacity={0.8}
         >
-          <IconSymbol name='plus.square' size={24} color='#FFFFFF' />
           <Text style={styles.bettingOpportunityText}>
             🎰 USAR TOKEN (+1, +2, +3)
           </Text>
@@ -70,10 +69,6 @@ export const MainAction: React.FC<MainActionProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <Text style={styles.bettingOpportunitySubtext}>
-          Apuesta ANTES de escuchar la canción. Tokens son únicos y no se
-          recuperan.
-        </Text>
         <Text style={styles.bettingRoundInfo}>
           Ronda {currentRound?.number || '?'} -{' '}
           {currentRound?.question?.type?.toUpperCase() || ''}
@@ -105,23 +100,6 @@ export const MainAction: React.FC<MainActionProps> = ({
     );
   }
 
-  // ✅ SI ESTÁ SONANDO AUDIO O MOSTRANDO PREGUNTA
-  if (currentPhase === 'audio' || questionVisible) {
-    return (
-      <View style={styles.activeRoundContainer}>
-        <Text style={styles.activeRoundText}>
-          {currentPhase === 'audio'
-            ? '🎵 Escuchando...'
-            : '❓ Responde la pregunta'}
-        </Text>
-        <Text style={styles.activeRoundSubtext}>
-          Ronda {currentRound?.number || '?'} -{' '}
-          {currentRound?.question?.type?.toUpperCase() || ''}
-        </Text>
-      </View>
-    );
-  }
-
   // ✅ SI ESTÁ MOSTRANDO RESPUESTA
   if (currentPhase === 'answer') {
     return (
@@ -133,13 +111,6 @@ export const MainAction: React.FC<MainActionProps> = ({
       </View>
     );
   }
-
-  // ✅ ESTADO POR DEFECTO
-  return (
-    <View style={styles.defaultContainer}>
-      <Text style={styles.defaultText}>Esperando acción...</Text>
-    </View>
-  );
 };
 
 const styles = StyleSheet.create({

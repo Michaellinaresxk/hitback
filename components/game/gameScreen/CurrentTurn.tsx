@@ -13,15 +13,12 @@ export const CurrentTurn: React.FC<CurrentTurnProps> = ({
   round,
   currentPhase,
 }) => {
-  const phaseLabel = getPhaseLabel(currentPhase);
-
   return (
     <View style={styles.container}>
       <Text style={styles.turnLabel}>Turno Actual</Text>
       <Text style={styles.currentTurnName}>
         {currentPlayerName || 'Nadie'} - Ronda {round}
       </Text>
-      <Text style={styles.phaseInfo}>Fase: {phaseLabel}</Text>
     </View>
   );
 };
