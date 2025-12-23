@@ -71,6 +71,12 @@ export interface CurrentRound {
     hints: string[];
     isChallenge: boolean;
   };
+  gameMasterAnswer?: {
+    correct: string;
+    trackTitle: string;
+    trackArtist: string;
+    acceptableAnswers?: string[];
+  };
 }
 
 export interface RoundResult {

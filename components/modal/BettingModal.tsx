@@ -80,15 +80,6 @@ export default function BettingModal({
           </View>
           <View style={styles.betPlacedContainer}>
             <Text style={styles.alreadyBet}>✅ Token apostado</Text>
-            <TouchableOpacity
-              style={styles.changeBetButton}
-              onPress={() => {
-                // ✅ Permitir cambiar apuesta
-                console.log(`🔄 ${player.name} quiere cambiar apuesta`);
-              }}
-            >
-              <Text style={styles.changeBetText}>Cambiar</Text>
-            </TouchableOpacity>
           </View>
         </View>
       );
@@ -177,12 +168,6 @@ export default function BettingModal({
             </TouchableOpacity>
           </View>
 
-          {/* Resumen de apuestas */}
-          <View style={styles.summaryContainer}>
-            <Text style={styles.summaryTitle}>Resumen de Apuestas</Text>
-            <Text style={styles.summaryText}>{betsSummary}</Text>
-          </View>
-
           {/* Mensaje informativo */}
           <View style={styles.infoContainer}>
             <Text style={styles.infoText}>
@@ -219,23 +204,6 @@ export default function BettingModal({
               <IconSymbol name='check.circle' size={22} color='#FFFFFF' />
               <Text style={styles.confirmText}>
                 CONFIRMAR APUESTAS Y CONTINUAR
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Botón para saltar apuestas */}
-          {onSkipBetting && (
-            <TouchableOpacity
-              style={styles.skipButton}
-              onPress={() => {
-                console.log('⏭️ Saltando apuestas...');
-                onSkipBetting();
-                onClose();
-              }}
-            >
-              <IconSymbol name='forward' size={18} color='#94A3B8' />
-              <Text style={styles.skipText}>
-                Saltar apuestas y escuchar audio
               </Text>
             </TouchableOpacity>
           )}
