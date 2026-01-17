@@ -15,6 +15,8 @@ import GameEndModal from '@/components/game/GameEndModal';
 import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import BettingModal from '@/components/modal/BettingModal';
+import { ComboNotification } from '@/components/rewards/ComboNotification';
+import { PowerCardScanModal } from '@/components/powercard/PowerCardScanModal';
 
 // Hooks & Services
 import { useGameFlow } from '@/hooks/useGameFlow';
@@ -56,7 +58,8 @@ export default function GameScreen() {
     clearBets,
     gamePot,
     setGameActive,
-    syncPlayersFromBackend, // ✅ AÑADIR si existe en tu store
+    syncPlayersFromBackend,
+    addPowerCard, // ✅ Add power card to player inventory
   } = useGameStore();
 
   // Game Flow
@@ -91,6 +94,15 @@ export default function GameScreen() {
   const [showBettingModal, setShowBettingModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
+  const [showComboNotification, setShowComboNotification] = useState(false);
+  const [comboData, setComboData] = useState<{
+    playerName: string;
+    comboName: string;
+    comboEmoji: string;
+    comboDescription: string;
+  } | null>(null);
+  const [showPowerCardScan, setShowPowerCardScan] = useState(false);
+  const [comboPlayerId, setComboPlayerId] = useState<string | null>(null);
 
   // Derived state
   const currentPlayer = players.find((p) => p.isCurrentTurn);
@@ -268,11 +280,6 @@ export default function GameScreen() {
         'Nadie Acertó',
         `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
       );
-
-      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
-      if (result.players && Array.isArray(result.players)) {
-        syncPlayersFromBackend(result.players);
-      }
     }
 
     const playersWithBets = players.filter(
@@ -316,9 +323,30 @@ export default function GameScreen() {
         `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
       );
 
-      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
-      if (result.players && Array.isArray(result.players)) {
-        syncPlayersFromBackend(result.players);
+      // ✅ CHECK FOR COMBO AND DISPLAY NOTIFICATION
+      if (result.comboStatus) {
+        console.log('🔥 COMBO DETECTED:', result.comboStatus);
+
+        // Store player ID for power card scan
+        setComboPlayerId(playerId);
+
+        setComboData({
+          playerName: player.name,
+          comboName: result.comboStatus.type.replace('_', ' '),
+          comboEmoji: '🔥',
+          comboDescription: result.comboStatus.message,
+        });
+
+        setShowComboNotification(true);
+
+        // Auto-close combo notification after 4 seconds, then show power card scan
+        setTimeout(() => {
+          setShowComboNotification(false);
+          // Show power card scan modal after combo notification closes
+          setTimeout(() => {
+            setShowPowerCardScan(true);
+          }, 500);
+        }, 4000);
       }
 
       if (result.gameOver && result.gameWinner) {
@@ -354,6 +382,72 @@ export default function GameScreen() {
     setGameStarted(false);
     gameSessionService.clearCurrentSession();
     createNewGame();
+  };
+
+  const handlePowerCardScanned = async (qrCode: string) => {
+    if (!comboPlayerId) {
+      showError('Error', 'No se encontró el jugador del combo');
+      return;
+    }
+
+    const player = players.find((p) => p.id === comboPlayerId);
+    if (!player) {
+      showError('Error', 'Jugador no encontrado');
+      return;
+    }
+
+    try {
+      console.log(`🔍 Scanning power card: ${qrCode} for ${player.name}`);
+
+      // Get backend player ID
+      const backendPlayerId = getBackendPlayerId(
+        comboPlayerId,
+        players,
+        playerIdMap
+      );
+
+      // Scan power card on backend
+      const result = await gameSessionService.scanPowerCard(
+        qrCode,
+        backendPlayerId
+      );
+
+      if (result.success) {
+        // Add power card to player's inventory in local store
+        const powerCard = {
+          id: result.data.cardId,
+          name: result.data.cardName,
+          emoji: result.data.emoji,
+          type: result.data.cardId.split('_')[1], // Extract type from ID
+          currentUses: 0,
+          usageLimit: 1, // Default, should come from backend
+        };
+
+        addPowerCard(comboPlayerId, powerCard);
+
+        showSuccess(
+          '⚡ ¡Carta Obtenida!',
+          `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`
+        );
+
+        console.log(`✅ Power card added to ${player.name}:`, powerCard);
+      }
+    } catch (error: any) {
+      console.error('❌ Error scanning power card:', error);
+      showError(
+        'Error',
+        error.message || 'No se pudo escanear la carta de poder'
+      );
+    } finally {
+      setShowPowerCardScan(false);
+      setComboPlayerId(null);
+    }
+  };
+
+  const handlePowerCardScanClose = () => {
+    console.log('⏭️ Power card scan skipped');
+    setShowPowerCardScan(false);
+    setComboPlayerId(null);
   };
 
   // Early returns
@@ -472,6 +566,29 @@ export default function GameScreen() {
           onNewGame={handleNewGame}
           onBackToMenu={handleBackToMenu}
         />
+
+        {/* Combo Notification */}
+        {comboData && (
+          <ComboNotification
+            visible={showComboNotification}
+            onClose={() => setShowComboNotification(false)}
+            comboName={comboData.comboName}
+            comboEmoji={comboData.comboEmoji}
+            comboDescription={comboData.comboDescription}
+            playerName={comboData.playerName}
+          />
+        )}
+
+        {/* Power Card Scan Modal */}
+        {comboData && comboPlayerId && (
+          <PowerCardScanModal
+            visible={showPowerCardScan}
+            onClose={handlePowerCardScanClose}
+            onCardScanned={handlePowerCardScanned}
+            playerName={comboData.playerName}
+            comboType={comboData.comboName}
+          />
+        )}
       </ScrollView>
     </View>
   );
