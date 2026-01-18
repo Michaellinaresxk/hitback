@@ -347,6 +347,10 @@ export default function GameScreen() {
             setShowPowerCardScan(true);
           }, 500);
         }, 4000);
+
+        // ✅ NO preparar siguiente ronda aquí, esperar a que cierre el scanner
+        setShowPointsModal(false);
+        return;
       }
 
       if (result.gameOver && result.gameWinner) {
@@ -360,7 +364,7 @@ export default function GameScreen() {
 
     setShowPointsModal(false);
 
-    // 3. Preparar siguiente ronda
+    // 3. Preparar siguiente ronda (solo si NO hay combo)
     setTimeout(() => {
       nextTurn();
       prepareNextRound();
@@ -441,6 +445,12 @@ export default function GameScreen() {
     } finally {
       setShowPowerCardScan(false);
       setComboPlayerId(null);
+
+      // ✅ Preparar siguiente ronda después de escanear
+      setTimeout(() => {
+        nextTurn();
+        prepareNextRound();
+      }, 1000);
     }
   };
 
@@ -448,6 +458,12 @@ export default function GameScreen() {
     console.log('⏭️ Power card scan skipped');
     setShowPowerCardScan(false);
     setComboPlayerId(null);
+
+    // ✅ Preparar siguiente ronda si se saltó el escaneo
+    setTimeout(() => {
+      nextTurn();
+      prepareNextRound();
+    }, 1000);
   };
 
   // Early returns
