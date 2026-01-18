@@ -30,6 +30,14 @@ export default function QRScanner({
   const [scanned, setScanned] = useState(false);
   const [flashEnabled, setFlashEnabled] = useState(false);
 
+  // ✅ Request camera permissions automatically when component mounts
+  useEffect(() => {
+    if (isVisible && !permission?.granted) {
+      console.log('📸 Requesting camera permissions...');
+      requestPermission();
+    }
+  }, [isVisible]);
+
   useEffect(() => {
     if (isVisible) {
       setScanned(false);
@@ -39,21 +47,30 @@ export default function QRScanner({
   const handleBarcodeScanned = ({ data }: { data: string }) => {
     if (scanned) return;
 
+    console.log('📷 QR Code scanned:', data);
     setScanned(true);
 
     // Validate QR format (HITBACK_XXX)
     if (data.startsWith('HITBACK_')) {
+      console.log('✅ Valid HITBACK QR code');
       onScanSuccess(data);
     } else {
+      console.log('❌ Invalid QR code format');
       Alert.alert('QR Inválido', 'Este QR no pertenece al juego HITBACK', [
         { text: 'OK', onPress: () => setScanned(false) },
       ]);
     }
   };
 
-  if (!isVisible) return null;
+  if (!isVisible) {
+    console.log('🚫 QRScanner not visible');
+    return null;
+  }
+
+  console.log('📸 QRScanner rendering, permission:', permission);
 
   if (!permission) {
+    console.log('⏳ Waiting for camera permissions...');
     return (
       <View style={styles.container}>
         <Text style={styles.message}>Solicitando permisos de cámara...</Text>
@@ -62,6 +79,7 @@ export default function QRScanner({
   }
 
   if (!permission.granted) {
+    console.log('❌ Camera permission not granted');
     return (
       <View style={styles.container}>
         <View style={styles.permissionContainer}>
@@ -83,6 +101,8 @@ export default function QRScanner({
       </View>
     );
   }
+
+  console.log('✅ Camera permission granted, showing camera view');
 
   return (
     <View style={styles.container}>
