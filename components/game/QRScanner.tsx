@@ -7,6 +7,7 @@ import {
   Alert,
   StatusBar,
   Dimensions,
+  Modal,
 } from 'react-native';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -105,7 +106,8 @@ export default function QRScanner({
   console.log('✅ Camera permission granted, showing camera view');
 
   return (
-    <View style={styles.container}>
+    <Modal visible={isVisible} animationType="slide" presentationStyle="fullScreen">
+      <View style={styles.container}>
       <StatusBar barStyle='light-content' backgroundColor='#000000' />
 
       {/* Header */}
@@ -168,6 +170,7 @@ export default function QRScanner({
         )}
       </View>
     </View>
+    </Modal>
   );
 }
 
