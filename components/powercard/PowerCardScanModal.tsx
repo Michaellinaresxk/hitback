@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -30,9 +30,13 @@ export function PowerCardScanModal({
 }: PowerCardScanModalProps) {
   const [showScanner, setShowScanner] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(0));
+  // ✅ FIX: Prevent multiple scans with processing flag
+  const isProcessingRef = useRef(false);
 
   React.useEffect(() => {
     if (visible) {
+      // Reset processing flag when modal opens
+      isProcessingRef.current = false;
       Animated.spring(scaleAnim, {
         toValue: 1,
         tension: 50,
@@ -41,22 +45,46 @@ export function PowerCardScanModal({
       }).start();
     } else {
       scaleAnim.setValue(0);
+      // Reset scanner state when modal closes
+      setShowScanner(false);
     }
   }, [visible]);
 
   const handleScanPress = () => {
+    isProcessingRef.current = false;
     setShowScanner(true);
   };
 
   const handleScanSuccess = (qrCode: string) => {
-    console.log('🔍 Power card scanned:', qrCode);
+    // ✅ FIX: Prevent multiple callbacks
+    if (isProcessingRef.current) {
+      console.log('⏳ Already processing scan, ignoring duplicate');
+      return;
+    }
+
+    isProcessingRef.current = true;
+    console.log('🔍 Power card scanned (single):', qrCode);
+
+    // ✅ FIX: Close scanner IMMEDIATELY before calling parent
     setShowScanner(false);
-    onCardScanned(qrCode);
+
+    // Small delay to ensure scanner is fully closed before processing
+    setTimeout(() => {
+      onCardScanned(qrCode);
+    }, 100);
   };
 
   const handleSkip = () => {
-    console.log('⏭️ Player skipped power card scan');
+    console.log('⭕ Player skipped power card scan');
+    isProcessingRef.current = false;
+    setShowScanner(false);
     onClose();
+  };
+
+  const handleCloseScanner = () => {
+    console.log('❌ Scanner closed by user');
+    isProcessingRef.current = false;
+    setShowScanner(false);
   };
 
   if (!visible && !showScanner) return null;
@@ -66,7 +94,7 @@ export function PowerCardScanModal({
     return (
       <QRScanner
         isVisible={showScanner}
-        onClose={() => setShowScanner(false)}
+        onClose={handleCloseScanner}
         onScanSuccess={handleScanSuccess}
         title='Escanear Carta de Poder'
       />

@@ -21,97 +21,165 @@ interface MainActionProps {
   showBettingButton: boolean;
 }
 
-export const MainAction: React.FC<MainActionProps> = ({
-  isLoading,
-  currentPhase,
-  canStartNextRound,
-  onNextRound,
-  questionVisible,
-  currentRound,
-  hasPlacedBet,
-  onStartBetting,
-  onSkipBetting,
-  showBettingButton,
-}) => {
-  console.log(
-    `🎯 MainAction: phase=${currentPhase}, showBettingButton=${showBettingButton}, round=${currentRound?.number}`
-  );
+export const MainAction: React.FC<MainActionProps> = React.memo(
+  ({
+    isLoading,
+    currentPhase,
+    canStartNextRound,
+    onNextRound,
+    questionVisible,
+    currentRound,
+    hasPlacedBet,
+    onStartBetting,
+    onSkipBetting,
+    showBettingButton,
+  }) => {
+    // ✅ NO console.log here - it was causing the freeze!
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size='large' color='#3B82F6' />
-        <Text style={styles.loadingText}>Cargando ronda...</Text>
-      </View>
-    );
-  }
+    if (isLoading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size='large' color='#3B82F6' />
+          <Text style={styles.loadingText}>Cargando ronda...</Text>
+        </View>
+      );
+    }
 
-  // ✅ FASE DE APUESTAS (Ronda 2+)
-  if (showBettingButton && currentPhase === 'betting') {
-    return (
-      <View style={styles.bettingOpportunityContainer}>
-        <TouchableOpacity
-          style={styles.bettingOpportunityButton}
-          onPress={onStartBetting}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.bettingOpportunityText}>
-            🎰 USAR TOKEN (+1, +2, +3)
+    // ✅ FASE DE APUESTAS (Ronda 2+)
+    if (showBettingButton && currentPhase === 'betting') {
+      return (
+        <View style={styles.bettingOpportunityContainer}>
+          <TouchableOpacity
+            style={styles.bettingOpportunityButton}
+            onPress={onStartBetting}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.bettingOpportunityText}>
+              🎰 USAR TOKEN (+1, +2, +3)
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.skipBettingButton}
+            onPress={onSkipBetting}
+          >
+            <Text style={styles.skipBettingText}>
+              ⭕ Saltar apuesta y escuchar audio
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.bettingRoundInfo}>
+            Ronda {currentRound?.number || '?'} -{' '}
+            {currentRound?.question?.type?.toUpperCase() || ''}
           </Text>
-        </TouchableOpacity>
+        </View>
+      );
+    }
 
-        <TouchableOpacity
-          style={styles.skipBettingButton}
-          onPress={onSkipBetting}
-        >
-          <Text style={styles.skipBettingText}>
-            ⏭️ Saltar apuesta y escuchar audio
+    // ✅ BOTÓN PARA SIGUIENTE RONDA
+    // Show when phase is idle or answer, not showing question, and can start
+    if (
+      (currentPhase === 'idle' || currentPhase === 'answer') &&
+      !questionVisible &&
+      canStartNextRound
+    ) {
+      return (
+        <View style={styles.nextRoundContainer}>
+          <TouchableOpacity
+            style={styles.nextRoundButton}
+            onPress={onNextRound}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
+            <Text style={styles.nextRoundText}>
+              {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.nextRoundSubtext}>
+            {currentRound
+              ? `Ronda ${currentRound.number} completada`
+              : 'Preparado para empezar'}
           </Text>
-        </TouchableOpacity>
+        </View>
+      );
+    }
 
-        <Text style={styles.bettingRoundInfo}>
-          Ronda {currentRound?.number || '?'} -{' '}
-          {currentRound?.question?.type?.toUpperCase() || ''}
-        </Text>
-      </View>
-    );
-  }
+    // ✅ SI ESTÁ EN AUDIO
+    if (currentPhase === 'audio') {
+      return (
+        <View style={styles.activeRoundContainer}>
+          <Text style={styles.activeRoundText}>🎵 Escuchando audio...</Text>
+          <Text style={styles.activeRoundSubtext}>
+            Prepárate para responder
+          </Text>
+        </View>
+      );
+    }
 
-  // ✅ BOTÓN PARA SIGUIENTE RONDA
-  if (canStartNextRound && !questionVisible) {
+    // ✅ SI ESTÁ MOSTRANDO PREGUNTA
+    if (currentPhase === 'question' && questionVisible) {
+      return (
+        <View style={styles.answerContainer}>
+          <Text style={styles.answerText}>❓ Esperando respuesta...</Text>
+          <Text style={styles.answerSubtext}>
+            Selecciona quién respondió correctamente
+          </Text>
+        </View>
+      );
+    }
+
+    // ✅ FALLBACK para idle sin otras condiciones
+    if (currentPhase === 'idle') {
+      return (
+        <View style={styles.nextRoundContainer}>
+          <TouchableOpacity
+            style={styles.nextRoundButton}
+            onPress={onNextRound}
+            activeOpacity={0.8}
+          >
+            <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
+            <Text style={styles.nextRoundText}>
+              {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.nextRoundSubtext}>
+            {currentRound
+              ? `Ronda ${currentRound.number} completada`
+              : 'Preparado para empezar'}
+          </Text>
+        </View>
+      );
+    }
+
+    // ✅ SI ESTÁ MOSTRANDO RESPUESTA pero no puede continuar aún
+    if (currentPhase === 'answer') {
+      return (
+        <View style={styles.answerContainer}>
+          <Text style={styles.answerText}>✅ Respuesta revelada</Text>
+          <Text style={styles.answerSubtext}>
+            Preparando siguiente ronda...
+          </Text>
+        </View>
+      );
+    }
+
+    // ÚLTIMO FALLBACK - siempre muestra algo
     return (
-      <View style={styles.nextRoundContainer}>
+      <View style={styles.defaultContainer}>
         <TouchableOpacity
           style={styles.nextRoundButton}
           onPress={onNextRound}
           activeOpacity={0.8}
         >
-          <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
-          <Text style={styles.nextRoundText}>
-            {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
-          </Text>
+          <Text style={styles.nextRoundText}>CONTINUAR</Text>
         </TouchableOpacity>
-        <Text style={styles.nextRoundSubtext}>
-          {currentRound
-            ? `Ronda ${currentRound.number} completada`
-            : 'Preparado para empezar'}
-        </Text>
       </View>
     );
-  }
+  },
+);
 
-  // ✅ SI ESTÁ MOSTRANDO RESPUESTA
-  if (currentPhase === 'answer') {
-    return (
-      <View style={styles.answerContainer}>
-        <Text style={styles.answerText}>✅ Respuesta revelada</Text>
-        <Text style={styles.answerSubtext}>
-          Presiona "Siguiente ronda" para continuar
-        </Text>
-      </View>
-    );
-  }
-};
+// Add display name for debugging
+MainAction.displayName = 'MainAction';
 
 const styles = StyleSheet.create({
   loadingContainer: {
@@ -184,13 +252,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     fontWeight: '600',
-  },
-  bettingOpportunitySubtext: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 4,
-    fontWeight: '600',
-    textAlign: 'center',
   },
   nextRoundContainer: {
     marginHorizontal: 24,
@@ -282,10 +343,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
-  },
-  defaultText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '600',
   },
 });

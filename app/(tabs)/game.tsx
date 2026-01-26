@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import { View, ScrollView, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
@@ -34,22 +40,22 @@ import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
 export default function GameScreen() {
   const { t } = useTranslation();
 
-  // Store
-  const {
-    players,
-    isActive,
-    timeLeft,
-    showGameEndModal,
-    round,
-    placeBet: placeBetStore,
-    setShowGameEndModal,
-    createNewGame,
-    nextTurn,
-    clearBets,
-    gamePot,
-    setGameActive,
-    addPowerCard, // ✅ Add power card to player inventory
-  } = useGameStore();
+  // Store - use shallow comparison to prevent unnecessary re-renders
+  const players = useGameStore((state) => state.players);
+  const isActive = useGameStore((state) => state.isActive);
+  const timeLeft = useGameStore((state) => state.timeLeft);
+  const showGameEndModal = useGameStore((state) => state.showGameEndModal);
+  const round = useGameStore((state) => state.round);
+  const gamePot = useGameStore((state) => state.gamePot);
+  const placeBetStore = useGameStore((state) => state.placeBet);
+  const setShowGameEndModal = useGameStore(
+    (state) => state.setShowGameEndModal,
+  );
+  const createNewGame = useGameStore((state) => state.createNewGame);
+  const nextTurn = useGameStore((state) => state.nextTurn);
+  const clearBets = useGameStore((state) => state.clearBets);
+  const setGameActive = useGameStore((state) => state.setGameActive);
+  const addPowerCard = useGameStore((state) => state.addPowerCard);
 
   // Game Flow
   const {
@@ -60,9 +66,7 @@ export default function GameScreen() {
     placeBet: placeBetBackend,
     skipBetting,
     prepareNextRound,
-
     testConnection,
-
     getCurrentPhase,
     canStartNextRound,
   } = useGameFlow();
@@ -92,93 +96,98 @@ export default function GameScreen() {
   const [showPowerCardScan, setShowPowerCardScan] = useState(false);
   const [comboPlayerId, setComboPlayerId] = useState<string | null>(null);
 
-  // Derived state
-  const currentPlayer = players.find((p) => p.isCurrentTurn);
-  const currentPlayerId = useGameStore((state) => state.currentPlayer?.id);
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const currentPhase = getCurrentPhase();
+  // Refs for preventing duplicate operations
+  const isPowerCardProcessingRef = useRef(false);
+  const isAdvancingTurnRef = useRef(false);
 
-  // Effects
-  useEffect(() => {
-    console.log(
-      `🎮 GameScreen: isActive=${isActive}, gameStarted=${gameStarted}, players=${players.length}`,
-    );
+  // ✅ Memoized derived state to prevent re-renders
+  const currentPlayer = useMemo(
+    () => players.find((p) => p.isCurrentTurn),
+    [players],
+  );
 
-    if (isActive && players.length >= 2 && !gameStarted) {
-      initializeGame();
-    }
-  }, [isActive, players.length]);
+  const sortedPlayers = useMemo(
+    () => [...players].sort((a, b) => b.score - a.score),
+    [players],
+  );
 
-  useEffect(() => {
-    console.log(
-      `🔄 Flow state changed: phase=${flowState.phase}, round=${flowState.roundNumber}`,
-    );
+  const currentPhase = flowState.phase;
 
-    // Mostrar modal de puntos cuando se termina el audio
-    if (flowState.phase === 'question' && flowState.currentRound) {
-      console.log('🎯 Showing points modal');
-      setShowPointsModal(true);
-    }
-  }, [flowState.phase, flowState.roundNumber, flowState.currentRound]);
-
-  const handleUsePowerCard = async (cardId: string) => {
-    if (!currentPlayer) {
-      showError('Error', 'No hay jugador actual');
-      return;
-    }
-
-    try {
-      console.log(`⚡ Using power card: ${cardId} for ${currentPlayer.name}`);
-
-      const backendPlayerId = getBackendPlayerId(
-        currentPlayer.id,
-        players,
-        playerIdMap,
-      );
-
-      // Call backend to activate the card
-      const result = await gameSessionService.usePowerCard(
-        backendPlayerId,
-        cardId,
-      );
-
-      if (result.success) {
-        showSuccess(
-          '⚡ Carta Activada',
-          `${currentPlayer.name} activó una PowerCard`,
-        );
-        console.log(`✅ Power card activated: ${cardId}`);
-      } else {
-        showError('Error', 'No se pudo activar la carta');
-      }
-    } catch (error: any) {
-      console.error('❌ Error using power card:', error);
-      showError('Error', error.message || 'No se pudo usar la carta');
-    }
-  };
-
-  // Helper function para determinar si mostrar apuestas
-  const shouldShowBettingButton = (): boolean => {
+  // ✅ Memoized betting button visibility - NO console.log here!
+  const bettingButtonVisible = useMemo(() => {
     const roundNumber = flowState.currentRound?.number || 0;
-    const shouldShow =
+    return (
       roundNumber > 1 &&
       flowState.phase === 'betting' &&
       !flowState.hasPlacedBet &&
-      !flowState.audioPlaying;
-
-    console.log(
-      `🎰 shouldShowBettingButton: round=${roundNumber}, phase=${flowState.phase}, hasBet=${flowState.hasPlacedBet}, audio=${flowState.audioPlaying} => ${shouldShow}`,
+      !flowState.audioPlaying
     );
+  }, [
+    flowState.currentRound?.number,
+    flowState.phase,
+    flowState.hasPlacedBet,
+    flowState.audioPlaying,
+  ]);
 
-    return shouldShow;
-  };
+  // ✅ Memoized canStartNextRound
+  const canStart = useMemo(() => {
+    return (
+      !flowState.isLoading &&
+      (flowState.phase === 'answer' || flowState.phase === 'idle')
+    );
+  }, [flowState.isLoading, flowState.phase]);
 
-  // Handlers
-  const initializeGame = async () => {
+  // Effects
+  useEffect(() => {
+    if (isActive && players.length >= 2 && !gameStarted) {
+      initializeGame();
+    }
+  }, [isActive, players.length, gameStarted]);
+
+  useEffect(() => {
+    if (flowState.phase === 'question' && flowState.currentRound) {
+      setShowPointsModal(true);
+    }
+  }, [flowState.phase, flowState.currentRound]);
+
+  const handleUsePowerCard = useCallback(
+    async (cardId: string) => {
+      if (!currentPlayer) {
+        showError('Error', 'No hay jugador actual');
+        return;
+      }
+
+      try {
+        const backendPlayerId = getBackendPlayerId(
+          currentPlayer.id,
+          players,
+          playerIdMap,
+        );
+
+        const result = await gameSessionService.usePowerCard(
+          backendPlayerId,
+          cardId,
+        );
+
+        if (result.success) {
+          showSuccess(
+            '⚡ Carta Activada',
+            `${currentPlayer.name} activó una PowerCard`,
+          );
+        } else {
+          showError('Error', 'No se pudo activar la carta');
+        }
+      } catch (error: any) {
+        showError('Error', error.message || 'No se pudo usar la carta');
+      }
+    },
+    [currentPlayer, players, playerIdMap, showSuccess, showError],
+  );
+
+  const initializeGame = useCallback(async () => {
     try {
       console.log('🎮 Initializing game...');
 
-      // Crear mapa de IDs
       const idMap: Record<string, string> = {};
       players.forEach((player, index) => {
         idMap[player.id] = `player_${index + 1}`;
@@ -186,7 +195,11 @@ export default function GameScreen() {
       setPlayerIdMap(idMap);
 
       await soundEffects.initialize();
-      await checkBackendConnection();
+      const isConnected = await testConnection();
+
+      if (!isConnected) {
+        showWarning('Backend Desconectado', 'El servidor no está disponible.');
+      }
 
       setGameStarted(true);
       console.log('✅ Game initialized');
@@ -194,108 +207,106 @@ export default function GameScreen() {
       console.error('❌ Error initializing game:', error);
       showError('Error', 'No se pudo inicializar el juego');
     }
-  };
+  }, [players, testConnection, showWarning, showError]);
 
-  const checkBackendConnection = async () => {
-    const isConnected = await testConnection();
-    if (!isConnected) {
-      showWarning(
-        'Backend Desconectado',
-        'El servidor no está disponible. Verifica la conexión.',
-      );
-    }
-  };
-
-  const handleNextRound = async () => {
+  const handleNextRound = useCallback(async () => {
     console.log('🎵 Next Round button pressed');
     const success = await nextRound();
 
     if (success && flowState.currentRound) {
       showInfo(
         'Nueva Ronda',
-        `Ronda ${
-          flowState.currentRound.number
-        } - ${flowState.currentRound.question.type.toUpperCase()}`,
+        `Ronda ${flowState.currentRound.number} - ${flowState.currentRound.question.type.toUpperCase()}`,
       );
     }
-  };
+  }, [nextRound, flowState.currentRound, showInfo]);
 
-  const handleStartBetting = () => {
+  const handleStartBetting = useCallback(() => {
     if (!flowState.currentRound || flowState.currentRound.number === 1) {
       return;
     }
-    console.log(
-      `🎰 Opening betting modal for round ${flowState.currentRound.number}`,
-    );
     setShowBettingModal(true);
-  };
+  }, [flowState.currentRound]);
 
-  const handlePlaceBet = async (playerId: string, tokenValue: number) => {
-    const player = players.find((p) => p.id === playerId);
+  const handlePlaceBet = useCallback(
+    async (playerId: string, tokenValue: number) => {
+      const player = players.find((p) => p.id === playerId);
 
-    if (!player) {
-      showError('Error', 'Jugador no encontrado');
-      return;
-    }
+      if (!player) {
+        showError('Error', 'Jugador no encontrado');
+        return;
+      }
 
-    // ✅ Validar que el jugador no haya apostado ya en esta ronda
-    if (player.currentBet > 0) {
-      showError('Error', `${player.name} ya apostó en esta ronda`);
-      return;
-    }
+      if (player.currentBet > 0) {
+        showError('Error', `${player.name} ya apostó en esta ronda`);
+        return;
+      }
 
-    if (!player.availableTokens.includes(tokenValue)) {
-      showError('Error', `Token +${tokenValue} ya fue usado o no disponible`);
-      return;
-    }
+      if (!player.availableTokens.includes(tokenValue)) {
+        showError('Error', `Token +${tokenValue} ya fue usado o no disponible`);
+        return;
+      }
 
-    console.log(`🎯 Betting: ${player.name} -> +${tokenValue}`);
+      placeBetStore(playerId, tokenValue);
 
-    // 1. Place bet localmente en el store
-    placeBetStore(playerId, tokenValue);
-
-    // 2. Enviar al backend
-    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-
-    const result = await placeBetBackend(backendPlayerId, tokenValue);
-
-    if (result.success) {
-      showSuccess(
-        'Token Usado',
-        `${player.name} usó token +${tokenValue} puntos`,
+      const backendPlayerId = getBackendPlayerId(
+        playerId,
+        players,
+        playerIdMap,
       );
-      // ✅ NO cerrar modal automáticamente - dejar que otros apuesten
-      // setShowBettingModal(false);
-    } else {
-      showError('Error', 'No se pudo registrar en el servidor');
-      // ✅ Revertir apuesta local si falla en backend
-      // Podrías necesitar una función para revertir
-    }
-  };
+      const result = await placeBetBackend(backendPlayerId, tokenValue);
 
-  const handleConfirmBets = () => {
-    console.log('✅ Confirmando apuestas y continuando con audio...');
+      if (result.success) {
+        showSuccess(
+          'Token Usado',
+          `${player.name} usó token +${tokenValue} puntos`,
+        );
+      } else {
+        showError('Error', 'No se pudo registrar en el servidor');
+      }
+    },
+    [
+      players,
+      playerIdMap,
+      placeBetStore,
+      placeBetBackend,
+      showSuccess,
+      showError,
+    ],
+  );
 
-    // 1. Verificar si hay apuestas
+  const handleConfirmBets = useCallback(() => {
     const playersWithBets = players.filter((p) => p.currentBet > 0);
     if (playersWithBets.length === 0) {
       showInfo('Sin apuestas', 'No se realizaron apuestas para esta ronda');
     }
-
-    // 2. Cerrar modal
     setShowBettingModal(false);
+    skipBetting();
+  }, [players, showInfo, skipBetting]);
 
-    console.log('🎵 Iniciando audio después de confirmar apuestas');
-    skipBetting(); // Esta función ya cambia a fase de audio
-  };
-
-  const handleSkipBetting = () => {
-    console.log('⏭️ Skipping betting phase');
+  const handleSkipBetting = useCallback(() => {
     skipBetting();
     setShowBettingModal(false);
-  };
+  }, [skipBetting]);
 
-  const handleWrongAnswer = async () => {
+  // Centralized function to advance turn
+  const advanceToNextTurn = useCallback(() => {
+    if (isAdvancingTurnRef.current) {
+      return;
+    }
+    isAdvancingTurnRef.current = true;
+
+    console.log('🔄 Advancing to next turn');
+    nextTurn();
+    clearBets();
+    prepareNextRound();
+
+    setTimeout(() => {
+      isAdvancingTurnRef.current = false;
+    }, 500);
+  }, [nextTurn, clearBets, prepareNextRound]);
+
+  const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
     const result = await revealAnswer(null);
 
@@ -320,175 +331,211 @@ export default function GameScreen() {
     clearBets();
     setShowPointsModal(false);
 
-    // Preparar para siguiente ronda
     setTimeout(() => {
-      nextTurn();
-      prepareNextRound();
+      advanceToNextTurn();
     }, 2000);
-  };
+  }, [
+    revealAnswer,
+    players,
+    clearBets,
+    showInfo,
+    showWarning,
+    advanceToNextTurn,
+  ]);
 
-  const handleAwardPoints = async (playerId: string) => {
-    if (!flowState.currentRound) return;
+  const handleAwardPoints = useCallback(
+    async (playerId: string) => {
+      if (!flowState.currentRound) return;
 
-    const player = players.find((p) => p.id === playerId);
-    if (!player) return;
+      const player = players.find((p) => p.id === playerId);
+      if (!player) return;
 
-    soundEffects.playCorrect();
-    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-
-    console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
-
-    // 1. Revelar respuesta en backend
-    const result = await revealAnswer(backendPlayerId);
-
-    if (result) {
-      showSuccess(
-        '🎉 ¡Correcto!',
-        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+      soundEffects.playCorrect();
+      const backendPlayerId = getBackendPlayerId(
+        playerId,
+        players,
+        playerIdMap,
       );
 
-      // ✅ CHECK FOR COMBO AND DISPLAY NOTIFICATION
-      if (result.comboStatus) {
-        console.log('🔥 COMBO DETECTED:', result.comboStatus);
+      const result = await revealAnswer(backendPlayerId);
 
-        // Store player ID for power card scan
-        setComboPlayerId(playerId);
+      if (result) {
+        showSuccess(
+          '🎉 ¡Correcto!',
+          `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+        );
 
-        setComboData({
-          playerName: player.name,
-          comboName: result.comboStatus.type.replace('_', ' '),
-          comboEmoji: '🔥',
-          comboDescription: result.comboStatus.message,
-        });
+        // CHECK FOR COMBO
+        if (result.comboStatus) {
+          console.log('🔥 COMBO DETECTED:', result.comboStatus);
 
-        setShowComboNotification(true);
+          setComboPlayerId(playerId);
+          isPowerCardProcessingRef.current = false;
 
-        // Auto-close combo notification after 4 seconds, then show power card scan
-        setTimeout(() => {
-          setShowComboNotification(false);
-          // Show power card scan modal after combo notification closes
+          setComboData({
+            playerName: player.name,
+            comboName: result.comboStatus.type.replace('_', ' '),
+            comboEmoji: '🔥',
+            comboDescription: result.comboStatus.message,
+          });
+
+          setShowComboNotification(true);
+          setShowPointsModal(false);
+
+          // Auto-close combo notification after 4 seconds
           setTimeout(() => {
-            setShowPowerCardScan(true);
-          }, 500);
-        }, 4000);
+            setShowComboNotification(false);
+            setTimeout(() => {
+              setShowPowerCardScan(true);
+            }, 500);
+          }, 4000);
 
-        // ✅ NO preparar siguiente ronda aquí, esperar a que cierre el scanner
-        setShowPointsModal(false);
-        return;
+          return;
+        }
+
+        if (result.gameOver && result.gameWinner) {
+          setTimeout(() => {
+            setShowGameEndModal(true);
+          }, 1500);
+          setShowPointsModal(false);
+          return;
+        }
       }
 
-      if (result.gameOver && result.gameWinner) {
-        setTimeout(() => {
-          setShowGameEndModal(true);
-        }, 1500);
-        setShowPointsModal(false);
-        return;
-      }
-    }
+      setShowPointsModal(false);
 
-    setShowPointsModal(false);
+      setTimeout(() => {
+        advanceToNextTurn();
+      }, 2000);
+    },
+    [
+      flowState.currentRound,
+      players,
+      playerIdMap,
+      revealAnswer,
+      showSuccess,
+      setShowGameEndModal,
+      advanceToNextTurn,
+    ],
+  );
 
-    // 3. Preparar siguiente ronda (solo si NO hay combo)
-    setTimeout(() => {
-      nextTurn();
-      prepareNextRound();
-    }, 2000);
-  };
-
-  const handleNewGame = () => {
+  const handleNewGame = useCallback(() => {
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
     soundEffects.dispose();
     gameSessionService.clearCurrentSession();
     createNewGame();
-  };
+  }, [setShowGameEndModal, setGameActive, createNewGame]);
 
-  const handleBackToMenu = () => {
+  const handleBackToMenu = useCallback(() => {
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
     gameSessionService.clearCurrentSession();
     createNewGame();
-  };
+  }, [setShowGameEndModal, setGameActive, createNewGame]);
 
-  const handlePowerCardScanned = async (qrCode: string) => {
-    if (!comboPlayerId) {
-      showError('Error', 'No se encontró el jugador del combo');
-      return;
-    }
+  // Cleanup function for power card flow
+  const cleanupAfterPowerCard = useCallback(() => {
+    console.log('🧹 Cleaning up after power card flow');
+    setComboPlayerId(null);
+    setComboData(null);
+    setShowComboNotification(false);
+    setShowPowerCardScan(false);
 
-    const player = players.find((p) => p.id === comboPlayerId);
-    if (!player) {
-      showError('Error', 'Jugador no encontrado');
-      return;
-    }
+    setTimeout(() => {
+      advanceToNextTurn();
+      isPowerCardProcessingRef.current = false;
+    }, 500);
+  }, [advanceToNextTurn]);
 
-    try {
-      console.log(`🔍 Scanning power card: ${qrCode} for ${player.name}`);
+  const handlePowerCardScanned = useCallback(
+    async (qrCode: string) => {
+      console.log('📥 handlePowerCardScanned called');
 
-      // Get backend player ID
-      const backendPlayerId = getBackendPlayerId(
-        comboPlayerId,
-        players,
-        playerIdMap,
-      );
+      if (isPowerCardProcessingRef.current) {
+        console.log('⏳ Already processing power card, ignoring');
+        return;
+      }
+      isPowerCardProcessingRef.current = true;
 
-      // Scan power card on backend
-      const result = await gameSessionService.scanPowerCard(
-        qrCode,
-        backendPlayerId,
-      );
+      // IMMEDIATELY close the scan modal
+      setShowPowerCardScan(false);
 
-      if (result.success) {
-        // Add power card to player's inventory in local store
-        const powerCard = {
-          id: result.data.cardId,
-          name: result.data.cardName,
-          emoji: result.data.emoji,
-          type: result.data.cardId.split('_')[1], // Extract type from ID
-          currentUses: 0,
-          usageLimit: 1, // Default, should come from backend
-        };
+      const playerIdForScan = comboPlayerId;
 
-        addPowerCard(comboPlayerId, powerCard);
+      if (!playerIdForScan) {
+        showError('Error', 'No se encontró el jugador del combo');
+        cleanupAfterPowerCard();
+        return;
+      }
 
-        showSuccess(
-          '⚡ ¡Carta Obtenida!',
-          `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
+      const player = players.find((p) => p.id === playerIdForScan);
+      if (!player) {
+        showError('Error', 'Jugador no encontrado');
+        cleanupAfterPowerCard();
+        return;
+      }
+
+      try {
+        const backendPlayerId = getBackendPlayerId(
+          playerIdForScan,
+          players,
+          playerIdMap,
+        );
+        const result = await gameSessionService.scanPowerCard(
+          qrCode,
+          backendPlayerId,
         );
 
-        console.log(`✅ Power card added to ${player.name}:`, powerCard);
+        if (result.success) {
+          const powerCard = {
+            id: result.data.cardId,
+            name: result.data.cardName,
+            emoji: result.data.emoji,
+            type: result.data.cardId.split('_')[1],
+            currentUses: 0,
+            usageLimit: 1,
+          };
+
+          addPowerCard(playerIdForScan, powerCard);
+          showSuccess(
+            '⚡ ¡Carta Obtenida!',
+            `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
+          );
+          console.log(`✅ Power card added to ${player.name}`);
+        } else {
+          showError('Error', 'No se pudo añadir la carta');
+        }
+      } catch (error: any) {
+        showError('Error', error.message || 'No se pudo escanear la carta');
       }
-    } catch (error: any) {
-      console.error('❌ Error scanning power card:', error);
-      showError(
-        'Error',
-        error.message || 'No se pudo escanear la carta de poder',
-      );
-    } finally {
-      setShowPowerCardScan(false);
-      setComboPlayerId(null);
 
-      // ✅ Preparar siguiente ronda después de escanear
-      setTimeout(() => {
-        nextTurn();
-        prepareNextRound();
-      }, 1000);
+      cleanupAfterPowerCard();
+    },
+    [
+      comboPlayerId,
+      players,
+      playerIdMap,
+      addPowerCard,
+      showSuccess,
+      showError,
+      cleanupAfterPowerCard,
+    ],
+  );
+
+  const handlePowerCardScanClose = useCallback(() => {
+    console.log('⭕ Power card scan skipped');
+
+    if (isPowerCardProcessingRef.current) {
+      return;
     }
-  };
+    isPowerCardProcessingRef.current = true;
 
-  const handlePowerCardScanClose = () => {
-    console.log('⏭️ Power card scan skipped');
     setShowPowerCardScan(false);
-    setComboPlayerId(null);
-
-    // ✅ Preparar siguiente ronda si se saltó el escaneo
-    setTimeout(() => {
-      nextTurn();
-      prepareNextRound();
-    }, 1000);
-  };
+    cleanupAfterPowerCard();
+  }, [cleanupAfterPowerCard]);
 
   // Early returns
   if (!isActive && !showGameEndModal) {
@@ -513,18 +560,15 @@ export default function GameScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+
+      <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
+
       <ScrollView>
-        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
-
-        <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
-
-        {/* Header */}
         <GameHeader timeLeft={timeLeft} currentPhase={currentPhase} />
 
-        {/* Game Pot */}
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}
 
-        {/* Audio Player */}
         {flowState.audioPlaying &&
           flowState.audioUrl &&
           flowState.currentRound && (
@@ -538,98 +582,95 @@ export default function GameScreen() {
             />
           )}
 
-        {/* Current Turn */}
         <CurrentTurn
           currentPlayerName={currentPlayer?.name || ''}
           round={round}
           currentPhase={currentPhase}
         />
 
-        {/* Main Action */}
         <MainAction
           isLoading={flowState.isLoading}
           currentPhase={currentPhase}
-          canStartNextRound={canStartNextRound()}
+          canStartNextRound={canStart}
           onNextRound={handleNextRound}
           questionVisible={flowState.questionVisible}
           currentRound={flowState.currentRound}
           hasPlacedBet={flowState.hasPlacedBet}
           onStartBetting={handleStartBetting}
           onSkipBetting={handleSkipBetting}
-          showBettingButton={shouldShowBettingButton()}
+          showBettingButton={bettingButtonVisible}
         />
 
-        {/* Players Scoreboard */}
         <PlayerScoreboard
           players={sortedPlayers}
           showDetailedStats={true}
           highlightWinner={sortedPlayers.some((p) => p.score >= SCORE_TO_WIN)}
         />
-
-        {/* Modals */}
-        <PointsAwardModal
-          visible={showPointsModal}
-          flowState={flowState}
-          players={players}
-          onAwardPoints={handleAwardPoints}
-          onWrongAnswer={handleWrongAnswer}
-          onClose={() => setShowPointsModal(false)}
-        />
-
-        <BettingModal
-          visible={showBettingModal}
-          onClose={() => setShowBettingModal(false)}
-          players={players}
-          currentCard={
-            flowState.currentRound
-              ? {
-                  roundNumber: flowState.currentRound.number,
-                  question: flowState.currentRound.question,
-                  track: {
-                    title:
-                      flowState.currentRound.track.title || 'Canción actual',
-                    artist: flowState.currentRound.track.artist || '',
-                  },
-                }
-              : null
-          }
-          onPlaceBet={handlePlaceBet}
-          onSkipBetting={handleSkipBetting}
-          onConfirmBets={handleConfirmBets} // ✅ NUEVA PROP
-        />
-
-        <GameEndModal
-          visible={showGameEndModal}
-          players={players}
-          gameTimeElapsed={1200 - timeLeft}
-          totalRounds={round}
-          onNewGame={handleNewGame}
-          onBackToMenu={handleBackToMenu}
-        />
-
-        {/* Combo Notification */}
-        {comboData && (
-          <ComboNotification
-            visible={showComboNotification}
-            onClose={() => setShowComboNotification(false)}
-            comboName={comboData.comboName}
-            comboEmoji={comboData.comboEmoji}
-            comboDescription={comboData.comboDescription}
-            playerName={comboData.playerName}
-          />
-        )}
-
-        {/* Power Card Scan Modal */}
-        {comboData && comboPlayerId && (
-          <PowerCardScanModal
-            visible={showPowerCardScan}
-            onClose={handlePowerCardScanClose}
-            onCardScanned={handlePowerCardScanned}
-            playerName={comboData.playerName}
-            comboType={comboData.comboName}
-          />
-        )}
       </ScrollView>
+
+      {/* Modals */}
+      <PointsAwardModal
+        visible={showPointsModal}
+        flowState={flowState}
+        players={players}
+        onAwardPoints={handleAwardPoints}
+        onWrongAnswer={handleWrongAnswer}
+        onClose={() => setShowPointsModal(false)}
+      />
+
+      <BettingModal
+        visible={showBettingModal}
+        onClose={() => setShowBettingModal(false)}
+        players={players}
+        currentCard={
+          flowState.currentRound
+            ? {
+                roundNumber: flowState.currentRound.number,
+                question: flowState.currentRound.question,
+                track: {
+                  title: flowState.currentRound.track.title || 'Canción actual',
+                  artist: flowState.currentRound.track.artist || '',
+                },
+              }
+            : null
+        }
+        onPlaceBet={handlePlaceBet}
+        onSkipBetting={handleSkipBetting}
+        onConfirmBets={handleConfirmBets}
+      />
+
+      <GameEndModal
+        visible={showGameEndModal}
+        players={players}
+        gameTimeElapsed={1200 - timeLeft}
+        totalRounds={round}
+        onNewGame={handleNewGame}
+        onBackToMenu={handleBackToMenu}
+      />
+
+      {comboData && (
+        <ComboNotification
+          visible={showComboNotification}
+          onClose={() => {
+            setShowComboNotification(false);
+            setTimeout(() => setShowPowerCardScan(true), 300);
+          }}
+          comboName={comboData.comboName}
+          comboEmoji={comboData.comboEmoji}
+          comboDescription={comboData.comboDescription}
+          playerName={comboData.playerName}
+        />
+      )}
+
+      {comboData && comboPlayerId && (
+        <PowerCardScanModal
+          visible={showPowerCardScan}
+          onClose={handlePowerCardScanClose}
+          onCardScanned={handlePowerCardScanned}
+          playerName={comboData.playerName}
+          comboType={comboData.comboName}
+        />
+      )}
     </View>
   );
 }
