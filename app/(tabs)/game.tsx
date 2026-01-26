@@ -1,12 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  ScrollView,
-  StatusBar,
-  TouchableOpacity,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { View, ScrollView, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
 
 // External Components
@@ -29,8 +22,7 @@ import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { SCORE_TO_WIN } from '@/constants/Points';
 
 // Types
-import type { Player as StorePlayer } from '@/store/gameStore';
-import { getBackendPlayerId, validateBet } from '@/utils/game/gameHelpers';
+import { getBackendPlayerId } from '@/utils/game/gameHelpers';
 import GameSetupScreen from '../setup-game';
 import { styles } from '@/components/game/gameScreen/styles';
 import { GameHeader } from '@/components/game/gameScreen/GameHeader';
@@ -38,7 +30,6 @@ import { GamePot } from '@/components/game/gameScreen/GamePot';
 import { CurrentTurn } from '@/components/game/gameScreen/CurrentTurn';
 import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -53,12 +44,10 @@ export default function GameScreen() {
     placeBet: placeBetStore,
     setShowGameEndModal,
     createNewGame,
-    startGame,
     nextTurn,
     clearBets,
     gamePot,
     setGameActive,
-    syncPlayersFromBackend,
     addPowerCard, // ✅ Add power card to player inventory
   } = useGameStore();
 
@@ -71,10 +60,9 @@ export default function GameScreen() {
     placeBet: placeBetBackend,
     skipBetting,
     prepareNextRound,
-    startAudioAfterBets,
-    registerBet,
+
     testConnection,
-    getBettingStatus,
+
     getCurrentPhase,
     canStartNextRound,
   } = useGameFlow();
@@ -106,14 +94,14 @@ export default function GameScreen() {
 
   // Derived state
   const currentPlayer = players.find((p) => p.isCurrentTurn);
+  const currentPlayerId = useGameStore((state) => state.currentPlayer?.id);
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
 
   // Effects
   useEffect(() => {
     console.log(
-      `🎮 GameScreen: isActive=${isActive}, gameStarted=${gameStarted}, players=${players.length}`
+      `🎮 GameScreen: isActive=${isActive}, gameStarted=${gameStarted}, players=${players.length}`,
     );
 
     if (isActive && players.length >= 2 && !gameStarted) {
@@ -123,7 +111,7 @@ export default function GameScreen() {
 
   useEffect(() => {
     console.log(
-      `🔄 Flow state changed: phase=${flowState.phase}, round=${flowState.roundNumber}`
+      `🔄 Flow state changed: phase=${flowState.phase}, round=${flowState.roundNumber}`,
     );
 
     // Mostrar modal de puntos cuando se termina el audio
@@ -132,6 +120,42 @@ export default function GameScreen() {
       setShowPointsModal(true);
     }
   }, [flowState.phase, flowState.roundNumber, flowState.currentRound]);
+
+  const handleUsePowerCard = async (cardId: string) => {
+    if (!currentPlayer) {
+      showError('Error', 'No hay jugador actual');
+      return;
+    }
+
+    try {
+      console.log(`⚡ Using power card: ${cardId} for ${currentPlayer.name}`);
+
+      const backendPlayerId = getBackendPlayerId(
+        currentPlayer.id,
+        players,
+        playerIdMap,
+      );
+
+      // Call backend to activate the card
+      const result = await gameSessionService.usePowerCard(
+        backendPlayerId,
+        cardId,
+      );
+
+      if (result.success) {
+        showSuccess(
+          '⚡ Carta Activada',
+          `${currentPlayer.name} activó una PowerCard`,
+        );
+        console.log(`✅ Power card activated: ${cardId}`);
+      } else {
+        showError('Error', 'No se pudo activar la carta');
+      }
+    } catch (error: any) {
+      console.error('❌ Error using power card:', error);
+      showError('Error', error.message || 'No se pudo usar la carta');
+    }
+  };
 
   // Helper function para determinar si mostrar apuestas
   const shouldShowBettingButton = (): boolean => {
@@ -143,7 +167,7 @@ export default function GameScreen() {
       !flowState.audioPlaying;
 
     console.log(
-      `🎰 shouldShowBettingButton: round=${roundNumber}, phase=${flowState.phase}, hasBet=${flowState.hasPlacedBet}, audio=${flowState.audioPlaying} => ${shouldShow}`
+      `🎰 shouldShowBettingButton: round=${roundNumber}, phase=${flowState.phase}, hasBet=${flowState.hasPlacedBet}, audio=${flowState.audioPlaying} => ${shouldShow}`,
     );
 
     return shouldShow;
@@ -177,7 +201,7 @@ export default function GameScreen() {
     if (!isConnected) {
       showWarning(
         'Backend Desconectado',
-        'El servidor no está disponible. Verifica la conexión.'
+        'El servidor no está disponible. Verifica la conexión.',
       );
     }
   };
@@ -191,7 +215,7 @@ export default function GameScreen() {
         'Nueva Ronda',
         `Ronda ${
           flowState.currentRound.number
-        } - ${flowState.currentRound.question.type.toUpperCase()}`
+        } - ${flowState.currentRound.question.type.toUpperCase()}`,
       );
     }
   };
@@ -201,7 +225,7 @@ export default function GameScreen() {
       return;
     }
     console.log(
-      `🎰 Opening betting modal for round ${flowState.currentRound.number}`
+      `🎰 Opening betting modal for round ${flowState.currentRound.number}`,
     );
     setShowBettingModal(true);
   };
@@ -238,7 +262,7 @@ export default function GameScreen() {
     if (result.success) {
       showSuccess(
         'Token Usado',
-        `${player.name} usó token +${tokenValue} puntos`
+        `${player.name} usó token +${tokenValue} puntos`,
       );
       // ✅ NO cerrar modal automáticamente - dejar que otros apuesten
       // setShowBettingModal(false);
@@ -278,17 +302,17 @@ export default function GameScreen() {
     if (result) {
       showInfo(
         'Nadie Acertó',
-        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
       );
     }
 
     const playersWithBets = players.filter(
-      (p) => p.currentBet && p.currentBet > 0
+      (p) => p.currentBet && p.currentBet > 0,
     );
     if (playersWithBets.length > 0) {
       const totalLost = playersWithBets.reduce(
         (sum, p) => sum + (p.currentBet || 0),
-        0
+        0,
       );
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
@@ -320,7 +344,7 @@ export default function GameScreen() {
     if (result) {
       showSuccess(
         '🎉 ¡Correcto!',
-        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
       );
 
       // ✅ CHECK FOR COMBO AND DISPLAY NOTIFICATION
@@ -407,13 +431,13 @@ export default function GameScreen() {
       const backendPlayerId = getBackendPlayerId(
         comboPlayerId,
         players,
-        playerIdMap
+        playerIdMap,
       );
 
       // Scan power card on backend
       const result = await gameSessionService.scanPowerCard(
         qrCode,
-        backendPlayerId
+        backendPlayerId,
       );
 
       if (result.success) {
@@ -431,7 +455,7 @@ export default function GameScreen() {
 
         showSuccess(
           '⚡ ¡Carta Obtenida!',
-          `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`
+          `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
         );
 
         console.log(`✅ Power card added to ${player.name}:`, powerCard);
@@ -440,7 +464,7 @@ export default function GameScreen() {
       console.error('❌ Error scanning power card:', error);
       showError(
         'Error',
-        error.message || 'No se pudo escanear la carta de poder'
+        error.message || 'No se pudo escanear la carta de poder',
       );
     } finally {
       setShowPowerCardScan(false);
