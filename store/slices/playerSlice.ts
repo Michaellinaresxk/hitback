@@ -4,7 +4,7 @@ import { SCORE_TO_WIN } from '@/constants/Points';
 
 export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   set,
-  get
+  get,
 ) => ({
   players: [],
 
@@ -30,7 +30,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       name: name.trim(),
       score: 0,
       isCurrentTurn: false,
-      availableTokens: [1, 2, 3], // ✅ Cada jugador tiene sus propios tokens
+      availableTokens: [1, 2, 3],
       powerCards: [],
       currentBet: 0,
       isImmune: false,
@@ -82,11 +82,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
       console.log(`🎯 Player found: ${player.name}`);
       console.log(
-        `🎯 Available tokens: [${player.availableTokens.join(', ')}]`
+        `🎯 Available tokens: [${player.availableTokens.join(', ')}]`,
       );
       console.log(`🎯 Token to use: ${tokenValue}`);
       console.log(
-        `🎯 Is token available: ${player.availableTokens.includes(tokenValue)}`
+        `🎯 Is token available: ${player.availableTokens.includes(tokenValue)}`,
       );
 
       if (!player.availableTokens.includes(tokenValue)) {
@@ -101,7 +101,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       console.log(`   Tokens antes: [${player.availableTokens.join(', ')}]`);
 
       const newAvailableTokens = player.availableTokens.filter(
-        (t) => t !== tokenValue
+        (t) => t !== tokenValue,
       );
 
       console.log(`   Tokens después: [${newAvailableTokens.join(', ')}]`);
@@ -114,7 +114,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
             currentBet: tokenValue,
           };
         }
-        // ✅ NO MODIFICAR LOS TOKENS DE OTROS JUGADORES
         return p;
       });
 
@@ -124,8 +123,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           (p) =>
             `${p.name}: tokens=[${p.availableTokens.join(',')}], bet=${
               p.currentBet
-            }`
-        )
+            }`,
+        ),
       );
 
       return {
@@ -142,7 +141,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       players: state.players.map((p) => ({
         ...p,
         currentBet: 0,
-        // ✅ NO limpiar availableTokens - se mantienen igual
       })),
     }));
   },
@@ -164,35 +162,67 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     });
   },
 
+  // ✅ FIXED: usePowerCard ahora maneja 'replay' correctamente
   usePowerCard: (
     playerId: string,
     powerCardId: string,
-    targetPlayerId?: string
+    targetPlayerId?: string,
   ) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
       const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
 
       if (!player || !powerCard) {
+        console.error('❌ PowerCard not found:', { playerId, powerCardId });
         return { ...state, error: 'Carta de poder no encontrada' };
       }
 
       if (powerCard.currentUses >= powerCard.usageLimit) {
+        console.error('❌ PowerCard already used');
         return { ...state, error: 'Carta de poder ya usada' };
       }
 
       let newPlayers = [...state.players];
+      const cardType = powerCard.type?.toLowerCase() || '';
 
-      switch (powerCard.type) {
+      console.log(`⚡ Using PowerCard: ${powerCard.name} (type: ${cardType})`);
+
+      switch (cardType) {
+        // ✅ FIXED: Manejar tanto 'replay' como 'boost'
+        case 'replay':
+        case 'boost':
+          newPlayers = newPlayers.map((p) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  boostActive: true,
+                  powerCards: p.powerCards.map((pc) =>
+                    pc.id === powerCardId
+                      ? {
+                          ...pc,
+                          currentUses: pc.currentUses + 1,
+                          isActive: true,
+                        }
+                      : pc,
+                  ),
+                }
+              : p,
+          );
+          console.log(`✅ ${player.name}: Boost activado (x2 puntos)`);
+          break;
+
         case 'robo':
+        case 'thief':
+        case 'hit_steal':
           if (targetPlayerId) {
             newPlayers = newPlayers.map((p) => {
               if (p.id === targetPlayerId && p.availableTokens.length > 0) {
                 const stolenToken = Math.max(...p.availableTokens);
+                console.log(`🥷 Robando token +${stolenToken} de ${p.name}`);
                 return {
                   ...p,
                   availableTokens: p.availableTokens.filter(
-                    (t) => t !== stolenToken
+                    (t) => t !== stolenToken,
                   ),
                 };
               }
@@ -202,7 +232,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   powerCards: p.powerCards.map((pc) =>
                     pc.id === powerCardId
                       ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
+                      : pc,
                   ),
                 };
               }
@@ -212,6 +242,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           break;
 
         case 'escudo':
+        case 'shield':
+        case 'stop':
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
               ? {
@@ -220,27 +252,12 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   powerCards: p.powerCards.map((pc) =>
                     pc.id === powerCardId
                       ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
+                      : pc,
                   ),
                 }
-              : p
+              : p,
           );
-          break;
-
-        case 'boost':
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  boostActive: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
-                  ),
-                }
-              : p
-          );
+          console.log(`🛡️ ${player.name}: Escudo activado`);
           break;
 
         case 'peek':
@@ -252,18 +269,43 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   powerCards: p.powerCards.map((pc) =>
                     pc.id === powerCardId
                       ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc
+                      : pc,
                   ),
                 }
-              : p
+              : p,
           );
+          console.log(`👁️ ${player.name}: Peek usado`);
+          break;
+
+        default:
+          console.warn(`⚠️ Unknown PowerCard type: ${cardType}`);
           break;
       }
 
-      console.log(`⚡ Power card: ${powerCard.name} by ${player.name}`);
+      console.log(`⚡ Power card used: ${powerCard.name} by ${player.name}`);
 
       return { ...state, players: newPlayers, error: null };
     });
+  },
+
+  // ✅ NEW: Activar boost para un jugador (útil para sincronización con backend)
+  activateBoost: (playerId: string) => {
+    console.log(`⚡ Activating boost for player: ${playerId}`);
+    set((state) => ({
+      players: state.players.map((p) =>
+        p.id === playerId ? { ...p, boostActive: true } : p,
+      ),
+    }));
+  },
+
+  // ✅ NEW: Desactivar boost para un jugador
+  deactivateBoost: (playerId: string) => {
+    console.log(`⚡ Deactivating boost for player: ${playerId}`);
+    set((state) => ({
+      players: state.players.map((p) =>
+        p.id === playerId ? { ...p, boostActive: false } : p,
+      ),
+    }));
   },
 
   awardPoints: (playerId: string, points?: number, answerTime?: number) => {
@@ -277,16 +319,19 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
     let basePoints = points || currentCard.question.points || 0;
     let tokenBonus = player.currentBet || 0;
+    let multiplier = 1;
 
+    // ✅ Aplicar boost si está activo
     if (player.boostActive) {
-      basePoints = basePoints * 2;
-      console.log(`⚡ Boost: 2x`);
+      multiplier = 2;
+      basePoints = basePoints * multiplier;
+      console.log(`⚡ Boost aplicado: ${basePoints / 2} x2 = ${basePoints}`);
     }
 
     const totalPoints = basePoints + tokenBonus;
 
     console.log(
-      `🏆 ${player.name}: base=${basePoints} + token=${tokenBonus} = ${totalPoints} pts`
+      `🏆 ${player.name}: base=${basePoints}${player.boostActive ? ' (x2)' : ''} + token=${tokenBonus} = ${totalPoints} pts`,
     );
     console.log(`🏆 Previous score: ${player.score}`);
     console.log(`🏆 New score: ${player.score + totalPoints}`);
@@ -298,8 +343,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
             ...p,
             score: p.score + totalPoints,
             consecutiveWins: p.consecutiveWins + 1,
-            currentBet: 0, // ✅ Resetear apuesta después de usar
-            boostActive: false,
+            currentBet: 0,
+            boostActive: false, // ✅ Resetear boost después de usar
             cardTypeStreaks: {
               ...p.cardTypeStreaks,
               [currentCard.question.type]:
@@ -312,12 +357,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
             },
           };
         } else {
-          // ✅ Solo resetear currentBet de otros jugadores, mantener sus tokens
           return {
             ...p,
             consecutiveWins: 0,
             currentBet: 0,
-            // ✅ NO resetear cardTypeStreaks y difficultyStreaks si quieres mantener estadísticas
           };
         }
       }),
@@ -333,36 +376,35 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }
   },
 
-  // ✅ NUEVA FUNCIÓN: Sincronizar jugadores desde backend
+  // ✅ Sincronizar jugadores desde backend
   syncPlayersFromBackend: (
     backendPlayers: Array<{
       id: string;
       name: string;
       score: number;
       availableTokens: number[];
-    }>
+    }>,
   ) => {
     console.log('🔄 Syncing players from backend:', backendPlayers);
 
     set((state) => {
       const updatedPlayers = state.players.map((localPlayer, index) => {
-        // Buscar jugador por índice o por nombre si no coincide el índice
         const backendPlayer =
           backendPlayers.find(
             (bp) =>
               bp.name === localPlayer.name ||
               bp.id === localPlayer.id ||
-              backendPlayers[index]?.name === localPlayer.name
+              backendPlayers[index]?.name === localPlayer.name,
           ) || backendPlayers[index];
 
         if (backendPlayer) {
           console.log(
-            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`
+            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`,
           );
           console.log(
             `   Tokens: [${localPlayer.availableTokens.join(',')}] → [${
               backendPlayer.availableTokens?.join(',') || 'no data'
-            }]`
+            }]`,
           );
 
           return {
@@ -382,9 +424,9 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         updatedPlayers.map(
           (p) =>
             `${p.name}: score=${p.score}, tokens=[${p.availableTokens.join(
-              ','
-            )}]`
-        )
+              ',',
+            )}]`,
+        ),
       );
 
       return { players: updatedPlayers };
