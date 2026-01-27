@@ -222,6 +222,72 @@ export default function GameScreen() {
     [currentPlayer, players, playerIdMap, showSuccess, showError],
   );
 
+  const handleScoreboardUsePowerCard = useCallback(
+    async (playerId: string, cardId: string) => {
+      const player = players.find((p) => p.id === playerId);
+      if (!player) {
+        showError('Error', 'Jugador no encontrado');
+        return;
+      }
+
+      const powerCard = player.powerCards.find((pc) => pc.id === cardId);
+      if (!powerCard) {
+        showError('Error', 'Carta no encontrada en el inventario');
+        return;
+      }
+
+      // Verificar que la carta no esté ya usada
+      if (powerCard.currentUses >= powerCard.usageLimit) {
+        showError('Error', 'Esta carta ya fue usada');
+        return;
+      }
+
+      // Verificar que no tenga ya un boost activo
+      if (player.boostActive) {
+        showError('Error', 'Ya tienes un boost activo');
+        return;
+      }
+
+      console.log(
+        `⚡ Activating PowerCard: ${powerCard.name} for ${player.name}`,
+      );
+
+      try {
+        // 1. Llamar al backend para activar la carta
+        const backendPlayerId = getBackendPlayerId(
+          playerId,
+          players,
+          playerIdMap,
+        );
+
+        const result = await gameSessionService.usePowerCard(
+          backendPlayerId,
+          cardId,
+        );
+
+        if (result.success) {
+          // 2. Actualizar el estado local usando el store
+          const usePowerCardStore = useGameStore.getState().usePowerCard;
+          usePowerCardStore(playerId, cardId);
+
+          // 3. Mostrar feedback visual
+          showSuccess(
+            '⚡ ¡Carta Activada!',
+            `${player.name} activó ${powerCard.emoji || '⚡'} ${powerCard.name}\n¡Tu próxima respuesta correcta vale x2 puntos!`,
+          );
+
+          console.log(`✅ PowerCard activated: ${powerCard.name}`);
+        } else {
+          showError('Error', result.error || 'No se pudo activar la carta');
+        }
+      } catch (error: any) {
+        console.error('❌ Error using power card:', error);
+        showError('Error', error.message || 'No se pudo usar la carta');
+      }
+    },
+    [players, playerIdMap, showSuccess, showError],
+  );
+
   const initializeGame = useCallback(async () => {
     try {
       console.log('🎮 Initializing game...');
@@ -698,6 +764,12 @@ export default function GameScreen() {
           players={sortedPlayers}
           showDetailedStats={true}
           highlightWinner={sortedPlayers.some((p) => p.score >= SCORE_TO_WIN)}
+          onUsePowerCard={handleScoreboardUsePowerCard}
+          canUsePowerCards={
+            flowState.phase === 'betting' ||
+            flowState.phase === 'question' ||
+            flowState.phase === 'idle'
+          }
         />
       </ScrollView>
 

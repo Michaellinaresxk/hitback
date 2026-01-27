@@ -1,9 +1,16 @@
 // components/game/PlayerScoreboard.tsx - HITBACK Player Scoreboard
 // ✅ Muestra puntos, tokens y estado de jugadores
 // ✅ Se actualiza automáticamente cuando cambia el gameStore
+// ✅ ACTUALIZADO: Muestra PowerCards del inventario con opción de usar
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import type { Player } from '@/store/gameStore';
@@ -17,6 +24,9 @@ interface PlayerScoreboardProps {
   showDetailedStats?: boolean;
   highlightWinner?: boolean;
   compact?: boolean;
+  // ✅ NUEVAS PROPS para PowerCards
+  onUsePowerCard?: (playerId: string, cardId: string) => void;
+  canUsePowerCards?: boolean;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,6 +38,8 @@ export default function PlayerScoreboard({
   showDetailedStats = false,
   highlightWinner = false,
   compact = false,
+  onUsePowerCard,
+  canUsePowerCards = true,
 }: PlayerScoreboardProps) {
   // Ordenar jugadores por puntuación (mayor a menor)
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
@@ -70,6 +82,21 @@ export default function PlayerScoreboard({
     return Math.min((score / SCORE_TO_WIN) * 100, 100);
   };
 
+  // ✅ NUEVO: Helper para obtener PowerCards disponibles
+  const getAvailablePowerCards = (player: Player) => {
+    if (!player.powerCards || player.powerCards.length === 0) return [];
+    return player.powerCards.filter(
+      (card) => card.currentUses < card.usageLimit,
+    );
+  };
+
+  // ✅ NUEVO: Handler para usar PowerCard
+  const handleUsePowerCard = (playerId: string, cardId: string) => {
+    if (onUsePowerCard && canUsePowerCards) {
+      onUsePowerCard(playerId, cardId);
+    }
+  };
+
   // ═══════════════════════════════════════════════════════════════════════════
   // RENDER: Modo Compacto
   // ═══════════════════════════════════════════════════════════════════════════
@@ -94,6 +121,18 @@ export default function PlayerScoreboard({
                 {player.name}
               </Text>
               <Text style={styles.compactScore}>{player.score}</Text>
+              {/* ✅ NUEVO: Indicador de PowerCards en modo compacto */}
+              {getAvailablePowerCards(player).length > 0 && (
+                <Text style={styles.compactPowerCard}>
+                  ⚡{getAvailablePowerCards(player).length}
+                </Text>
+              )}
+              {/* ✅ NUEVO: Indicador de boost activo */}
+              {player.boostActive && (
+                <View style={styles.compactBoostBadge}>
+                  <Text style={styles.compactBoostText}>x2</Text>
+                </View>
+              )}
             </View>
           ))}
         </ScrollView>
@@ -115,102 +154,167 @@ export default function PlayerScoreboard({
 
       {/* Lista de Jugadores */}
       <View style={styles.playersList}>
-        {sortedPlayers.map((player, index) => (
-          <View
-            key={player.id}
-            style={[
-              styles.playerCard,
-              getPositionStyle(index),
-              player.isCurrentTurn && styles.playerCardActive,
-              highlightWinner &&
-                isGameWon &&
-                index === 0 &&
-                styles.playerCardWinner,
-            ]}
-          >
-            {/* Posición */}
-            <View style={styles.positionContainer}>
-              <Text style={styles.positionText}>{getPositionIcon(index)}</Text>
-            </View>
+        {sortedPlayers.map((player, index) => {
+          const availablePowerCards = getAvailablePowerCards(player);
+          const hasPowerCards = availablePowerCards.length > 0;
 
-            {/* Info del Jugador */}
-            <View style={styles.playerInfo}>
-              <View style={styles.playerNameRow}>
-                <Text
-                  style={[
-                    styles.playerName,
-                    player.isCurrentTurn && styles.playerNameActive,
-                  ]}
-                  numberOfLines={1}
-                >
-                  {player.name}
+          return (
+            <View
+              key={player.id}
+              style={[
+                styles.playerCard,
+                getPositionStyle(index),
+                player.isCurrentTurn && styles.playerCardActive,
+                highlightWinner &&
+                  isGameWon &&
+                  index === 0 &&
+                  styles.playerCardWinner,
+              ]}
+            >
+              {/* Posición */}
+              <View style={styles.positionContainer}>
+                <Text style={styles.positionText}>
+                  {getPositionIcon(index)}
                 </Text>
-                {player.isCurrentTurn && (
-                  <View style={styles.turnIndicator}>
-                    <Text style={styles.turnText}>TURNO</Text>
+              </View>
+
+              {/* Info del Jugador */}
+              <View style={styles.playerInfo}>
+                <View style={styles.playerNameRow}>
+                  <Text
+                    style={[
+                      styles.playerName,
+                      player.isCurrentTurn && styles.playerNameActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {player.name}
+                  </Text>
+                  {player.isCurrentTurn && (
+                    <View style={styles.turnIndicator}>
+                      <Text style={styles.turnText}>TURNO</Text>
+                    </View>
+                  )}
+                  {/* ✅ NUEVO: Badge de boost activo */}
+                  {player.boostActive && (
+                    <View style={styles.boostBadge}>
+                      <Text style={styles.boostBadgeText}>⚡x2</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Barra de Progreso */}
+                <View style={styles.progressBarContainer}>
+                  <View
+                    style={[
+                      styles.progressBar,
+                      { width: `${getProgressPercentage(player.score)}%` },
+                      index === 0 && styles.progressBarLeader,
+                    ]}
+                  />
+                </View>
+
+                {/* Stats Detallados */}
+                {showDetailedStats && (
+                  <View style={styles.detailedStats}>
+                    <View style={styles.statItem}>
+                      <IconSymbol name='flame.fill' size={12} color='#F59E0B' />
+                      <Text style={styles.statText}>
+                        {player.consecutiveWins || 0} racha
+                      </Text>
+                    </View>
+                    {player.currentBet > 0 && (
+                      <View style={styles.statItem}>
+                        <IconSymbol
+                          name='dice.fill'
+                          size={12}
+                          color='#EF4444'
+                        />
+                        <Text style={styles.statText}>
+                          Apuesta: {player.currentBet}
+                        </Text>
+                      </View>
+                    )}
+                    {/* ✅ NUEVO: Indicador de PowerCards disponibles */}
+                    {hasPowerCards && (
+                      <View style={styles.statItem}>
+                        <Text style={styles.statText}>
+                          ⚡ {availablePowerCards.length} carta
+                          {availablePowerCards.length > 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                )}
+
+                {/* ✅ NUEVO: PowerCards Section */}
+                {hasPowerCards && (
+                  <View style={styles.powerCardsSection}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.powerCardsList}
+                    >
+                      {availablePowerCards.map((card) => (
+                        <TouchableOpacity
+                          key={card.id}
+                          style={[
+                            styles.powerCardMini,
+                            card.isActive && styles.powerCardActive,
+                            !canUsePowerCards && styles.powerCardDisabled,
+                          ]}
+                          onPress={() => handleUsePowerCard(player.id, card.id)}
+                          disabled={!canUsePowerCards || card.isActive}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={styles.powerCardEmoji}>
+                            {card.emoji || card.icon || '⚡'}
+                          </Text>
+                          <Text style={styles.powerCardName} numberOfLines={1}>
+                            {card.name}
+                          </Text>
+                          {card.isActive && (
+                            <View style={styles.activeIndicator}>
+                              <Text style={styles.activeText}>✓</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      ))}
+                    </ScrollView>
                   </View>
                 )}
               </View>
 
-              {/* Barra de Progreso */}
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    { width: `${getProgressPercentage(player.score)}%` },
-                    index === 0 && styles.progressBarLeader,
-                  ]}
-                />
-              </View>
-
-              {/* Stats Detallados */}
-              {showDetailedStats && (
-                <View style={styles.detailedStats}>
-                  <View style={styles.statItem}>
-                    <IconSymbol name='flame.fill' size={12} color='#F59E0B' />
-                    <Text style={styles.statText}>
-                      {player.consecutiveWins || 0} racha
-                    </Text>
-                  </View>
-                  {player.currentBet > 0 && (
-                    <View style={styles.statItem}>
-                      <IconSymbol name='dice.fill' size={12} color='#EF4444' />
-                      <Text style={styles.statText}>
-                        Apuesta: {player.currentBet}
-                      </Text>
-                    </View>
-                  )}
+              {/* Score y Tokens */}
+              <View style={styles.scoreContainer}>
+                {/* Puntuación */}
+                <View style={styles.scoreBox}>
+                  <Text
+                    style={[
+                      styles.scoreValue,
+                      index === 0 && styles.scoreValueLeader,
+                    ]}
+                  >
+                    {player.score}
+                  </Text>
+                  <Text style={styles.scoreLabel}>pts</Text>
                 </View>
-              )}
-            </View>
 
-            {/* Score y Tokens */}
-            <View style={styles.scoreContainer}>
-              {/* Puntuación */}
-              <View style={styles.scoreBox}>
-                <Text
-                  style={[
-                    styles.scoreValue,
-                    index === 0 && styles.scoreValueLeader,
-                  ]}
-                >
-                  {player.score}
-                </Text>
-                <Text style={styles.scoreLabel}>pts</Text>
-              </View>
-
-              {/* Tokens */}
-              <View style={styles.tokensBox}>
-                <IconSymbol
-                  name='bitcoinsign.circle.fill'
-                  size={16}
-                  color='#F59E0B'
-                />
-                <Text style={styles.tokensValue}>{player.tokens}</Text>
+                {/* Tokens */}
+                <View style={styles.tokensBox}>
+                  <IconSymbol
+                    name='bitcoinsign.circle.fill'
+                    size={16}
+                    color='#F59E0B'
+                  />
+                  <Text style={styles.tokensValue}>
+                    {player.availableTokens?.length || player.tokens || 0}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* Footer con info del ganador */}
@@ -323,6 +427,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 6,
+    flexWrap: 'wrap',
+    gap: 6,
   },
   playerName: {
     fontSize: 15,
@@ -338,13 +444,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    marginLeft: 8,
   },
   turnText: {
     fontSize: 9,
     fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+  },
+
+  // ✅ NUEVO: Boost Badge
+  boostBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  boostBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#000000',
   },
 
   // Progress Bar
@@ -368,6 +486,7 @@ const styles = StyleSheet.create({
   detailedStats: {
     flexDirection: 'row',
     gap: 12,
+    flexWrap: 'wrap',
   },
   statItem: {
     flexDirection: 'row',
@@ -377,6 +496,59 @@ const styles = StyleSheet.create({
   statText: {
     fontSize: 11,
     color: '#94A3B8',
+  },
+
+  // ✅ NUEVO: PowerCards Section
+  powerCardsSection: {
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  powerCardsList: {
+    flexDirection: 'row',
+  },
+  powerCardMini: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  powerCardActive: {
+    backgroundColor: 'rgba(0, 255, 136, 0.2)',
+    borderColor: '#00FF88',
+  },
+  powerCardDisabled: {
+    opacity: 0.5,
+  },
+  powerCardEmoji: {
+    fontSize: 14,
+  },
+  powerCardName: {
+    fontSize: 11,
+    color: '#FFD700',
+    fontWeight: '600',
+    maxWidth: 60,
+  },
+  activeIndicator: {
+    backgroundColor: '#00FF88',
+    borderRadius: 10,
+    width: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  activeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
   },
 
   // Score Container
@@ -467,5 +639,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '800',
     color: '#F59E0B',
+  },
+  // ✅ NUEVO: Compact PowerCard indicator
+  compactPowerCard: {
+    fontSize: 12,
+    color: '#FFD700',
+    fontWeight: '600',
+  },
+  compactBoostBadge: {
+    backgroundColor: '#FFD700',
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  compactBoostText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#000',
   },
 });
