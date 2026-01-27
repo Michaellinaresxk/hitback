@@ -147,6 +147,23 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
+  addPowerCard: (playerId: string, powerCard: any) => {
+    set((state) => {
+      const updatedPlayers = state.players.map((p) => {
+        if (p.id === playerId) {
+          console.log(`⚡ Adding power card ${powerCard.name} to ${p.name}`);
+          return {
+            ...p,
+            powerCards: [...p.powerCards, powerCard],
+          };
+        }
+        return p;
+      });
+
+      return { ...state, players: updatedPlayers };
+    });
+  },
+
   usePowerCard: (
     playerId: string,
     powerCardId: string,

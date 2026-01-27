@@ -61,6 +61,10 @@ export interface GameFlow {
 
   hasPlacedBet?: boolean; // ✅ AGREGAR esta propiedad
   showBettingButton?: boolean;
+
+  showHitMasterModal?: boolean;
+  hitMasterPlayerId?: string;
+  comboStreak?: number;
 }
 
 export interface BettingStatus {

@@ -91,6 +91,25 @@ export interface RoundResult {
     newScore: number;
   } | null;
   pointsAwarded: number;
+  tokenBonus?: number;
+  basePoints?: number;
+  powerCardEffect?: {
+    cardId: string;
+    cardName: string;
+    emoji: string;
+    multiplier: number;
+    basePointsBeforeCard: number;
+    finalPointsAfterCard: number;
+  };
+  comboStatus?: {
+    type: string;
+    message: string;
+    cardAwarded?: {
+      id: string;
+      name: string;
+      emoji: string;
+    };
+  };
   tokensLost: Record<string, number>;
   tokensWon: number;
   gameOver?: boolean;
@@ -374,6 +393,56 @@ class GameSessionService {
   // ════════════════════════════════════════════════════════════
   // ⚡ CARTAS DE PODER
   // ════════════════════════════════════════════════════════════
+
+  /**
+   * Escanea el QR de una power card física y la añade al inventario del jugador
+   */
+  async scanPowerCard(
+    qrCode: string,
+    playerId: string,
+    sessionId?: string
+  ): Promise<{
+    success: boolean;
+    data: {
+      playerId: string;
+      cardId: string;
+      cardName: string;
+      emoji: string;
+      scannedAt: string;
+    };
+    message: string;
+  }> {
+    const id = sessionId || this.currentSessionId;
+
+    console.log(`🔍 Scanning power card QR: ${qrCode} for player ${playerId}`);
+
+    try {
+      // Note: Power card endpoint is at /api/cards/scan-qr (not /api/v2/game)
+      const url = `${this.baseUrl}/api/cards/scan-qr`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ qrCode, playerId, sessionId: id }),
+      });
+
+      const data = await response.json();
+
+      if (!data.success) {
+        throw new Error(data.error || 'Error al escanear power card');
+      }
+
+      console.log(`✅ Power card scanned: ${data.data.cardName}`);
+
+      return data;
+    } catch (error) {
+      console.error('❌ Error scanning power card:', error);
+      throw error;
+    }
+  }
 
   /**
    * Usa una carta de poder

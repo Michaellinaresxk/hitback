@@ -1,20 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  ScrollView,
-  StatusBar,
-  TouchableOpacity,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+} from 'react';
 import { useTranslation } from 'react-i18next';
-
+import { View, ScrollView, StatusBar } from 'react-native';
 // External Components
 import AudioPlayer from '@/components/game/AudioPlayer';
 import GameEndModal from '@/components/game/GameEndModal';
 import GameFeedback, { useFeedback } from '@/components/game/GameFeedback';
 import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import BettingModal from '@/components/modal/BettingModal';
+import { ComboNotification } from '@/components/rewards/ComboNotification';
+import { PowerCardScanModal } from '@/components/powercard/PowerCardScanModal';
 
 // Hooks & Services
 import { useGameFlow } from '@/hooks/useGameFlow';
@@ -27,8 +27,7 @@ import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { SCORE_TO_WIN } from '@/constants/Points';
 
 // Types
-import type { Player as StorePlayer } from '@/store/gameStore';
-import { getBackendPlayerId, validateBet } from '@/utils/game/gameHelpers';
+import { getBackendPlayerId } from '@/utils/game/gameHelpers';
 import GameSetupScreen from '../setup-game';
 import { styles } from '@/components/game/gameScreen/styles';
 import { GameHeader } from '@/components/game/gameScreen/GameHeader';
@@ -36,28 +35,26 @@ import { GamePot } from '@/components/game/gameScreen/GamePot';
 import { CurrentTurn } from '@/components/game/gameScreen/CurrentTurn';
 import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
-import { IconSymbol } from '@/components/ui/IconSymbol';
 
 export default function GameScreen() {
   const { t } = useTranslation();
 
   // Store
-  const {
-    players,
-    isActive,
-    timeLeft,
-    showGameEndModal,
-    round,
-    placeBet: placeBetStore,
-    setShowGameEndModal,
-    createNewGame,
-    startGame,
-    nextTurn,
-    clearBets,
-    gamePot,
-    setGameActive,
-    syncPlayersFromBackend, // ✅ AÑADIR si existe en tu store
-  } = useGameStore();
+  const players = useGameStore((state) => state.players);
+  const isActive = useGameStore((state) => state.isActive);
+  const timeLeft = useGameStore((state) => state.timeLeft);
+  const showGameEndModal = useGameStore((state) => state.showGameEndModal);
+  const round = useGameStore((state) => state.round);
+  const gamePot = useGameStore((state) => state.gamePot);
+  const placeBetStore = useGameStore((state) => state.placeBet);
+  const setShowGameEndModal = useGameStore(
+    (state) => state.setShowGameEndModal,
+  );
+  const createNewGame = useGameStore((state) => state.createNewGame);
+  const nextTurn = useGameStore((state) => state.nextTurn);
+  const clearBets = useGameStore((state) => state.clearBets);
+  const setGameActive = useGameStore((state) => state.setGameActive);
+  const addPowerCard = useGameStore((state) => state.addPowerCard);
 
   // Game Flow
   const {
@@ -68,12 +65,7 @@ export default function GameScreen() {
     placeBet: placeBetBackend,
     skipBetting,
     prepareNextRound,
-    startAudioAfterBets,
-    registerBet,
     testConnection,
-    getBettingStatus,
-    getCurrentPhase,
-    canStartNextRound,
   } = useGameFlow();
 
   // Feedback
@@ -92,57 +84,148 @@ export default function GameScreen() {
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
 
-  // Derived state
-  const currentPlayer = players.find((p) => p.isCurrentTurn);
-  const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-  const bettingStatus = getBettingStatus();
-  const currentPhase = getCurrentPhase();
+  // ✅ COMBO FLOW STATE - Initial state object for reuse
+  const INITIAL_COMBO_STATE = {
+    isActive: false,
+    showNotification: false,
+    showScanner: false,
+    playerId: null as string | null,
+    playerName: '',
+    comboName: '',
+    comboEmoji: '',
+    comboDescription: '',
+  };
 
-  // Effects
-  useEffect(() => {
-    console.log(
-      `🎮 GameScreen: isActive=${isActive}, gameStarted=${gameStarted}, players=${players.length}`
-    );
+  const [comboFlowState, setComboFlowState] = useState(INITIAL_COMBO_STATE);
 
-    if (isActive && players.length >= 2 && !gameStarted) {
-      initializeGame();
-    }
-  }, [isActive, players.length]);
+  // Refs for preventing duplicate operations
+  const isPowerCardProcessingRef = useRef(false);
+  const isAdvancingTurnRef = useRef(false);
 
-  useEffect(() => {
-    console.log(
-      `🔄 Flow state changed: phase=${flowState.phase}, round=${flowState.roundNumber}`
-    );
+  // ✅ Memoized derived state
+  const currentPlayer = useMemo(
+    () => players.find((p) => p.isCurrentTurn),
+    [players],
+  );
 
-    // Mostrar modal de puntos cuando se termina el audio
-    if (flowState.phase === 'question' && flowState.currentRound) {
-      console.log('🎯 Showing points modal');
-      setShowPointsModal(true);
-    }
-  }, [flowState.phase, flowState.roundNumber, flowState.currentRound]);
+  const sortedPlayers = useMemo(
+    () => [...players].sort((a, b) => b.score - a.score),
+    [players],
+  );
 
-  // Helper function para determinar si mostrar apuestas
-  const shouldShowBettingButton = (): boolean => {
+  const currentPhase = flowState.phase;
+
+  // ✅ Memoized betting button visibility
+  const bettingButtonVisible = useMemo(() => {
     const roundNumber = flowState.currentRound?.number || 0;
-    const shouldShow =
+    return (
       roundNumber > 1 &&
       flowState.phase === 'betting' &&
       !flowState.hasPlacedBet &&
-      !flowState.audioPlaying;
-
-    console.log(
-      `🎰 shouldShowBettingButton: round=${roundNumber}, phase=${flowState.phase}, hasBet=${flowState.hasPlacedBet}, audio=${flowState.audioPlaying} => ${shouldShow}`
+      !flowState.audioPlaying
     );
+  }, [
+    flowState.currentRound?.number,
+    flowState.phase,
+    flowState.hasPlacedBet,
+    flowState.audioPlaying,
+  ]);
 
-    return shouldShow;
-  };
+  // ✅ Memoized canStartNextRound - CRITICAL FIX
+  const canStart = useMemo(() => {
+    const comboActive = comboFlowState.isActive;
+    const isLoading = flowState.isLoading;
+    const phase = flowState.phase;
 
-  // Handlers
-  const initializeGame = async () => {
+    // Log solo cuando cambia (no en cada render)
+    console.log('🔍 canStart check:', {
+      comboFlowStateIsActive: comboActive,
+      flowStateIsLoading: isLoading,
+      flowStatePhase: phase,
+    });
+
+    if (comboActive) {
+      console.log('⛔ canStart blocked by comboFlowState.isActive');
+      return false;
+    }
+
+    const result = !isLoading && (phase === 'answer' || phase === 'idle');
+    console.log(`✅ canStart result: ${result}`);
+    return result;
+  }, [flowState.isLoading, flowState.phase, comboFlowState.isActive]);
+
+  // Effects
+  useEffect(() => {
+    if (isActive && players.length >= 2 && !gameStarted) {
+      initializeGame();
+    }
+  }, [isActive, players.length, gameStarted]);
+
+  useEffect(() => {
+    if (flowState.phase === 'question' && flowState.currentRound) {
+      setShowPointsModal(true);
+    }
+  }, [flowState.phase, flowState.currentRound]);
+
+  // ✅ Safety: Reset refs if stuck for too long
+  useEffect(() => {
+    let safetyTimer: NodeJS.Timeout | null = null;
+
+    if (comboFlowState.isActive) {
+      // If combo flow is active for more than 30 seconds, something is wrong
+      safetyTimer = setTimeout(() => {
+        console.warn(
+          '⚠️ Safety: Combo flow was active for too long, resetting',
+        );
+        setComboFlowState(INITIAL_COMBO_STATE);
+        isPowerCardProcessingRef.current = false;
+        isAdvancingTurnRef.current = false;
+      }, 30000);
+    }
+
+    return () => {
+      if (safetyTimer) clearTimeout(safetyTimer);
+    };
+  }, [comboFlowState.isActive]);
+
+  const handleUsePowerCard = useCallback(
+    async (cardId: string) => {
+      if (!currentPlayer) {
+        showError('Error', 'No hay jugador actual');
+        return;
+      }
+
+      try {
+        const backendPlayerId = getBackendPlayerId(
+          currentPlayer.id,
+          players,
+          playerIdMap,
+        );
+
+        const result = await gameSessionService.usePowerCard(
+          backendPlayerId,
+          cardId,
+        );
+
+        if (result.success) {
+          showSuccess(
+            '⚡ Carta Activada',
+            `${currentPlayer.name} activó una PowerCard`,
+          );
+        } else {
+          showError('Error', 'No se pudo activar la carta');
+        }
+      } catch (error: any) {
+        showError('Error', error.message || 'No se pudo usar la carta');
+      }
+    },
+    [currentPlayer, players, playerIdMap, showSuccess, showError],
+  );
+
+  const initializeGame = useCallback(async () => {
     try {
       console.log('🎮 Initializing game...');
 
-      // Crear mapa de IDs
       const idMap: Record<string, string> = {};
       players.forEach((player, index) => {
         idMap[player.id] = `player_${index + 1}`;
@@ -150,7 +233,11 @@ export default function GameScreen() {
       setPlayerIdMap(idMap);
 
       await soundEffects.initialize();
-      await checkBackendConnection();
+      const isConnected = await testConnection();
+
+      if (!isConnected) {
+        showWarning('Backend Desconectado', 'El servidor no está disponible.');
+      }
 
       setGameStarted(true);
       console.log('✅ Game initialized');
@@ -158,130 +245,128 @@ export default function GameScreen() {
       console.error('❌ Error initializing game:', error);
       showError('Error', 'No se pudo inicializar el juego');
     }
-  };
+  }, [players, testConnection, showWarning, showError]);
 
-  const checkBackendConnection = async () => {
-    const isConnected = await testConnection();
-    if (!isConnected) {
-      showWarning(
-        'Backend Desconectado',
-        'El servidor no está disponible. Verifica la conexión.'
-      );
-    }
-  };
-
-  const handleNextRound = async () => {
+  const handleNextRound = useCallback(async () => {
     console.log('🎵 Next Round button pressed');
     const success = await nextRound();
 
     if (success && flowState.currentRound) {
       showInfo(
         'Nueva Ronda',
-        `Ronda ${
-          flowState.currentRound.number
-        } - ${flowState.currentRound.question.type.toUpperCase()}`
+        `Ronda ${flowState.currentRound.number} - ${flowState.currentRound.question.type.toUpperCase()}`,
       );
     }
-  };
+  }, [nextRound, flowState.currentRound, showInfo]);
 
-  const handleStartBetting = () => {
+  const handleStartBetting = useCallback(() => {
     if (!flowState.currentRound || flowState.currentRound.number === 1) {
       return;
     }
-    console.log(
-      `🎰 Opening betting modal for round ${flowState.currentRound.number}`
-    );
     setShowBettingModal(true);
-  };
+  }, [flowState.currentRound]);
 
-  const handlePlaceBet = async (playerId: string, tokenValue: number) => {
-    const player = players.find((p) => p.id === playerId);
+  const handlePlaceBet = useCallback(
+    async (playerId: string, tokenValue: number) => {
+      const player = players.find((p) => p.id === playerId);
 
-    if (!player) {
-      showError('Error', 'Jugador no encontrado');
-      return;
-    }
+      if (!player) {
+        showError('Error', 'Jugador no encontrado');
+        return;
+      }
 
-    // ✅ Validar que el jugador no haya apostado ya en esta ronda
-    if (player.currentBet > 0) {
-      showError('Error', `${player.name} ya apostó en esta ronda`);
-      return;
-    }
+      if (player.currentBet > 0) {
+        showError('Error', `${player.name} ya apostó en esta ronda`);
+        return;
+      }
 
-    if (!player.availableTokens.includes(tokenValue)) {
-      showError('Error', `Token +${tokenValue} ya fue usado o no disponible`);
-      return;
-    }
+      if (!player.availableTokens.includes(tokenValue)) {
+        showError('Error', `Token +${tokenValue} ya fue usado o no disponible`);
+        return;
+      }
 
-    console.log(`🎯 Betting: ${player.name} -> +${tokenValue}`);
+      placeBetStore(playerId, tokenValue);
 
-    // 1. Place bet localmente en el store
-    placeBetStore(playerId, tokenValue);
-
-    // 2. Enviar al backend
-    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-
-    const result = await placeBetBackend(backendPlayerId, tokenValue);
-
-    if (result.success) {
-      showSuccess(
-        'Token Usado',
-        `${player.name} usó token +${tokenValue} puntos`
+      const backendPlayerId = getBackendPlayerId(
+        playerId,
+        players,
+        playerIdMap,
       );
-      // ✅ NO cerrar modal automáticamente - dejar que otros apuesten
-      // setShowBettingModal(false);
-    } else {
-      showError('Error', 'No se pudo registrar en el servidor');
-      // ✅ Revertir apuesta local si falla en backend
-      // Podrías necesitar una función para revertir
-    }
-  };
+      const result = await placeBetBackend(backendPlayerId, tokenValue);
 
-  const handleConfirmBets = () => {
-    console.log('✅ Confirmando apuestas y continuando con audio...');
+      if (result.success) {
+        showSuccess(
+          'Token Usado',
+          `${player.name} usó token +${tokenValue} puntos`,
+        );
+      } else {
+        showError('Error', 'No se pudo registrar en el servidor');
+      }
+    },
+    [
+      players,
+      playerIdMap,
+      placeBetStore,
+      placeBetBackend,
+      showSuccess,
+      showError,
+    ],
+  );
 
-    // 1. Verificar si hay apuestas
+  const handleConfirmBets = useCallback(() => {
     const playersWithBets = players.filter((p) => p.currentBet > 0);
     if (playersWithBets.length === 0) {
       showInfo('Sin apuestas', 'No se realizaron apuestas para esta ronda');
     }
-
-    // 2. Cerrar modal
     setShowBettingModal(false);
+    skipBetting();
+  }, [players, showInfo, skipBetting]);
 
-    console.log('🎵 Iniciando audio después de confirmar apuestas');
-    skipBetting(); // Esta función ya cambia a fase de audio
-  };
-
-  const handleSkipBetting = () => {
-    console.log('⏭️ Skipping betting phase');
+  const handleSkipBetting = useCallback(() => {
     skipBetting();
     setShowBettingModal(false);
-  };
+  }, [skipBetting]);
 
-  const handleWrongAnswer = async () => {
+  const advanceToNextTurn = useCallback(() => {
+    if (isAdvancingTurnRef.current) {
+      console.log('⏳ Already advancing turn, skipping');
+      return;
+    }
+    isAdvancingTurnRef.current = true;
+
+    console.log('🔄 Advancing to next turn');
+
+    // ✅ SOLO setTimeout - NUNCA InteractionManager
+    setTimeout(() => {
+      nextTurn();
+      prepareNextRound();
+
+      // Reset ref después de que React procese los cambios
+      setTimeout(() => {
+        isAdvancingTurnRef.current = false;
+        console.log('✅ Turn advance complete');
+      }, 100);
+    }, 50);
+  }, [nextTurn, prepareNextRound]);
+
+  const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
     const result = await revealAnswer(null);
 
     if (result) {
       showInfo(
         'Nadie Acertó',
-        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
       );
-
-      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
-      if (result.players && Array.isArray(result.players)) {
-        syncPlayersFromBackend(result.players);
-      }
     }
 
     const playersWithBets = players.filter(
-      (p) => p.currentBet && p.currentBet > 0
+      (p) => p.currentBet && p.currentBet > 0,
     );
     if (playersWithBets.length > 0) {
       const totalLost = playersWithBets.reduce(
         (sum, p) => sum + (p.currentBet || 0),
-        0
+        0,
       );
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
@@ -289,72 +374,261 @@ export default function GameScreen() {
     clearBets();
     setShowPointsModal(false);
 
-    // Preparar para siguiente ronda
     setTimeout(() => {
-      nextTurn();
-      prepareNextRound();
+      advanceToNextTurn();
     }, 2000);
-  };
+  }, [
+    revealAnswer,
+    players,
+    clearBets,
+    showInfo,
+    showWarning,
+    advanceToNextTurn,
+  ]);
 
-  const handleAwardPoints = async (playerId: string) => {
-    if (!flowState.currentRound) return;
+  // ✅ Handle award points with proper combo flow
+  const handleAwardPoints = useCallback(
+    async (playerId: string) => {
+      if (!flowState.currentRound) return;
 
-    const player = players.find((p) => p.id === playerId);
-    if (!player) return;
+      const player = players.find((p) => p.id === playerId);
+      if (!player) return;
 
-    soundEffects.playCorrect();
-    const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-
-    console.log(`🏆 Awarding points: ${playerId} -> ${backendPlayerId}`);
-
-    // 1. Revelar respuesta en backend
-    const result = await revealAnswer(backendPlayerId);
-
-    if (result) {
-      showSuccess(
-        '🎉 ¡Correcto!',
-        `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`
+      soundEffects.playCorrect();
+      const backendPlayerId = getBackendPlayerId(
+        playerId,
+        players,
+        playerIdMap,
       );
 
-      // ✅ SINCRONIZAR PUNTOS DESDE BACKEND
-      if (result.players && Array.isArray(result.players)) {
-        syncPlayersFromBackend(result.players);
+      const result = await revealAnswer(backendPlayerId);
+
+      if (result) {
+        showSuccess(
+          '🎉 ¡Correcto!',
+          `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+        );
+
+        // CHECK FOR COMBO
+        if (result.comboStatus) {
+          console.log('🔥 COMBO DETECTED:', result.comboStatus);
+
+          // ✅ Reset processing ref BEFORE setting combo state
+          isPowerCardProcessingRef.current = false;
+          isAdvancingTurnRef.current = false;
+
+          // ✅ Set combo flow state in one atomic update
+          setComboFlowState({
+            isActive: true,
+            showNotification: true,
+            showScanner: false,
+            playerId: playerId,
+            playerName: player.name,
+            comboName: result.comboStatus.type.replace('_', ' '),
+            comboEmoji: '🔥',
+            comboDescription: result.comboStatus.message,
+          });
+
+          setShowPointsModal(false);
+          return; // ✅ Early return - don't advance turn yet
+        }
+
+        if (result.gameOver && result.gameWinner) {
+          setTimeout(() => {
+            setShowGameEndModal(true);
+          }, 1500);
+          setShowPointsModal(false);
+          return;
+        }
       }
 
-      if (result.gameOver && result.gameWinner) {
-        setTimeout(() => {
-          setShowGameEndModal(true);
-        }, 1500);
-        setShowPointsModal(false);
-        return;
-      }
-    }
+      setShowPointsModal(false);
 
-    setShowPointsModal(false);
+      setTimeout(() => {
+        advanceToNextTurn();
+      }, 2000);
+    },
+    [
+      flowState.currentRound,
+      players,
+      playerIdMap,
+      revealAnswer,
+      showSuccess,
+      setShowGameEndModal,
+      advanceToNextTurn,
+    ],
+  );
 
-    // 3. Preparar siguiente ronda
-    setTimeout(() => {
-      nextTurn();
-      prepareNextRound();
-    }, 2000);
-  };
-
-  const handleNewGame = () => {
+  const handleNewGame = useCallback(() => {
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
     soundEffects.dispose();
     gameSessionService.clearCurrentSession();
     createNewGame();
-  };
+  }, [setShowGameEndModal, setGameActive, createNewGame]);
 
-  const handleBackToMenu = () => {
+  const handleBackToMenu = useCallback(() => {
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
     gameSessionService.clearCurrentSession();
     createNewGame();
-  };
+  }, [setShowGameEndModal, setGameActive, createNewGame]);
+
+  // ✅ Handle combo notification close
+  const handleComboNotificationClose = useCallback(() => {
+    console.log('✅ Combo notification closed, opening scanner');
+
+    // ✅ Reset processing ref before opening scanner
+    isPowerCardProcessingRef.current = false;
+
+    setComboFlowState((prev) => ({
+      ...prev,
+      showNotification: false,
+      showScanner: true,
+    }));
+  }, []);
+
+  const handlePowerCardScanned = useCallback(
+    async (qrCode: string) => {
+      console.log('🔥 handlePowerCardScanned called with:', qrCode);
+
+      if (isPowerCardProcessingRef.current) {
+        console.log('⏳ Already processing power card, ignoring');
+        return;
+      }
+      isPowerCardProcessingRef.current = true;
+
+      // ✅ CRÍTICO: Guardar valores ANTES de limpiar estado
+      const playerIdForScan = comboFlowState.playerId;
+      const playerNameForScan = comboFlowState.playerName;
+
+      // ✅ CRÍTICO: Limpiar TODO el estado del combo de una vez
+      // Esto desactiva el scanner inmediatamente
+      setComboFlowState({
+        isActive: false,
+        showNotification: false,
+        showScanner: false,
+        playerId: null,
+        playerName: '',
+        comboName: '',
+        comboEmoji: '',
+        comboDescription: '',
+      });
+
+      if (!playerIdForScan) {
+        console.error('❌ No player ID for scan');
+        showError('Error', 'No se encontró el jugador del combo');
+        isPowerCardProcessingRef.current = false;
+        setTimeout(() => advanceToNextTurn(), 200);
+        return;
+      }
+
+      const player = players.find((p) => p.id === playerIdForScan);
+      if (!player) {
+        console.error('❌ Player not found');
+        showError('Error', 'Jugador no encontrado');
+        isPowerCardProcessingRef.current = false;
+        setTimeout(() => advanceToNextTurn(), 200);
+        return;
+      }
+
+      try {
+        console.log(
+          `🔍 Scanning power card QR: ${qrCode} for player ${playerIdForScan}`,
+        );
+
+        const backendPlayerId = getBackendPlayerId(
+          playerIdForScan,
+          players,
+          playerIdMap,
+        );
+
+        const result = await gameSessionService.scanPowerCard(
+          qrCode,
+          backendPlayerId,
+        );
+
+        if (result.success) {
+          console.log(`✅ Power card scanned: ${result.data.cardName}`);
+
+          const powerCard = {
+            id: result.data.cardId,
+            name: result.data.cardName,
+            emoji: result.data.emoji,
+            type: result.data.cardId.split('_')[1],
+            currentUses: 0,
+            usageLimit: 1,
+          };
+
+          console.log(
+            `⚡ Adding power card ${result.data.cardName} to ${playerNameForScan}`,
+          );
+          addPowerCard(playerIdForScan, powerCard);
+
+          showSuccess(
+            '⚡ ¡Carta Obtenida!',
+            `${playerNameForScan} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
+          );
+        } else {
+          showError('Error', 'No se pudo añadir la carta');
+        }
+      } catch (error: any) {
+        console.error('❌ Error scanning power card:', error);
+        showError('Error', error.message || 'No se pudo escanear la carta');
+      }
+
+      // ✅ CRÍTICO: Siempre avanzar, con delay apropiado
+      console.log('🧹 Cleanup complete, advancing to next turn');
+      isPowerCardProcessingRef.current = false;
+
+      // Delay más largo para asegurar que la cámara se liberó
+      setTimeout(() => {
+        console.log('🔄 Calling advanceToNextTurn');
+        advanceToNextTurn();
+      }, 300);
+    },
+    [
+      comboFlowState.playerId,
+      comboFlowState.playerName,
+      players,
+      playerIdMap,
+      addPowerCard,
+      showSuccess,
+      showError,
+      advanceToNextTurn,
+    ],
+  );
+
+  const handlePowerCardScanClose = useCallback(() => {
+    console.log('⭕ Power card scan skipped');
+
+    if (isPowerCardProcessingRef.current) {
+      console.log('⏳ Processing in progress, ignoring close');
+      return;
+    }
+    isPowerCardProcessingRef.current = true;
+
+    // ✅ Limpiar TODO el estado de una vez
+    setComboFlowState({
+      isActive: false,
+      showNotification: false,
+      showScanner: false,
+      playerId: null,
+      playerName: '',
+      comboName: '',
+      comboEmoji: '',
+      comboDescription: '',
+    });
+
+    isPowerCardProcessingRef.current = false;
+
+    // ✅ Delay para asegurar que el modal se cerró
+    setTimeout(() => {
+      advanceToNextTurn();
+    }, 300);
+  }, [advanceToNextTurn]);
 
   // Early returns
   if (!isActive && !showGameEndModal) {
@@ -379,18 +653,15 @@ export default function GameScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+
+      <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
+
       <ScrollView>
-        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
-
-        <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
-
-        {/* Header */}
         <GameHeader timeLeft={timeLeft} currentPhase={currentPhase} />
 
-        {/* Game Pot */}
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}
 
-        {/* Audio Player */}
         {flowState.audioPlaying &&
           flowState.audioUrl &&
           flowState.currentRound && (
@@ -404,75 +675,88 @@ export default function GameScreen() {
             />
           )}
 
-        {/* Current Turn */}
         <CurrentTurn
           currentPlayerName={currentPlayer?.name || ''}
           round={round}
           currentPhase={currentPhase}
         />
 
-        {/* Main Action */}
         <MainAction
           isLoading={flowState.isLoading}
           currentPhase={currentPhase}
-          canStartNextRound={canStartNextRound()}
+          canStartNextRound={canStart}
           onNextRound={handleNextRound}
           questionVisible={flowState.questionVisible}
           currentRound={flowState.currentRound}
           hasPlacedBet={flowState.hasPlacedBet}
           onStartBetting={handleStartBetting}
           onSkipBetting={handleSkipBetting}
-          showBettingButton={shouldShowBettingButton()}
+          showBettingButton={bettingButtonVisible}
         />
 
-        {/* Players Scoreboard */}
         <PlayerScoreboard
           players={sortedPlayers}
           showDetailedStats={true}
           highlightWinner={sortedPlayers.some((p) => p.score >= SCORE_TO_WIN)}
         />
-
-        {/* Modals */}
-        <PointsAwardModal
-          visible={showPointsModal}
-          flowState={flowState}
-          players={players}
-          onAwardPoints={handleAwardPoints}
-          onWrongAnswer={handleWrongAnswer}
-          onClose={() => setShowPointsModal(false)}
-        />
-
-        <BettingModal
-          visible={showBettingModal}
-          onClose={() => setShowBettingModal(false)}
-          players={players}
-          currentCard={
-            flowState.currentRound
-              ? {
-                  roundNumber: flowState.currentRound.number,
-                  question: flowState.currentRound.question,
-                  track: {
-                    title:
-                      flowState.currentRound.track.title || 'Canción actual',
-                    artist: flowState.currentRound.track.artist || '',
-                  },
-                }
-              : null
-          }
-          onPlaceBet={handlePlaceBet}
-          onSkipBetting={handleSkipBetting}
-          onConfirmBets={handleConfirmBets} // ✅ NUEVA PROP
-        />
-
-        <GameEndModal
-          visible={showGameEndModal}
-          players={players}
-          gameTimeElapsed={1200 - timeLeft}
-          totalRounds={round}
-          onNewGame={handleNewGame}
-          onBackToMenu={handleBackToMenu}
-        />
       </ScrollView>
+
+      {/* Modals */}
+      <PointsAwardModal
+        visible={showPointsModal}
+        flowState={flowState}
+        players={players}
+        onAwardPoints={handleAwardPoints}
+        onWrongAnswer={handleWrongAnswer}
+        onClose={() => setShowPointsModal(false)}
+      />
+
+      <BettingModal
+        visible={showBettingModal}
+        onClose={() => setShowBettingModal(false)}
+        players={players}
+        currentCard={
+          flowState.currentRound
+            ? {
+                roundNumber: flowState.currentRound.number,
+                question: flowState.currentRound.question,
+                track: {
+                  title: flowState.currentRound.track.title || 'Canción actual',
+                  artist: flowState.currentRound.track.artist || '',
+                },
+              }
+            : null
+        }
+        onPlaceBet={handlePlaceBet}
+        onSkipBetting={handleSkipBetting}
+        onConfirmBets={handleConfirmBets}
+      />
+
+      <GameEndModal
+        visible={showGameEndModal}
+        players={players}
+        gameTimeElapsed={1200 - timeLeft}
+        totalRounds={round}
+        onNewGame={handleNewGame}
+        onBackToMenu={handleBackToMenu}
+      />
+
+      <ComboNotification
+        visible={comboFlowState.showNotification}
+        onClose={handleComboNotificationClose}
+        comboName={comboFlowState.comboName || ''}
+        comboEmoji={comboFlowState.comboEmoji || '🔥'}
+        comboDescription={comboFlowState.comboDescription || ''}
+        playerName={comboFlowState.playerName || ''}
+      />
+
+      <PowerCardScanModal
+        visible={comboFlowState.showScanner && !!comboFlowState.playerId} // ← Controla visibilidad
+        onClose={handlePowerCardScanClose}
+        onCardScanned={handlePowerCardScanned}
+        playerName={comboFlowState.playerName || ''}
+        comboType={comboFlowState.comboName || ''}
+      />
     </View>
   );
 }

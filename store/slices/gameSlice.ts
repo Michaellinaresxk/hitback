@@ -114,7 +114,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       name: string;
       score: number;
       availableTokens: number[];
-    }>
+    }>,
   ) => {
     console.log('🔄 Syncing players from backend');
 
@@ -124,7 +124,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
         if (backendPlayer) {
           console.log(
-            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`
+            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`,
           );
 
           return {
@@ -141,6 +141,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       return { players: updatedPlayers };
     });
   },
+
   endGame: async () => {
     console.log('🏁 Ending game...');
 
@@ -149,7 +150,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
     const { players } = get();
     const winner = players.reduce((max, player) =>
-      player.score > max.score ? player : max
+      player.score > max.score ? player : max,
     );
 
     console.log(`🏆 Winner: ${winner.name} (${winner.score} pts)`);
@@ -166,6 +167,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
   },
 
+  // ✅ FIX: nextTurn now ONLY handles turn advancement
+  // clearBets() is called separately in the game flow for better control
   nextTurn: () => {
     const { players, currentTurn } = get();
     const nextTurnIndex = (currentTurn + 1) % players.length;
@@ -175,6 +178,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       isCurrentTurn: index === nextTurnIndex,
       isImmune: player.isImmune && Math.random() > 0.5,
       peekUsed: false,
+      // ✅ FIX: Reset currentBet here instead of calling clearBets()
+      currentBet: 0,
     }));
 
     set({
@@ -188,7 +193,9 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
 
     console.log(`➡️ Next turn: ${updatedPlayers[nextTurnIndex].name}`);
-    get().clearBets();
+
+    // ✅ REMOVED: get().clearBets();
+    // This was causing double clearing and extra renders
   },
 
   startTimer: (duration: number) => {
