@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   StyleSheet,
@@ -9,7 +9,7 @@ import {
   Dimensions,
   Modal,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 const { width, height } = Dimensions.get('window');
@@ -30,146 +30,246 @@ export default function QRScanner({
   const [permission, requestPermission] = useCameraPermissions();
   const [scanned, setScanned] = useState(false);
   const [flashEnabled, setFlashEnabled] = useState(false);
+  // ✅ CRITICAL: Estado para controlar si la cámara debe estar activa
+  const [cameraActive, setCameraActive] = useState(false);
 
-  // ✅ Request camera permissions automatically when component mounts
+  const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ Track mounted state
   useEffect(() => {
-    if (isVisible && !permission?.granted) {
-      console.log('📸 Requesting camera permissions...');
-      requestPermission();
-    }
-  }, [isVisible]);
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      isProcessingRef.current = false;
+      // ✅ Limpiar timeout al desmontar
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
 
+  // ✅ Controlar activación de cámara basado en visibilidad
   useEffect(() => {
     if (isVisible) {
+      // Activar cámara con pequeño delay para asegurar que el modal está visible
+      const timer = setTimeout(() => {
+        if (isMountedRef.current) {
+          setCameraActive(true);
+          setScanned(false);
+          isProcessingRef.current = false;
+        }
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      // ✅ CRITICAL: Desactivar cámara PRIMERO
+      setCameraActive(false);
       setScanned(false);
+      isProcessingRef.current = false;
     }
   }, [isVisible]);
 
-  const handleBarcodeScanned = ({ data }: { data: string }) => {
-    if (scanned) return;
-
-    console.log('📷 QR Code scanned:', data);
-    setScanned(true);
-
-    // Validate QR format (HITBACK_XXX)
-    if (data.startsWith('HITBACK_')) {
-      console.log('✅ Valid HITBACK QR code');
-      onScanSuccess(data);
-    } else {
-      console.log('❌ Invalid QR code format');
-      Alert.alert('QR Inválido', 'Este QR no pertenece al juego HITBACK', [
-        { text: 'OK', onPress: () => setScanned(false) },
-      ]);
+  // ✅ Request camera permissions
+  useEffect(() => {
+    if (isVisible && !permission?.granted) {
+      requestPermission();
     }
-  };
+  }, [isVisible, permission?.granted, requestPermission]);
 
+  const handleBarcodeScanned = useCallback(
+    ({ data }: { data: string }) => {
+      // ✅ Prevent multiple scans
+      if (scanned || isProcessingRef.current || !cameraActive) {
+        return;
+      }
+
+      console.log('📷 QR Code scanned:', data);
+      setScanned(true);
+      isProcessingRef.current = true;
+
+      // ✅ CRITICAL: Desactivar cámara INMEDIATAMENTE después de escanear
+      setCameraActive(false);
+
+      // Validate QR format (HITBACK_XXX)
+      if (data.startsWith('HITBACK_')) {
+        console.log('✅ Valid HITBACK QR code');
+
+        // ✅ Delay para asegurar que la cámara se detuvo
+        closeTimeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            onScanSuccess(data);
+          }
+        }, 100);
+      } else {
+        console.log('❌ Invalid QR code format');
+        Alert.alert('QR Inválido', 'Este QR no pertenece al juego HITBACK', [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (isMountedRef.current) {
+                setScanned(false);
+                isProcessingRef.current = false;
+                setCameraActive(true); // Reactivar cámara
+              }
+            },
+          },
+        ]);
+      }
+    },
+    [scanned, cameraActive, onScanSuccess],
+  );
+
+  const handleClose = useCallback(() => {
+    console.log('❌ QRScanner: Close button pressed');
+
+    // ✅ CRITICAL: Desactivar cámara ANTES de cerrar
+    setCameraActive(false);
+    isProcessingRef.current = true;
+    setScanned(false);
+
+    // ✅ Dar tiempo para que la cámara se detenga
+    closeTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        onClose();
+      }
+    }, 50);
+  }, [onClose]);
+
+  // ✅ Don't render anything if not visible
   if (!isVisible) {
-    console.log('🚫 QRScanner not visible');
     return null;
   }
 
-  console.log('📸 QRScanner rendering, permission:', permission);
-
+  // ✅ Show permission request screen
   if (!permission) {
-    console.log('⏳ Waiting for camera permissions...');
     return (
-      <View style={styles.container}>
-        <Text style={styles.message}>Solicitando permisos de cámara...</Text>
-      </View>
-    );
-  }
-
-  if (!permission.granted) {
-    console.log('❌ Camera permission not granted');
-    return (
-      <View style={styles.container}>
-        <View style={styles.permissionContainer}>
-          <IconSymbol name='camera' size={48} color='#4ECDC4' />
-          <Text style={styles.permissionTitle}>Cámara Requerida</Text>
-          <Text style={styles.permissionText}>
-            Necesitamos acceso a tu cámara para escanear las cartas QR
-          </Text>
-          <TouchableOpacity
-            style={styles.permissionButton}
-            onPress={requestPermission}
-          >
-            <Text style={styles.permissionButtonText}>Permitir Cámara</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-            <Text style={styles.closeButtonText}>Cancelar</Text>
-          </TouchableOpacity>
+      <Modal
+        visible={isVisible}
+        animationType='slide'
+        presentationStyle='fullScreen'
+        onRequestClose={handleClose}
+      >
+        <View style={styles.container}>
+          <Text style={styles.message}>Solicitando permisos de cámara...</Text>
         </View>
-      </View>
+      </Modal>
     );
   }
 
-  console.log('✅ Camera permission granted, showing camera view');
+  // ✅ Show permission denied screen
+  if (!permission.granted) {
+    return (
+      <Modal
+        visible={isVisible}
+        animationType='slide'
+        presentationStyle='fullScreen'
+        onRequestClose={handleClose}
+      >
+        <View style={styles.container}>
+          <View style={styles.permissionContainer}>
+            <IconSymbol name='camera' size={48} color='#4ECDC4' />
+            <Text style={styles.permissionTitle}>Cámara Requerida</Text>
+            <Text style={styles.permissionText}>
+              Necesitamos acceso a tu cámara para escanear las cartas QR
+            </Text>
+            <TouchableOpacity
+              style={styles.permissionButton}
+              onPress={requestPermission}
+            >
+              <Text style={styles.permissionButtonText}>Permitir Cámara</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <Text style={styles.closeButtonText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+    );
+  }
 
   return (
-    <Modal visible={isVisible} animationType="slide" presentationStyle="fullScreen">
+    <Modal
+      visible={isVisible}
+      animationType='slide'
+      presentationStyle='fullScreen'
+      onRequestClose={handleClose}
+    >
       <View style={styles.container}>
-      <StatusBar barStyle='light-content' backgroundColor='#000000' />
+        <StatusBar barStyle='light-content' backgroundColor='#000000' />
 
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={onClose} style={styles.headerButton}>
-          <IconSymbol name='xmark' size={24} color='#FFFFFF' />
-        </TouchableOpacity>
-        <Text style={styles.title}>{title}</Text>
-        <TouchableOpacity
-          style={styles.headerButton}
-          onPress={() => setFlashEnabled(!flashEnabled)}
-        >
-          <IconSymbol
-            name={flashEnabled ? 'flashlight.on.fill' : 'flashlight.off.fill'}
-            size={24}
-            color='#FFFFFF'
-          />
-        </TouchableOpacity>
-      </View>
+        {/* Header */}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+            <IconSymbol name='xmark' size={24} color='#FFFFFF' />
+          </TouchableOpacity>
+          <Text style={styles.title}>{title}</Text>
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => setFlashEnabled(!flashEnabled)}
+          >
+            <IconSymbol
+              name={flashEnabled ? 'flashlight.on.fill' : 'flashlight.off.fill'}
+              size={24}
+              color='#FFFFFF'
+            />
+          </TouchableOpacity>
+        </View>
 
-      {/* Camera View */}
-      <View style={styles.cameraContainer}>
-        <CameraView
-          style={styles.camera}
-          facing='back'
-          enableTorch={flashEnabled}
-          onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
-          barcodeScannerSettings={{
-            barcodeTypes: ['qr'],
-          }}
-        />
+        {/* Camera View - ✅ SOLO RENDERIZAR SI ESTÁ ACTIVA */}
+        <View style={styles.cameraContainer}>
+          {cameraActive ? (
+            <CameraView
+              style={styles.camera}
+              facing='back'
+              enableTorch={flashEnabled}
+              onBarcodeScanned={scanned ? undefined : handleBarcodeScanned}
+              barcodeScannerSettings={{
+                barcodeTypes: ['qr'],
+              }}
+            />
+          ) : (
+            <View style={[styles.camera, styles.cameraPlaceholder]}>
+              <Text style={styles.cameraPlaceholderText}>
+                {scanned ? 'Procesando...' : 'Iniciando cámara...'}
+              </Text>
+            </View>
+          )}
 
-        {/* Scanning Frame */}
-        <View style={styles.scannerOverlay}>
-          <View style={styles.scanFrame}>
-            <View style={[styles.corner, styles.topLeft]} />
-            <View style={[styles.corner, styles.topRight]} />
-            <View style={[styles.corner, styles.bottomLeft]} />
-            <View style={[styles.corner, styles.bottomRight]} />
+          {/* Scanning Frame */}
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scanFrame}>
+              <View style={[styles.corner, styles.topLeft]} />
+              <View style={[styles.corner, styles.topRight]} />
+              <View style={[styles.corner, styles.bottomLeft]} />
+              <View style={[styles.corner, styles.bottomRight]} />
+            </View>
+
+            <Text style={styles.scanText}>
+              {scanned ? 'Procesando...' : 'Apunta la cámara al código QR'}
+            </Text>
           </View>
+        </View>
 
-          <Text style={styles.scanText}>
-            {scanned ? 'Procesando...' : 'Apunta la cámara al código QR'}
+        {/* Instructions */}
+        <View style={styles.instructions}>
+          <Text style={styles.instructionText}>
+            Busca el código QR en tu carta HITBACK
           </Text>
+          {scanned && (
+            <TouchableOpacity
+              style={styles.scanAgainButton}
+              onPress={() => {
+                setScanned(false);
+                isProcessingRef.current = false;
+                setCameraActive(true);
+              }}
+            >
+              <Text style={styles.scanAgainText}>Escanear otra carta</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
-
-      {/* Instructions */}
-      <View style={styles.instructions}>
-        <Text style={styles.instructionText}>
-          Busca el código QR en tu carta HITBACK
-        </Text>
-        {scanned && (
-          <TouchableOpacity
-            style={styles.scanAgainButton}
-            onPress={() => setScanned(false)}
-          >
-            <Text style={styles.scanAgainText}>Escanear otra carta</Text>
-          </TouchableOpacity>
-        )}
-      </View>
-    </View>
     </Modal>
   );
 }
@@ -205,6 +305,15 @@ const styles = StyleSheet.create({
   },
   camera: {
     flex: 1,
+  },
+  cameraPlaceholder: {
+    backgroundColor: '#1a1a1a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cameraPlaceholderText: {
+    color: '#666',
+    fontSize: 16,
   },
   scannerOverlay: {
     position: 'absolute',

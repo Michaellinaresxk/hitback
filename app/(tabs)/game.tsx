@@ -5,9 +5,8 @@ import React, {
   useMemo,
   useCallback,
 } from 'react';
-import { View, ScrollView, StatusBar } from 'react-native';
 import { useTranslation } from 'react-i18next';
-
+import { View, ScrollView, StatusBar } from 'react-native';
 // External Components
 import AudioPlayer from '@/components/game/AudioPlayer';
 import GameEndModal from '@/components/game/GameEndModal';
@@ -40,7 +39,7 @@ import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
 export default function GameScreen() {
   const { t } = useTranslation();
 
-  // Store - use shallow comparison to prevent unnecessary re-renders
+  // Store
   const players = useGameStore((state) => state.players);
   const isActive = useGameStore((state) => state.isActive);
   const timeLeft = useGameStore((state) => state.timeLeft);
@@ -67,8 +66,6 @@ export default function GameScreen() {
     skipBetting,
     prepareNextRound,
     testConnection,
-    getCurrentPhase,
-    canStartNextRound,
   } = useGameFlow();
 
   // Feedback
@@ -86,21 +83,26 @@ export default function GameScreen() {
   const [showBettingModal, setShowBettingModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
-  const [showComboNotification, setShowComboNotification] = useState(false);
-  const [comboData, setComboData] = useState<{
-    playerName: string;
-    comboName: string;
-    comboEmoji: string;
-    comboDescription: string;
-  } | null>(null);
-  const [showPowerCardScan, setShowPowerCardScan] = useState(false);
-  const [comboPlayerId, setComboPlayerId] = useState<string | null>(null);
+
+  // ✅ COMBO FLOW STATE - Initial state object for reuse
+  const INITIAL_COMBO_STATE = {
+    isActive: false,
+    showNotification: false,
+    showScanner: false,
+    playerId: null as string | null,
+    playerName: '',
+    comboName: '',
+    comboEmoji: '',
+    comboDescription: '',
+  };
+
+  const [comboFlowState, setComboFlowState] = useState(INITIAL_COMBO_STATE);
 
   // Refs for preventing duplicate operations
   const isPowerCardProcessingRef = useRef(false);
   const isAdvancingTurnRef = useRef(false);
 
-  // ✅ Memoized derived state to prevent re-renders
+  // ✅ Memoized derived state
   const currentPlayer = useMemo(
     () => players.find((p) => p.isCurrentTurn),
     [players],
@@ -113,7 +115,7 @@ export default function GameScreen() {
 
   const currentPhase = flowState.phase;
 
-  // ✅ Memoized betting button visibility - NO console.log here!
+  // ✅ Memoized betting button visibility
   const bettingButtonVisible = useMemo(() => {
     const roundNumber = flowState.currentRound?.number || 0;
     return (
@@ -129,13 +131,28 @@ export default function GameScreen() {
     flowState.audioPlaying,
   ]);
 
-  // ✅ Memoized canStartNextRound
+  // ✅ Memoized canStartNextRound - CRITICAL FIX
   const canStart = useMemo(() => {
-    return (
-      !flowState.isLoading &&
-      (flowState.phase === 'answer' || flowState.phase === 'idle')
-    );
-  }, [flowState.isLoading, flowState.phase]);
+    const comboActive = comboFlowState.isActive;
+    const isLoading = flowState.isLoading;
+    const phase = flowState.phase;
+
+    // Log solo cuando cambia (no en cada render)
+    console.log('🔍 canStart check:', {
+      comboFlowStateIsActive: comboActive,
+      flowStateIsLoading: isLoading,
+      flowStatePhase: phase,
+    });
+
+    if (comboActive) {
+      console.log('⛔ canStart blocked by comboFlowState.isActive');
+      return false;
+    }
+
+    const result = !isLoading && (phase === 'answer' || phase === 'idle');
+    console.log(`✅ canStart result: ${result}`);
+    return result;
+  }, [flowState.isLoading, flowState.phase, comboFlowState.isActive]);
 
   // Effects
   useEffect(() => {
@@ -149,6 +166,27 @@ export default function GameScreen() {
       setShowPointsModal(true);
     }
   }, [flowState.phase, flowState.currentRound]);
+
+  // ✅ Safety: Reset refs if stuck for too long
+  useEffect(() => {
+    let safetyTimer: NodeJS.Timeout | null = null;
+
+    if (comboFlowState.isActive) {
+      // If combo flow is active for more than 30 seconds, something is wrong
+      safetyTimer = setTimeout(() => {
+        console.warn(
+          '⚠️ Safety: Combo flow was active for too long, resetting',
+        );
+        setComboFlowState(INITIAL_COMBO_STATE);
+        isPowerCardProcessingRef.current = false;
+        isAdvancingTurnRef.current = false;
+      }, 30000);
+    }
+
+    return () => {
+      if (safetyTimer) clearTimeout(safetyTimer);
+    };
+  }, [comboFlowState.isActive]);
 
   const handleUsePowerCard = useCallback(
     async (cardId: string) => {
@@ -289,22 +327,27 @@ export default function GameScreen() {
     setShowBettingModal(false);
   }, [skipBetting]);
 
-  // Centralized function to advance turn
   const advanceToNextTurn = useCallback(() => {
     if (isAdvancingTurnRef.current) {
+      console.log('⏳ Already advancing turn, skipping');
       return;
     }
     isAdvancingTurnRef.current = true;
 
     console.log('🔄 Advancing to next turn');
-    nextTurn();
-    clearBets();
-    prepareNextRound();
 
+    // ✅ SOLO setTimeout - NUNCA InteractionManager
     setTimeout(() => {
-      isAdvancingTurnRef.current = false;
-    }, 500);
-  }, [nextTurn, clearBets, prepareNextRound]);
+      nextTurn();
+      prepareNextRound();
+
+      // Reset ref después de que React procese los cambios
+      setTimeout(() => {
+        isAdvancingTurnRef.current = false;
+        console.log('✅ Turn advance complete');
+      }, 100);
+    }, 50);
+  }, [nextTurn, prepareNextRound]);
 
   const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
@@ -343,6 +386,7 @@ export default function GameScreen() {
     advanceToNextTurn,
   ]);
 
+  // ✅ Handle award points with proper combo flow
   const handleAwardPoints = useCallback(
     async (playerId: string) => {
       if (!flowState.currentRound) return;
@@ -369,28 +413,24 @@ export default function GameScreen() {
         if (result.comboStatus) {
           console.log('🔥 COMBO DETECTED:', result.comboStatus);
 
-          setComboPlayerId(playerId);
+          // ✅ Reset processing ref BEFORE setting combo state
           isPowerCardProcessingRef.current = false;
+          isAdvancingTurnRef.current = false;
 
-          setComboData({
+          // ✅ Set combo flow state in one atomic update
+          setComboFlowState({
+            isActive: true,
+            showNotification: true,
+            showScanner: false,
+            playerId: playerId,
             playerName: player.name,
             comboName: result.comboStatus.type.replace('_', ' '),
             comboEmoji: '🔥',
             comboDescription: result.comboStatus.message,
           });
 
-          setShowComboNotification(true);
           setShowPointsModal(false);
-
-          // Auto-close combo notification after 4 seconds
-          setTimeout(() => {
-            setShowComboNotification(false);
-            setTimeout(() => {
-              setShowPowerCardScan(true);
-            }, 500);
-          }, 4000);
-
-          return;
+          return; // ✅ Early return - don't advance turn yet
         }
 
         if (result.gameOver && result.gameWinner) {
@@ -436,23 +476,23 @@ export default function GameScreen() {
     createNewGame();
   }, [setShowGameEndModal, setGameActive, createNewGame]);
 
-  // Cleanup function for power card flow
-  const cleanupAfterPowerCard = useCallback(() => {
-    console.log('🧹 Cleaning up after power card flow');
-    setComboPlayerId(null);
-    setComboData(null);
-    setShowComboNotification(false);
-    setShowPowerCardScan(false);
+  // ✅ Handle combo notification close
+  const handleComboNotificationClose = useCallback(() => {
+    console.log('✅ Combo notification closed, opening scanner');
 
-    setTimeout(() => {
-      advanceToNextTurn();
-      isPowerCardProcessingRef.current = false;
-    }, 500);
-  }, [advanceToNextTurn]);
+    // ✅ Reset processing ref before opening scanner
+    isPowerCardProcessingRef.current = false;
+
+    setComboFlowState((prev) => ({
+      ...prev,
+      showNotification: false,
+      showScanner: true,
+    }));
+  }, []);
 
   const handlePowerCardScanned = useCallback(
     async (qrCode: string) => {
-      console.log('📥 handlePowerCardScanned called');
+      console.log('🔥 handlePowerCardScanned called with:', qrCode);
 
       if (isPowerCardProcessingRef.current) {
         console.log('⏳ Already processing power card, ignoring');
@@ -460,36 +500,59 @@ export default function GameScreen() {
       }
       isPowerCardProcessingRef.current = true;
 
-      // IMMEDIATELY close the scan modal
-      setShowPowerCardScan(false);
+      // ✅ CRÍTICO: Guardar valores ANTES de limpiar estado
+      const playerIdForScan = comboFlowState.playerId;
+      const playerNameForScan = comboFlowState.playerName;
 
-      const playerIdForScan = comboPlayerId;
+      // ✅ CRÍTICO: Limpiar TODO el estado del combo de una vez
+      // Esto desactiva el scanner inmediatamente
+      setComboFlowState({
+        isActive: false,
+        showNotification: false,
+        showScanner: false,
+        playerId: null,
+        playerName: '',
+        comboName: '',
+        comboEmoji: '',
+        comboDescription: '',
+      });
 
       if (!playerIdForScan) {
+        console.error('❌ No player ID for scan');
         showError('Error', 'No se encontró el jugador del combo');
-        cleanupAfterPowerCard();
+        isPowerCardProcessingRef.current = false;
+        setTimeout(() => advanceToNextTurn(), 200);
         return;
       }
 
       const player = players.find((p) => p.id === playerIdForScan);
       if (!player) {
+        console.error('❌ Player not found');
         showError('Error', 'Jugador no encontrado');
-        cleanupAfterPowerCard();
+        isPowerCardProcessingRef.current = false;
+        setTimeout(() => advanceToNextTurn(), 200);
         return;
       }
 
       try {
+        console.log(
+          `🔍 Scanning power card QR: ${qrCode} for player ${playerIdForScan}`,
+        );
+
         const backendPlayerId = getBackendPlayerId(
           playerIdForScan,
           players,
           playerIdMap,
         );
+
         const result = await gameSessionService.scanPowerCard(
           qrCode,
           backendPlayerId,
         );
 
         if (result.success) {
+          console.log(`✅ Power card scanned: ${result.data.cardName}`);
+
           const powerCard = {
             id: result.data.cardId,
             name: result.data.cardName,
@@ -499,29 +562,42 @@ export default function GameScreen() {
             usageLimit: 1,
           };
 
+          console.log(
+            `⚡ Adding power card ${result.data.cardName} to ${playerNameForScan}`,
+          );
           addPowerCard(playerIdForScan, powerCard);
+
           showSuccess(
             '⚡ ¡Carta Obtenida!',
-            `${player.name} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
+            `${playerNameForScan} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
           );
-          console.log(`✅ Power card added to ${player.name}`);
         } else {
           showError('Error', 'No se pudo añadir la carta');
         }
       } catch (error: any) {
+        console.error('❌ Error scanning power card:', error);
         showError('Error', error.message || 'No se pudo escanear la carta');
       }
 
-      cleanupAfterPowerCard();
+      // ✅ CRÍTICO: Siempre avanzar, con delay apropiado
+      console.log('🧹 Cleanup complete, advancing to next turn');
+      isPowerCardProcessingRef.current = false;
+
+      // Delay más largo para asegurar que la cámara se liberó
+      setTimeout(() => {
+        console.log('🔄 Calling advanceToNextTurn');
+        advanceToNextTurn();
+      }, 300);
     },
     [
-      comboPlayerId,
+      comboFlowState.playerId,
+      comboFlowState.playerName,
       players,
       playerIdMap,
       addPowerCard,
       showSuccess,
       showError,
-      cleanupAfterPowerCard,
+      advanceToNextTurn,
     ],
   );
 
@@ -529,13 +605,30 @@ export default function GameScreen() {
     console.log('⭕ Power card scan skipped');
 
     if (isPowerCardProcessingRef.current) {
+      console.log('⏳ Processing in progress, ignoring close');
       return;
     }
     isPowerCardProcessingRef.current = true;
 
-    setShowPowerCardScan(false);
-    cleanupAfterPowerCard();
-  }, [cleanupAfterPowerCard]);
+    // ✅ Limpiar TODO el estado de una vez
+    setComboFlowState({
+      isActive: false,
+      showNotification: false,
+      showScanner: false,
+      playerId: null,
+      playerName: '',
+      comboName: '',
+      comboEmoji: '',
+      comboDescription: '',
+    });
+
+    isPowerCardProcessingRef.current = false;
+
+    // ✅ Delay para asegurar que el modal se cerró
+    setTimeout(() => {
+      advanceToNextTurn();
+    }, 300);
+  }, [advanceToNextTurn]);
 
   // Early returns
   if (!isActive && !showGameEndModal) {
@@ -648,29 +741,22 @@ export default function GameScreen() {
         onBackToMenu={handleBackToMenu}
       />
 
-      {comboData && (
-        <ComboNotification
-          visible={showComboNotification}
-          onClose={() => {
-            setShowComboNotification(false);
-            setTimeout(() => setShowPowerCardScan(true), 300);
-          }}
-          comboName={comboData.comboName}
-          comboEmoji={comboData.comboEmoji}
-          comboDescription={comboData.comboDescription}
-          playerName={comboData.playerName}
-        />
-      )}
+      <ComboNotification
+        visible={comboFlowState.showNotification}
+        onClose={handleComboNotificationClose}
+        comboName={comboFlowState.comboName || ''}
+        comboEmoji={comboFlowState.comboEmoji || '🔥'}
+        comboDescription={comboFlowState.comboDescription || ''}
+        playerName={comboFlowState.playerName || ''}
+      />
 
-      {comboData && comboPlayerId && (
-        <PowerCardScanModal
-          visible={showPowerCardScan}
-          onClose={handlePowerCardScanClose}
-          onCardScanned={handlePowerCardScanned}
-          playerName={comboData.playerName}
-          comboType={comboData.comboName}
-        />
-      )}
+      <PowerCardScanModal
+        visible={comboFlowState.showScanner && !!comboFlowState.playerId} // ← Controla visibilidad
+        onClose={handlePowerCardScanClose}
+        onCardScanned={handlePowerCardScanned}
+        playerName={comboFlowState.playerName || ''}
+        comboType={comboFlowState.comboName || ''}
+      />
     </View>
   );
 }

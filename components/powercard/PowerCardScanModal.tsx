@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -29,71 +29,122 @@ export function PowerCardScanModal({
   comboType,
 }: PowerCardScanModalProps) {
   const [showScanner, setShowScanner] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const [scaleAnim] = useState(new Animated.Value(0));
-  // ✅ FIX: Prevent multiple scans with processing flag
-  const isProcessingRef = useRef(false);
 
-  React.useEffect(() => {
-    if (visible) {
-      // Reset processing flag when modal opens
+  const isProcessingRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ✅ Track mounted state
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // ✅ Reset state when visibility changes
+  useEffect(() => {
+    if (visible && !isClosing) {
+      console.log('📱 PowerCardScanModal: Opening');
       isProcessingRef.current = false;
+      setShowScanner(false);
+
       Animated.spring(scaleAnim, {
         toValue: 1,
         tension: 50,
         friction: 7,
         useNativeDriver: true,
       }).start();
-    } else {
+    } else if (!visible) {
+      console.log('📱 PowerCardScanModal: Closing');
       scaleAnim.setValue(0);
-      // Reset scanner state when modal closes
       setShowScanner(false);
+      setIsClosing(false);
+      isProcessingRef.current = false;
     }
-  }, [visible]);
+  }, [visible, isClosing, scaleAnim]);
 
-  const handleScanPress = () => {
+  const handleScanPress = useCallback(() => {
+    if (isProcessingRef.current || isClosing) return;
+
+    console.log('📷 Opening QR Scanner');
     isProcessingRef.current = false;
     setShowScanner(true);
-  };
+  }, [isClosing]);
 
-  const handleScanSuccess = (qrCode: string) => {
-    // ✅ FIX: Prevent multiple callbacks
-    if (isProcessingRef.current) {
-      console.log('⏳ Already processing scan, ignoring duplicate');
+  const handleScanSuccess = useCallback(
+    (qrCode: string) => {
+      // ✅ Prevent multiple callbacks
+      if (isProcessingRef.current || isClosing) {
+        console.log('⏳ Already processing scan, ignoring duplicate');
+        return;
+      }
+
+      isProcessingRef.current = true;
+      setIsClosing(true);
+      console.log('🔍 Power card scanned (single):', qrCode);
+
+      // ✅ Close scanner FIRST
+      setShowScanner(false);
+
+      // ✅ Delay para asegurar que el scanner se cerró completamente
+      closeTimeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          console.log('📤 Calling onCardScanned');
+          onCardScanned(qrCode);
+        }
+      }, 150);
+    },
+    [isClosing, onCardScanned],
+  );
+
+  const handleSkip = useCallback(() => {
+    console.log('⭕ Player skipped power card scan');
+
+    if (isProcessingRef.current || isClosing) {
+      console.log('⏳ Already processing, ignoring skip');
       return;
     }
 
     isProcessingRef.current = true;
-    console.log('🔍 Power card scanned (single):', qrCode);
-
-    // ✅ FIX: Close scanner IMMEDIATELY before calling parent
+    setIsClosing(true);
     setShowScanner(false);
 
-    // Small delay to ensure scanner is fully closed before processing
-    setTimeout(() => {
-      onCardScanned(qrCode);
+    // ✅ Delay para asegurar cleanup completo
+    closeTimeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        onClose();
+      }
     }, 100);
-  };
+  }, [isClosing, onClose]);
 
-  const handleSkip = () => {
-    console.log('⭕ Player skipped power card scan');
-    isProcessingRef.current = false;
-    setShowScanner(false);
-    onClose();
-  };
-
-  const handleCloseScanner = () => {
+  const handleCloseScanner = useCallback(() => {
     console.log('❌ Scanner closed by user');
     isProcessingRef.current = false;
     setShowScanner(false);
-  };
+    // NO cerrar el modal principal, solo el scanner
+  }, []);
 
-  if (!visible && !showScanner) return null;
+  // ✅ Don't render if closing
+  if (isClosing && !showScanner) {
+    return null;
+  }
 
-  // Show QR Scanner if active (full screen, not in modal)
+  // ✅ Early return if not visible AND not showing scanner
+  if (!visible && !showScanner) {
+    return null;
+  }
+
+  // ✅ Show QR Scanner in full screen modal
   if (showScanner) {
     return (
       <QRScanner
-        isVisible={showScanner}
+        isVisible={true}
         onClose={handleCloseScanner}
         onScanSuccess={handleScanSuccess}
         title='Escanear Carta de Poder'
@@ -101,11 +152,18 @@ export function PowerCardScanModal({
     );
   }
 
-  // Show instruction modal only when not scanning
-  if (!visible) return null;
+  // ✅ Don't render instruction modal if not visible
+  if (!visible) {
+    return null;
+  }
 
   return (
-    <Modal visible={visible} transparent animationType='fade'>
+    <Modal
+      visible={visible && !isClosing}
+      transparent
+      animationType='fade'
+      onRequestClose={handleSkip}
+    >
       <View style={styles.overlay}>
         <Animated.View
           style={[styles.container, { transform: [{ scale: scaleAnim }] }]}
@@ -122,7 +180,7 @@ export function PowerCardScanModal({
           <View style={styles.infoContainer}>
             <Text style={styles.playerName}>{playerName}</Text>
             <Text style={styles.comboInfo}>
-              {comboType === 'HOT_STREAK'
+              {comboType === 'HOT_STREAK' || comboType === 'HOT STREAK'
                 ? '🔥 HIT MASTER - 3 Respuestas Correctas'
                 : `🔥 ${comboType.replace('_', ' ')}`}
             </Text>
@@ -147,18 +205,23 @@ export function PowerCardScanModal({
             <TouchableOpacity
               style={styles.scanButton}
               onPress={handleScanPress}
+              activeOpacity={0.8}
             >
               <IconSymbol name='camera.fill' size={20} color='#FFFFFF' />
               <Text style={styles.scanButtonText}>Escanear Carta</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+            <TouchableOpacity
+              style={styles.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.7}
+            >
               <Text style={styles.skipButtonText}>Ahora No</Text>
             </TouchableOpacity>
           </View>
 
           {/* Close button */}
-          <TouchableOpacity style={styles.closeIcon} onPress={onClose}>
+          <TouchableOpacity style={styles.closeIcon} onPress={handleSkip}>
             <IconSymbol name='xmark' size={20} color='rgba(255,255,255,0.6)' />
           </TouchableOpacity>
         </Animated.View>
