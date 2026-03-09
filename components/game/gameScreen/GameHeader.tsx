@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { getPhaseLabel, getPhaseStyle } from '@/utils/game/phaseStyler';
 import { formatTime } from '@/utils/timeFormatter';
@@ -7,11 +7,13 @@ import { formatTime } from '@/utils/timeFormatter';
 interface GameHeaderProps {
   timeLeft: number;
   currentPhase: string;
+  onOpenAlliances: () => void; // ← nuevo prop
 }
 
 export const GameHeader: React.FC<GameHeaderProps> = ({
   timeLeft,
   currentPhase,
+  onOpenAlliances,
 }) => {
   const phaseStyle = getPhaseStyle(currentPhase);
   const phaseLabel = getPhaseLabel(currentPhase);
@@ -24,9 +26,22 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           <Text style={styles.gameModeText}>{phaseLabel}</Text>
         </View>
       </View>
-      <View style={styles.timerContainer}>
-        <IconSymbol name='clock' size={16} color='#F8FAFC' />
-        <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+
+      <View style={styles.rightSection}>
+        {/* Botón alianzas */}
+        <TouchableOpacity
+          style={styles.allianceButton}
+          onPress={onOpenAlliances}
+          activeOpacity={0.75}
+        >
+          <Text style={styles.allianceEmoji}>🤝</Text>
+        </TouchableOpacity>
+
+        {/* Timer */}
+        <View style={styles.timerContainer}>
+          <IconSymbol name='clock' size={16} color='#F8FAFC' />
+          <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+        </View>
       </View>
     </View>
   );
@@ -66,6 +81,24 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  allianceButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.4)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  allianceEmoji: {
+    fontSize: 20,
   },
   timerContainer: {
     flexDirection: 'row',

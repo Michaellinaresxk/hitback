@@ -35,7 +35,7 @@ export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
   const { clearBets, syncPlayersFromBackend } = useGameStore();
 
-  // SIGUIENTE RONDA - VERSIÓN SIMPLE QUE FUNCIONA
+  // SIGUIENTE RONDA
   const nextRound = useCallback(async (): Promise<boolean> => {
     console.log('🎵 Getting next round...');
 
@@ -46,26 +46,25 @@ export const useGameFlow = () => {
       console.log('🔍 Backend response round:', result.round);
       console.log(
         '🔍 GameMasterAnswer in round:',
-        result.round?.gameMasterAnswer
-      ); // ← Debería existir
+        result.round?.gameMasterAnswer,
+      );
       console.log(
         '🔍 Correct answer:',
-        result.round?.gameMasterAnswer?.correct
+        result.round?.gameMasterAnswer?.correct,
       );
+
       if (!result.success) {
         console.error('❌ Error getting next round:', result.error);
         setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
         return false;
       }
 
-      // Limpiar apuestas de la ronda anterior
       clearBets();
 
       const roundNumber = result.round?.number || 0;
       console.log(`✅ Round ${roundNumber} received`);
 
       if (roundNumber === 1) {
-        // RONDA 1: Audio directo (sin apuestas)
         setFlowState({
           phase: 'audio',
           isLoading: false,
@@ -76,8 +75,6 @@ export const useGameFlow = () => {
           showBettingButton: false,
           hasPlacedBet: false,
           roundNumber: roundNumber,
-
-          // ✅ NUEVO: Guardar respuesta para el Game Master
           correctAnswer: result.round?.gameMasterAnswer?.correct || null,
           trackInfo: result.round?.gameMasterAnswer
             ? {
@@ -88,7 +85,6 @@ export const useGameFlow = () => {
         });
         console.log('🎵 Ronda 1: Audio directo');
       } else {
-        // RONDA 2+: Mostrar opción de apuestas
         setFlowState({
           phase: 'betting',
           isLoading: false,
@@ -154,7 +150,10 @@ export const useGameFlow = () => {
     }));
   }, []);
 
-  // REVELAR RESPUESTA Y SINCRONIZAR PUNTOS
+  // REVELAR RESPUESTA
+  // ⚠️ El winnerId aquí es el ID del BACKEND, no el del frontend.
+  // Por eso awardAllianceBonus NO va aquí — se llama desde handleAwardPoints
+  // en game.tsx donde tenemos el playerId correcto del frontend.
   const revealAnswer = useCallback(
     async (winnerId: string | null) => {
       console.log(`✅ Revealing answer, winner: ${winnerId || 'none'}`);
@@ -165,7 +164,6 @@ export const useGameFlow = () => {
         if (result.success) {
           console.log('✅ Answer revealed successfully');
 
-          // ✅ IMPORTANTE: Sincronizar jugadores desde backend
           if (result.players && Array.isArray(result.players)) {
             console.log('🔄 Syncing players data from backend...');
             syncPlayersFromBackend(result.players);
@@ -192,7 +190,7 @@ export const useGameFlow = () => {
         return null;
       }
     },
-    [syncPlayersFromBackend]
+    [syncPlayersFromBackend],
   );
 
   // PREPARAR SIGUIENTE RONDA
@@ -221,15 +219,12 @@ export const useGameFlow = () => {
 
   const confirmBetsAndContinue = useCallback(() => {
     console.log('✅ Confirmando apuestas y continuando...');
-
-    // Cambiar a fase de audio
     setFlowState((prev) => ({
       ...prev,
       phase: 'audio',
       audioPlaying: true,
       showBettingButton: false,
     }));
-
     console.log('🎵 Iniciando audio después de confirmar apuestas');
   }, []);
 
@@ -245,11 +240,8 @@ export const useGameFlow = () => {
   }, [flowState]);
 
   return {
-    // Estado
     flowState,
     setFlowState,
-
-    // Acciones principales
     nextRound,
     handleAudioFinished,
     revealAnswer,
@@ -257,13 +249,9 @@ export const useGameFlow = () => {
     skipBetting,
     prepareNextRound,
     confirmBetsAndContinue,
-
-    // Getters
     getBettingStatus,
     getCurrentPhase,
     canStartNextRound,
-
-    // Utils
     testConnection: () => gameSessionService.testConnection(),
   };
 };

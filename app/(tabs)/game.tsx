@@ -35,6 +35,7 @@ import { GamePot } from '@/components/game/gameScreen/GamePot';
 import { CurrentTurn } from '@/components/game/gameScreen/CurrentTurn';
 import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
+import AllianceModal from '@/components/modal/AllianceModal';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -55,6 +56,7 @@ export default function GameScreen() {
   const clearBets = useGameStore((state) => state.clearBets);
   const setGameActive = useGameStore((state) => state.setGameActive);
   const addPowerCard = useGameStore((state) => state.addPowerCard);
+  const awardAllianceBonus = useGameStore((state) => state.awardAllianceBonus);
 
   // Game Flow
   const {
@@ -81,6 +83,7 @@ export default function GameScreen() {
   // Local State
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
+  const [showAllianceModal, setShowAllianceModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
 
@@ -187,40 +190,6 @@ export default function GameScreen() {
       if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, [comboFlowState.isActive]);
-
-  const handleUsePowerCard = useCallback(
-    async (cardId: string) => {
-      if (!currentPlayer) {
-        showError('Error', 'No hay jugador actual');
-        return;
-      }
-
-      try {
-        const backendPlayerId = getBackendPlayerId(
-          currentPlayer.id,
-          players,
-          playerIdMap,
-        );
-
-        const result = await gameSessionService.usePowerCard(
-          backendPlayerId,
-          cardId,
-        );
-
-        if (result.success) {
-          showSuccess(
-            '⚡ Carta Activada',
-            `${currentPlayer.name} activó una PowerCard`,
-          );
-        } else {
-          showError('Error', 'No se pudo activar la carta');
-        }
-      } catch (error: any) {
-        showError('Error', error.message || 'No se pudo usar la carta');
-      }
-    },
-    [currentPlayer, players, playerIdMap, showSuccess, showError],
-  );
 
   const handleScoreboardUsePowerCard = useCallback(
     async (playerId: string, cardId: string) => {
@@ -475,6 +444,10 @@ export default function GameScreen() {
           `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
         );
 
+        if (result?.pointsAwarded) {
+          awardAllianceBonus(playerId, result.pointsAwarded);
+        }
+
         // CHECK FOR COMBO
         if (result.comboStatus) {
           console.log('🔥 COMBO DETECTED:', result.comboStatus);
@@ -522,6 +495,7 @@ export default function GameScreen() {
       showSuccess,
       setShowGameEndModal,
       advanceToNextTurn,
+      awardAllianceBonus,
     ],
   );
 
@@ -724,7 +698,11 @@ export default function GameScreen() {
       <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
 
       <ScrollView>
-        <GameHeader timeLeft={timeLeft} currentPhase={currentPhase} />
+        <GameHeader
+          timeLeft={timeLeft}
+          currentPhase={currentPhase}
+          onOpenAlliances={() => setShowAllianceModal(true)}
+        />
 
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}
 
@@ -802,6 +780,11 @@ export default function GameScreen() {
         onPlaceBet={handlePlaceBet}
         onSkipBetting={handleSkipBetting}
         onConfirmBets={handleConfirmBets}
+      />
+
+      <AllianceModal
+        visible={showAllianceModal}
+        onClose={() => setShowAllianceModal(false)}
       />
 
       <GameEndModal

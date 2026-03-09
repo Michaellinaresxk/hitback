@@ -173,3 +173,28 @@ export interface GameResult {
   totalRounds: number;
   duration: number;
 }
+
+export interface Alliance {
+  id: string;
+  player1Id: string;
+  player2Id: string;
+  roundsLeft: number;
+  createdAtRound: number;
+}
+
+export interface AllianceSlice {
+  alliances: Alliance[];
+  declareAlliance: (player1Id: string, player2Id: string) => void;
+  dissolveAlliance: (allianceId: string) => void;
+  decrementAllianceRounds: () => void;
+  getPlayerAlliance: (playerId: string) => Alliance | null;
+}
+
+export interface BackendSlice {
+  backendConnected: boolean;
+  lastBackendCheck: string | null;
+  checkBackendConnection: () => Promise<boolean>;
+  syncWithBackend: () => Promise<void>;
+}
+
+export type GameStore = GameState & BackendSlice & AllianceSlice;

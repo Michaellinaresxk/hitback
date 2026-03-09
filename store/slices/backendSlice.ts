@@ -1,8 +1,7 @@
 // store/slices/backendSlice.ts
 import { StateCreator } from 'zustand';
-import { GameStore } from '../types/gameTypes';
 import { audioService } from '@/services/audioService';
-import { BackendSlice } from '../types/gameStoreTypes';
+import { BackendSlice, GameStore } from '@/types/game.types';
 
 export const createBackendSlice: StateCreator<
   GameStore,
