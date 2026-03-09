@@ -3,7 +3,7 @@ import { StateCreator } from 'zustand';
 import { GameStore } from '../types/gameTypes';
 
 export const createUISlice: StateCreator<GameStore, [], [], UISlice> = (
-  set
+  set,
 ) => ({
   audioFinished: false,
   showQuestion: false,

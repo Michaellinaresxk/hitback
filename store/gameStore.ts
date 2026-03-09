@@ -5,7 +5,9 @@ import { createGameSlice } from './slices/gameSlice';
 import { createCardSlice } from './slices/cardSlice';
 import { createUISlice } from './slices/uiSlice';
 import { createBackendSlice } from './slices/backendSlice';
-import { GameStore } from './types/gameTypes';
+
+import { createAllianceSlice } from './slices/allianceSlice';
+import { GameStore } from '@/types/game.types';
 
 export const useGameStore = create<GameStore>()(
   devtools((...args) => ({
@@ -14,5 +16,6 @@ export const useGameStore = create<GameStore>()(
     ...createCardSlice(...args),
     ...createUISlice(...args),
     ...createBackendSlice(...args),
-  }))
+    ...createAllianceSlice(...args),
+  })),
 );

@@ -321,7 +321,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     let tokenBonus = player.currentBet || 0;
     let multiplier = 1;
 
-    // ✅ Aplicar boost si está activo
+    // Aplicar boost si está activo
     if (player.boostActive) {
       multiplier = 2;
       basePoints = basePoints * multiplier;
@@ -336,15 +336,34 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     console.log(`🏆 Previous score: ${player.score}`);
     console.log(`🏆 New score: ${player.score + totalPoints}`);
 
+    // ── Resolver alianza ANTES del set() ────────────────────────────────────
+    // get() dentro de set() es inconsistente — se lee aquí, en estado actual
+    const alliance = get().getPlayerAlliance(playerId);
+    const partnerId = alliance
+      ? alliance.player1Id === playerId
+        ? alliance.player2Id
+        : alliance.player1Id
+      : null;
+    const allianceBonus = alliance ? Math.floor(totalPoints / 2) : 0;
+
+    if (alliance && partnerId) {
+      const partner = players.find((p) => p.id === partnerId);
+      console.log(
+        `🤝 Alliance bonus: ${player.name} ganó ${totalPoints} pts → ${partner?.name ?? partnerId} recibe ${allianceBonus} pts`,
+      );
+    }
+
+    // ── Un solo set() atómico: ganador + partner en la misma operación ──────
     set((state) => ({
       players: state.players.map((p) => {
+        // Ganador
         if (p.id === playerId) {
           return {
             ...p,
             score: p.score + totalPoints,
             consecutiveWins: p.consecutiveWins + 1,
             currentBet: 0,
-            boostActive: false, // ✅ Resetear boost después de usar
+            boostActive: false,
             cardTypeStreaks: {
               ...p.cardTypeStreaks,
               [currentCard.question.type]:
@@ -356,13 +375,20 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                 (p.difficultyStreaks[currentCard.scan.difficulty] || 0) + 1,
             },
           };
-        } else {
+        }
+
+        // Partner de alianza: recibe 50% redondeado hacia abajo
+        if (partnerId && p.id === partnerId) {
           return {
             ...p,
+            score: p.score + allianceBonus,
             consecutiveWins: 0,
             currentBet: 0,
           };
         }
+
+        // Resto de jugadores: resetear streak y apuesta
+        return { ...p, consecutiveWins: 0, currentBet: 0 };
       }),
     }));
 
@@ -431,5 +457,26 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
       return { players: updatedPlayers };
     });
+  },
+
+  awardAllianceBonus: (winnerId: string, pointsAwarded: number) => {
+    const alliance = get().getPlayerAlliance(winnerId);
+    if (!alliance) return;
+
+    const partnerId =
+      alliance.player1Id === winnerId ? alliance.player2Id : alliance.player1Id;
+
+    const bonus = Math.floor(pointsAwarded / 2);
+    const partner = get().players.find((p) => p.id === partnerId);
+
+    if (!partner) return;
+
+    console.log(`🤝 Alliance bonus: ${partner.name} recibe ${bonus} pts`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === partnerId ? { ...p, score: p.score + bonus } : p,
+      ),
+    }));
   },
 });

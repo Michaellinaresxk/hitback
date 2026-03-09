@@ -47,10 +47,3 @@ export interface GameState {
   backendConnected: boolean;
   lastBackendCheck: string | null;
 }
-
-export interface BackendSlice {
-  backendConnected: boolean;
-  lastBackendCheck: string | null;
-  checkBackendConnection: () => Promise<boolean>;
-  syncWithBackend: () => Promise<void>;
-}

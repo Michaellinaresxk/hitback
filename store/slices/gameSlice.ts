@@ -1,5 +1,5 @@
 import { StateCreator } from 'zustand';
-import { GameStore } from '../types/gameTypes';
+
 import { audioService } from '@/services/audioService';
 import {
   SPEED_ROUND_TIME_LIMIT,
@@ -118,7 +118,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   ) => {
     console.log('🔄 Syncing players from backend');
 
-    set((state) => {
+    set((state: { players: any[] }) => {
       const updatedPlayers = state.players.map((localPlayer, index) => {
         const backendPlayer = backendPlayers[index];
 
@@ -178,7 +178,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       isCurrentTurn: index === nextTurnIndex,
       isImmune: player.isImmune && Math.random() > 0.5,
       peekUsed: false,
-      // ✅ FIX: Reset currentBet here instead of calling clearBets()
+      // Reset currentBet here instead of calling clearBets()
       currentBet: 0,
     }));
 
@@ -194,8 +194,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
     console.log(`➡️ Next turn: ${updatedPlayers[nextTurnIndex].name}`);
 
-    // ✅ REMOVED: get().clearBets();
-    // This was causing double clearing and extra renders
+    get().decrementAllianceRounds();
   },
 
   startTimer: (duration: number) => {
@@ -211,7 +210,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
         if (timeLeft <= 0) get().endGame();
         return;
       }
-      set((state) => ({ timeLeft: state.timeLeft - 1 }));
+      set((state: { timeLeft: number }) => ({ timeLeft: state.timeLeft - 1 }));
     }, 1000);
 
     set({ timerInterval: newInterval });
