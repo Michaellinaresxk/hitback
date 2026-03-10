@@ -1,8 +1,4 @@
-// components/game/PlayerScoreboard.tsx - HITBACK Player Scoreboard
-// ✅ Muestra puntos, tokens y estado de jugadores
-// ✅ Se actualiza automáticamente cuando cambia el gameStore
-// ✅ ACTUALIZADO: Muestra PowerCards del inventario con opción de usar
-
+// components/game/PlayerScoreboard.tsx
 import React from 'react';
 import {
   View,
@@ -10,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { SCORE_TO_WIN } from '@/constants/Points';
@@ -24,9 +21,9 @@ interface PlayerScoreboardProps {
   showDetailedStats?: boolean;
   highlightWinner?: boolean;
   compact?: boolean;
-  // ✅ NUEVAS PROPS para PowerCards
   onUsePowerCard?: (playerId: string, cardId: string) => void;
   canUsePowerCards?: boolean;
+  onFreezePlayer?: (playerId: string) => void; // ← prop correcta
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -40,11 +37,9 @@ export default function PlayerScoreboard({
   compact = false,
   onUsePowerCard,
   canUsePowerCards = true,
+  onFreezePlayer, // ← destructurado correctamente, NO con spread
 }: PlayerScoreboardProps) {
-  // Ordenar jugadores por puntuación (mayor a menor)
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
-
-  // Determinar el líder
   const leader = sortedPlayers[0];
   const isGameWon = leader && leader.score >= SCORE_TO_WIN;
 
@@ -78,11 +73,9 @@ export default function PlayerScoreboard({
     }
   };
 
-  const getProgressPercentage = (score: number) => {
-    return Math.min((score / SCORE_TO_WIN) * 100, 100);
-  };
+  const getProgressPercentage = (score: number) =>
+    Math.min((score / SCORE_TO_WIN) * 100, 100);
 
-  // ✅ NUEVO: Helper para obtener PowerCards disponibles
   const getAvailablePowerCards = (player: Player) => {
     if (!player.powerCards || player.powerCards.length === 0) return [];
     return player.powerCards.filter(
@@ -90,7 +83,6 @@ export default function PlayerScoreboard({
     );
   };
 
-  // ✅ NUEVO: Handler para usar PowerCard
   const handleUsePowerCard = (playerId: string, cardId: string) => {
     if (onUsePowerCard && canUsePowerCards) {
       onUsePowerCard(playerId, cardId);
@@ -98,7 +90,7 @@ export default function PlayerScoreboard({
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER: Modo Compacto
+  // MODO COMPACT
   // ═══════════════════════════════════════════════════════════════════════════
 
   if (compact) {
@@ -112,6 +104,7 @@ export default function PlayerScoreboard({
                 styles.compactCard,
                 player.isCurrentTurn && styles.compactCardActive,
                 index === 0 && styles.compactCardLeader,
+                player.isFrozen && styles.compactCardFrozen,
               ]}
             >
               <Text style={styles.compactPosition}>
@@ -121,17 +114,18 @@ export default function PlayerScoreboard({
                 {player.name}
               </Text>
               <Text style={styles.compactScore}>{player.score}</Text>
-              {/* ✅ NUEVO: Indicador de PowerCards en modo compacto */}
               {getAvailablePowerCards(player).length > 0 && (
                 <Text style={styles.compactPowerCard}>
                   ⚡{getAvailablePowerCards(player).length}
                 </Text>
               )}
-              {/* ✅ NUEVO: Indicador de boost activo */}
               {player.boostActive && (
                 <View style={styles.compactBoostBadge}>
                   <Text style={styles.compactBoostText}>x2</Text>
                 </View>
+              )}
+              {player.isFrozen && (
+                <Text style={styles.compactFrozenText}>⏸️</Text>
               )}
             </View>
           ))}
@@ -141,7 +135,7 @@ export default function PlayerScoreboard({
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // RENDER: Modo Normal
+  // MODO NORMAL
   // ═══════════════════════════════════════════════════════════════════════════
 
   return (
@@ -157,10 +151,38 @@ export default function PlayerScoreboard({
         {sortedPlayers.map((player, index) => {
           const availablePowerCards = getAvailablePowerCards(player);
           const hasPowerCards = availablePowerCards.length > 0;
+          const isFrozen = player.isFrozen ?? false;
 
           return (
-            <View
+            // ── Tap en el tile entero → toggle freeze ──────────────────────
+            <TouchableOpacity
               key={player.id}
+              onPress={() => {
+                if (!onFreezePlayer) return;
+
+                const isAlreadyFrozen = player.isFrozen;
+
+                if (isAlreadyFrozen) {
+                  // Si ya está frozen, descongelar directo sin confirmación
+                  onFreezePlayer(player.id);
+                  return;
+                }
+
+                // Si NO está frozen, pedir confirmación antes de pausar
+                Alert.alert(
+                  '⏸️ Pausar jugador',
+                  `¿Querés pausar a ${player.name} por esta ronda?`,
+                  [
+                    { text: 'Ups, error', style: 'cancel' },
+                    {
+                      text: 'Sí, pausar',
+                      style: 'destructive',
+                      onPress: () => onFreezePlayer(player.id),
+                    },
+                  ],
+                );
+              }}
+              activeOpacity={onFreezePlayer ? 0.75 : 1}
               style={[
                 styles.playerCard,
                 getPositionStyle(index),
@@ -169,6 +191,7 @@ export default function PlayerScoreboard({
                   isGameWon &&
                   index === 0 &&
                   styles.playerCardWinner,
+                isFrozen && styles.playerCardFrozen, // ← estilo freeze
               ]}
             >
               {/* Posición */}
@@ -185,20 +208,27 @@ export default function PlayerScoreboard({
                     style={[
                       styles.playerName,
                       player.isCurrentTurn && styles.playerNameActive,
+                      isFrozen && styles.playerNameFrozen, // ← texto tachado
                     ]}
                     numberOfLines={1}
                   >
                     {player.name}
                   </Text>
+
+                  {/* Badges — turno, boost, freeze */}
                   {player.isCurrentTurn && (
                     <View style={styles.turnIndicator}>
                       <Text style={styles.turnText}>TURNO</Text>
                     </View>
                   )}
-                  {/* ✅ NUEVO: Badge de boost activo */}
                   {player.boostActive && (
                     <View style={styles.boostBadge}>
                       <Text style={styles.boostBadgeText}>⚡x2</Text>
+                    </View>
+                  )}
+                  {isFrozen && (
+                    <View style={styles.freezeBadge}>
+                      <Text style={styles.freezeBadgeText}>⏸️ PAUSA</Text>
                     </View>
                   )}
                 </View>
@@ -210,6 +240,7 @@ export default function PlayerScoreboard({
                       styles.progressBar,
                       { width: `${getProgressPercentage(player.score)}%` },
                       index === 0 && styles.progressBarLeader,
+                      isFrozen && styles.progressBarFrozen,
                     ]}
                   />
                 </View>
@@ -235,7 +266,6 @@ export default function PlayerScoreboard({
                         </Text>
                       </View>
                     )}
-                    {/* ✅ NUEVO: Indicador de PowerCards disponibles */}
                     {hasPowerCards && (
                       <View style={styles.statItem}>
                         <Text style={styles.statText}>
@@ -247,7 +277,7 @@ export default function PlayerScoreboard({
                   </View>
                 )}
 
-                {/* ✅ NUEVO: PowerCards Section */}
+                {/* PowerCards */}
                 {hasPowerCards && (
                   <View style={styles.powerCardsSection}>
                     <ScrollView
@@ -263,7 +293,11 @@ export default function PlayerScoreboard({
                             card.isActive && styles.powerCardActive,
                             !canUsePowerCards && styles.powerCardDisabled,
                           ]}
-                          onPress={() => handleUsePowerCard(player.id, card.id)}
+                          // Evitar que el tap en la carta propague al tile (freeze)
+                          onPress={(e) => {
+                            e.stopPropagation?.();
+                            handleUsePowerCard(player.id, card.id);
+                          }}
                           disabled={!canUsePowerCards || card.isActive}
                           activeOpacity={0.7}
                         >
@@ -287,37 +321,40 @@ export default function PlayerScoreboard({
 
               {/* Score y Tokens */}
               <View style={styles.scoreContainer}>
-                {/* Puntuación */}
                 <View style={styles.scoreBox}>
                   <Text
                     style={[
                       styles.scoreValue,
                       index === 0 && styles.scoreValueLeader,
+                      isFrozen && styles.scoreValueFrozen,
                     ]}
                   >
                     {player.score}
                   </Text>
                   <Text style={styles.scoreLabel}>pts</Text>
                 </View>
-
-                {/* Tokens */}
                 <View style={styles.tokensBox}>
                   <IconSymbol
                     name='bitcoinsign.circle.fill'
                     size={16}
-                    color='#F59E0B'
+                    color={isFrozen ? '#475569' : '#F59E0B'}
                   />
-                  <Text style={styles.tokensValue}>
+                  <Text
+                    style={[
+                      styles.tokensValue,
+                      isFrozen && styles.tokensValueFrozen,
+                    ]}
+                  >
                     {player.availableTokens?.length || player.tokens || 0}
                   </Text>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           );
         })}
       </View>
 
-      {/* Footer con info del ganador */}
+      {/* Footer ganador */}
       {highlightWinner && isGameWon && (
         <View style={styles.winnerBanner}>
           <Text style={styles.winnerText}>
@@ -330,11 +367,10 @@ export default function PlayerScoreboard({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// ESTILOS
+// STYLES
 // ═══════════════════════════════════════════════════════════════════════════
 
 const styles = StyleSheet.create({
-  // Container
   container: {
     margin: 16,
     backgroundColor: 'rgba(30, 41, 59, 0.8)',
@@ -343,8 +379,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-
-  // Header
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -364,13 +398,11 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
-
-  // Players List
   playersList: {
     gap: 10,
   },
 
-  // Player Card
+  // ── Player Card ────────────────────────────────────────────────────────
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,8 +420,14 @@ const styles = StyleSheet.create({
     borderColor: '#F59E0B',
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
+  // ← FREEZE: tile completo apagado
+  playerCardFrozen: {
+    opacity: 0.45,
+    borderColor: '#334155',
+    backgroundColor: 'rgba(15, 23, 42, 0.6)',
+  },
 
-  // Position Styles
+  // ── Position ───────────────────────────────────────────────────────────
   firstPlace: {
     borderColor: 'rgba(245, 158, 11, 0.3)',
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
@@ -403,8 +441,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180, 83, 9, 0.05)',
   },
   otherPlace: {},
-
-  // Position Container
   positionContainer: {
     width: 36,
     height: 36,
@@ -414,15 +450,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  positionText: {
-    fontSize: 16,
-  },
+  positionText: { fontSize: 16 },
 
-  // Player Info
-  playerInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
+  // ── Player Info ────────────────────────────────────────────────────────
+  playerInfo: { flex: 1, marginRight: 12 },
   playerNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -436,9 +467,14 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     flex: 1,
   },
-  playerNameActive: {
-    color: '#60A5FA',
+  playerNameActive: { color: '#60A5FA' },
+  // ← FREEZE: nombre tachado
+  playerNameFrozen: {
+    color: '#475569',
+    textDecorationLine: 'line-through',
   },
+
+  // ── Badges ────────────────────────────────────────────────────────────
   turnIndicator: {
     backgroundColor: '#3B82F6',
     paddingHorizontal: 6,
@@ -451,8 +487,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-
-  // ✅ NUEVO: Boost Badge
   boostBadge: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 8,
@@ -464,8 +498,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#000000',
   },
+  // ← FREEZE badge
+  freezeBadge: {
+    backgroundColor: '#1E293B',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  freezeBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
 
-  // Progress Bar
+  // ── Progress Bar ──────────────────────────────────────────────────────
   progressBarContainer: {
     height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -478,36 +527,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#3B82F6',
     borderRadius: 2,
   },
-  progressBarLeader: {
-    backgroundColor: '#F59E0B',
-  },
+  progressBarLeader: { backgroundColor: '#F59E0B' },
+  // ← FREEZE: barra gris
+  progressBarFrozen: { backgroundColor: '#334155' },
 
-  // Detailed Stats
-  detailedStats: {
-    flexDirection: 'row',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  statText: {
-    fontSize: 11,
-    color: '#94A3B8',
-  },
+  // ── Detailed Stats ────────────────────────────────────────────────────
+  detailedStats: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
+  statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  statText: { fontSize: 11, color: '#94A3B8' },
 
-  // ✅ NUEVO: PowerCards Section
+  // ── PowerCards ────────────────────────────────────────────────────────
   powerCardsSection: {
     marginTop: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.05)',
   },
-  powerCardsList: {
-    flexDirection: 'row',
-  },
+  powerCardsList: { flexDirection: 'row' },
   powerCardMini: {
     backgroundColor: 'rgba(255, 215, 0, 0.15)',
     borderRadius: 8,
@@ -524,12 +560,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 255, 136, 0.2)',
     borderColor: '#00FF88',
   },
-  powerCardDisabled: {
-    opacity: 0.5,
-  },
-  powerCardEmoji: {
-    fontSize: 14,
-  },
+  powerCardDisabled: { opacity: 0.5 },
+  powerCardEmoji: { fontSize: 14 },
   powerCardName: {
     fontSize: 11,
     color: '#FFD700',
@@ -545,16 +577,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 4,
   },
-  activeText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#000',
-  },
+  activeText: { fontSize: 10, fontWeight: 'bold', color: '#000' },
 
-  // Score Container
-  scoreContainer: {
-    alignItems: 'flex-end',
-  },
+  // ── Score Container ───────────────────────────────────────────────────
+  scoreContainer: { alignItems: 'flex-end' },
   scoreBox: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -565,27 +591,20 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#F8FAFC',
   },
-  scoreValueLeader: {
-    color: '#F59E0B',
-  },
+  scoreValueLeader: { color: '#F59E0B' },
+  // ← FREEZE: score gris
+  scoreValueFrozen: { color: '#475569' },
   scoreLabel: {
     fontSize: 11,
     color: '#94A3B8',
     marginLeft: 2,
     fontWeight: '500',
   },
-  tokensBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  tokensValue: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#F59E0B',
-  },
+  tokensBox: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tokensValue: { fontSize: 13, fontWeight: '600', color: '#F59E0B' },
+  tokensValueFrozen: { color: '#475569' },
 
-  // Winner Banner
+  // ── Winner Banner ─────────────────────────────────────────────────────
   winnerBanner: {
     marginTop: 16,
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -602,11 +621,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Compact Mode
-  compactContainer: {
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-  },
+  // ── Compact Mode ──────────────────────────────────────────────────────
+  compactContainer: { paddingVertical: 8, paddingHorizontal: 16 },
   compactCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -623,38 +639,23 @@ const styles = StyleSheet.create({
     borderColor: '#3B82F6',
     backgroundColor: 'rgba(59, 130, 246, 0.2)',
   },
-  compactCardLeader: {
-    borderColor: '#F59E0B',
-  },
-  compactPosition: {
-    fontSize: 14,
-  },
+  compactCardLeader: { borderColor: '#F59E0B' },
+  compactCardFrozen: { opacity: 0.4, borderColor: '#334155' },
+  compactPosition: { fontSize: 14 },
   compactName: {
     fontSize: 13,
     fontWeight: '600',
     color: '#F8FAFC',
     maxWidth: 80,
   },
-  compactScore: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#F59E0B',
-  },
-  // ✅ NUEVO: Compact PowerCard indicator
-  compactPowerCard: {
-    fontSize: 12,
-    color: '#FFD700',
-    fontWeight: '600',
-  },
+  compactScore: { fontSize: 15, fontWeight: '800', color: '#F59E0B' },
+  compactPowerCard: { fontSize: 12, color: '#FFD700', fontWeight: '600' },
   compactBoostBadge: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 4,
     paddingVertical: 2,
     borderRadius: 4,
   },
-  compactBoostText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#000',
-  },
+  compactBoostText: { fontSize: 10, fontWeight: '800', color: '#000' },
+  compactFrozenText: { fontSize: 12 },
 });

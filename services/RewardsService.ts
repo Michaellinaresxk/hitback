@@ -18,7 +18,7 @@ class RewardsService {
     answerTime: number,
     consecutiveCorrect: number,
     cardTypeStreak: number,
-    difficultyStreak: number
+    difficultyStreak: number,
   ): RewardResult {
     let bonusTokens = 0;
     let powerCard: PowerCard | undefined;
@@ -44,8 +44,8 @@ class RewardsService {
     }
 
     // Streak bonuses
-    if (consecutiveCorrect >= 3) {
-      const hotStreak = this.combos.find((c) => c.id === 'combo_hot_streak');
+    if (consecutiveCorrect >= 2) {
+      const hotStreak = this.combos.find((c: { id: string; }) => c.id === 'combo_hot_streak');
       if (hotStreak) combosAchieved.push(hotStreak);
     }
 
@@ -56,7 +56,7 @@ class RewardsService {
 
     if (difficultyStreak >= 2 && difficulty === 'hard') {
       const difficultyBeast = this.combos.find(
-        (c) => c.id === 'combo_difficulty_beast'
+        (c) => c.id === 'combo_difficulty_beast',
       );
       if (difficultyBeast) combosAchieved.push(difficultyBeast);
     }
@@ -116,11 +116,11 @@ class RewardsService {
     consecutiveWins: number,
     cardTypeStreaks: Record<string, number>,
     difficultyStreaks: Record<Difficulty, number>,
-    lastAnswerTime: number
+    lastAnswerTime: number,
   ): Combo[] {
     const achievedCombos: Combo[] = [];
 
-    this.combos.forEach((combo) => {
+    this.combos.forEach((combo: { conditions: any[]; }) => {
       const conditionsMet = combo.conditions.every((condition) => {
         switch (condition.type) {
           case 'consecutive_wins':
@@ -225,7 +225,7 @@ class RewardsService {
   } {
     const totalCombos = players.reduce(
       (sum, player) => sum + (player.activePowers?.length || 0),
-      0
+      0,
     );
 
     const mostPowerCards = players.reduce(
@@ -233,7 +233,7 @@ class RewardsService {
         (player.powerCards?.length || 0) > max.count
           ? { playerName: player.name, count: player.powerCards?.length || 0 }
           : max,
-      { playerName: '', count: 0 }
+      { playerName: '', count: 0 },
     );
 
     const richestPlayer = players.reduce(
@@ -241,7 +241,7 @@ class RewardsService {
         (player.tokens || 0) > max.tokens
           ? { playerName: player.name, tokens: player.tokens || 0 }
           : max,
-      { playerName: '', tokens: 0 }
+      { playerName: '', tokens: 0 },
     );
 
     return {
@@ -257,7 +257,7 @@ class RewardsService {
 
     if (rewards.powerCard) {
       messages.push(
-        `🎁 ${playerName} ganó carta de poder: ${rewards.powerCard.name}!`
+        `🎁 ${playerName} ganó carta de poder: ${rewards.powerCard.name}!`,
       );
     }
 
@@ -265,7 +265,7 @@ class RewardsService {
       messages.push(
         `🪙 ${playerName} ganó ${rewards.bonusTokens} token${
           rewards.bonusTokens > 1 ? 's' : ''
-        } extra!`
+        } extra!`,
       );
     }
 
@@ -318,7 +318,7 @@ class RewardsService {
   // Calculate end game rewards
   calculateEndGameRewards(players: Player[]): Record<string, any> {
     const winner = players.reduce((max, player) =>
-      player.score > max.score ? player : max
+      player.score > max.score ? player : max,
     );
 
     const achievements = {
@@ -326,7 +326,7 @@ class RewardsService {
       mostTokens: players.reduce((max, p) => (p.tokens > max.tokens ? p : max))
         .name,
       mostPowerCards: players.reduce((max, p) =>
-        (p.powerCards?.length || 0) > (max.powerCards?.length || 0) ? p : max
+        (p.powerCards?.length || 0) > (max.powerCards?.length || 0) ? p : max,
       ).name,
       highestScore: winner.score,
     };

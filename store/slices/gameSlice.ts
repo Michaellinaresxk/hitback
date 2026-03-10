@@ -167,7 +167,6 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
   },
 
-  // ✅ FIX: nextTurn now ONLY handles turn advancement
   // clearBets() is called separately in the game flow for better control
   nextTurn: () => {
     const { players, currentTurn } = get();
@@ -180,6 +179,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       peekUsed: false,
       // Reset currentBet here instead of calling clearBets()
       currentBet: 0,
+      isFrozen: false,
+      frozenForRound: null,
     }));
 
     set({
