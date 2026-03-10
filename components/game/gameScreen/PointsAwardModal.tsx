@@ -30,6 +30,7 @@ interface PointsAwardModalProps {
     id: string;
     name: string;
     currentBet: number;
+    isFrozen?: boolean; // ← CAMBIO 1: agregar al tipo
   }>;
   onAwardPoints: (playerId: string) => void;
   onWrongAnswer: () => void;
@@ -68,7 +69,6 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
 
           {/* ✅ RESPUESTA - SIEMPRE VISIBLE */}
           <View style={styles.answerContainer}>
-            {/* <Text style={styles.answerLabel}>✅ Respuesta Correcta:</Text> */}
             <Text style={styles.answerText}>
               {flowState.correctAnswer ||
                 flowState.currentRound?.gameMasterAnswer?.correct ||
@@ -91,21 +91,40 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
           <FlatList
             data={players}
             keyExtractor={(item) => item.id}
-            renderItem={({ item: player }) => (
-              <TouchableOpacity
-                style={styles.playerButton}
-                onPress={() => onAwardPoints(player.id)}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.playerButtonText}>{player.name}</Text>
-                {player.currentBet > 0 && (
-                  <Text style={styles.playerBetIndicator}>
-                    Apuesta: {player.currentBet} x
-                    {getBettingMultiplier(player.currentBet)}
+            renderItem={({ item: player }) => {
+              const frozen = player.isFrozen ?? false; // ← CAMBIO 2
+
+              return (
+                <TouchableOpacity
+                  style={[
+                    styles.playerButton,
+                    frozen && styles.playerButtonFrozen, // ← CAMBIO 3
+                  ]}
+                  onPress={() => onAwardPoints(player.id)}
+                  disabled={frozen}
+                  activeOpacity={frozen ? 1 : 0.8}
+                >
+                  <Text
+                    style={[
+                      styles.playerButtonText,
+                      frozen && styles.playerButtonTextFrozen,
+                    ]}
+                  >
+                    {frozen ? '⏸️  ' : ''}
+                    {player.name}
                   </Text>
-                )}
-              </TouchableOpacity>
-            )}
+                  {player.currentBet > 0 && !frozen && (
+                    <Text style={styles.playerBetIndicator}>
+                      Apuesta: {player.currentBet} x
+                      {getBettingMultiplier(player.currentBet)}
+                    </Text>
+                  )}
+                  {frozen && (
+                    <Text style={styles.frozenLabel}>en pausa esta ronda</Text>
+                  )}
+                </TouchableOpacity>
+              );
+            }}
           />
 
           <TouchableOpacity
@@ -152,19 +171,6 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     textAlign: 'center',
   },
-  questionContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 20,
-  },
-  questionText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F8FAFC',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
   answerText: {
     fontSize: 18,
     fontWeight: '700',
@@ -207,34 +213,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  gameMasterAnswerContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-    padding: 16,
-    borderRadius: 12,
-    marginTop: 12,
-    borderWidth: 2,
-    borderColor: '#10B981',
-  },
-  gameMasterLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#10B981',
-    marginBottom: 4,
-  },
-  gameMasterAnswer: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#10B981',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  trackInfoText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-
   answerContainer: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     padding: 16,
@@ -245,22 +223,28 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.3)',
   },
-  answerLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#10B981',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  trackInfoText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
-
-  questionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#3B82F6',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  // ── Freeze ───────────────────────────────────────────────────────────────
+  playerButtonFrozen: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    opacity: 0.5,
+  },
+  playerButtonTextFrozen: {
+    color: '#475569',
+    textDecorationLine: 'line-through',
+  },
+  frozenLabel: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
 });
 

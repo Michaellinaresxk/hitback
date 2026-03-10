@@ -57,6 +57,8 @@ export default function GameScreen() {
   const setGameActive = useGameStore((state) => state.setGameActive);
   const addPowerCard = useGameStore((state) => state.addPowerCard);
   const awardAllianceBonus = useGameStore((state) => state.awardAllianceBonus);
+  // ✅ FREEZE — selector junto al resto de acciones del store
+  const toggleFreezePlayer = useGameStore((state) => state.toggleFreezePlayer);
 
   // Game Flow
   const {
@@ -140,7 +142,6 @@ export default function GameScreen() {
     const isLoading = flowState.isLoading;
     const phase = flowState.phase;
 
-    // Log solo cuando cambia (no en cada render)
     console.log('🔍 canStart check:', {
       comboFlowStateIsActive: comboActive,
       flowStateIsLoading: isLoading,
@@ -175,7 +176,6 @@ export default function GameScreen() {
     let safetyTimer: NodeJS.Timeout | null = null;
 
     if (comboFlowState.isActive) {
-      // If combo flow is active for more than 30 seconds, something is wrong
       safetyTimer = setTimeout(() => {
         console.warn(
           '⚠️ Safety: Combo flow was active for too long, resetting',
@@ -205,13 +205,11 @@ export default function GameScreen() {
         return;
       }
 
-      // Verificar que la carta no esté ya usada
       if (powerCard.currentUses >= powerCard.usageLimit) {
         showError('Error', 'Esta carta ya fue usada');
         return;
       }
 
-      // Verificar que no tenga ya un boost activo
       if (player.boostActive) {
         showError('Error', 'Ya tienes un boost activo');
         return;
@@ -222,7 +220,6 @@ export default function GameScreen() {
       );
 
       try {
-        // 1. Llamar al backend para activar la carta
         const backendPlayerId = getBackendPlayerId(
           playerId,
           players,
@@ -235,11 +232,9 @@ export default function GameScreen() {
         );
 
         if (result.success) {
-          // 2. Actualizar el estado local usando el store
           const usePowerCardStore = useGameStore.getState().usePowerCard;
           usePowerCardStore(playerId, cardId);
 
-          // 3. Mostrar feedback visual
           showSuccess(
             '⚡ ¡Carta Activada!',
             `${player.name} activó ${powerCard.emoji || '⚡'} ${powerCard.name}\n¡Tu próxima respuesta correcta vale x2 puntos!`,
@@ -371,12 +366,10 @@ export default function GameScreen() {
 
     console.log('🔄 Advancing to next turn');
 
-    // ✅ SOLO setTimeout - NUNCA InteractionManager
     setTimeout(() => {
       nextTurn();
       prepareNextRound();
 
-      // Reset ref después de que React procese los cambios
       setTimeout(() => {
         isAdvancingTurnRef.current = false;
         console.log('✅ Turn advance complete');
@@ -421,7 +414,6 @@ export default function GameScreen() {
     advanceToNextTurn,
   ]);
 
-  // ✅ Handle award points with proper combo flow
   const handleAwardPoints = useCallback(
     async (playerId: string) => {
       if (!flowState.currentRound) return;
@@ -448,15 +440,12 @@ export default function GameScreen() {
           awardAllianceBonus(playerId, result.pointsAwarded);
         }
 
-        // CHECK FOR COMBO
         if (result.comboStatus) {
           console.log('🔥 COMBO DETECTED:', result.comboStatus);
 
-          // ✅ Reset processing ref BEFORE setting combo state
           isPowerCardProcessingRef.current = false;
           isAdvancingTurnRef.current = false;
 
-          // ✅ Set combo flow state in one atomic update
           setComboFlowState({
             isActive: true,
             showNotification: true,
@@ -469,7 +458,7 @@ export default function GameScreen() {
           });
 
           setShowPointsModal(false);
-          return; // ✅ Early return - don't advance turn yet
+          return;
         }
 
         if (result.gameOver && result.gameWinner) {
@@ -516,11 +505,8 @@ export default function GameScreen() {
     createNewGame();
   }, [setShowGameEndModal, setGameActive, createNewGame]);
 
-  // ✅ Handle combo notification close
   const handleComboNotificationClose = useCallback(() => {
     console.log('✅ Combo notification closed, opening scanner');
-
-    // ✅ Reset processing ref before opening scanner
     isPowerCardProcessingRef.current = false;
 
     setComboFlowState((prev) => ({
@@ -540,12 +526,9 @@ export default function GameScreen() {
       }
       isPowerCardProcessingRef.current = true;
 
-      // ✅ CRÍTICO: Guardar valores ANTES de limpiar estado
       const playerIdForScan = comboFlowState.playerId;
       const playerNameForScan = comboFlowState.playerName;
 
-      // ✅ CRÍTICO: Limpiar TODO el estado del combo de una vez
-      // Esto desactiva el scanner inmediatamente
       setComboFlowState({
         isActive: false,
         showNotification: false,
@@ -602,9 +585,6 @@ export default function GameScreen() {
             usageLimit: 1,
           };
 
-          console.log(
-            `⚡ Adding power card ${result.data.cardName} to ${playerNameForScan}`,
-          );
           addPowerCard(playerIdForScan, powerCard);
 
           showSuccess(
@@ -619,11 +599,9 @@ export default function GameScreen() {
         showError('Error', error.message || 'No se pudo escanear la carta');
       }
 
-      // ✅ CRÍTICO: Siempre avanzar, con delay apropiado
       console.log('🧹 Cleanup complete, advancing to next turn');
       isPowerCardProcessingRef.current = false;
 
-      // Delay más largo para asegurar que la cámara se liberó
       setTimeout(() => {
         console.log('🔄 Calling advanceToNextTurn');
         advanceToNextTurn();
@@ -650,7 +628,6 @@ export default function GameScreen() {
     }
     isPowerCardProcessingRef.current = true;
 
-    // ✅ Limpiar TODO el estado de una vez
     setComboFlowState({
       isActive: false,
       showNotification: false,
@@ -664,13 +641,20 @@ export default function GameScreen() {
 
     isPowerCardProcessingRef.current = false;
 
-    // ✅ Delay para asegurar que el modal se cerró
     setTimeout(() => {
       advanceToNextTurn();
     }, 300);
   }, [advanceToNextTurn]);
 
-  // Early returns
+  // ✅ FREEZE — handler antes de los early returns
+  const handleFreezePlayer = useCallback(
+    (playerId: string) => {
+      toggleFreezePlayer(playerId);
+    },
+    [toggleFreezePlayer],
+  );
+
+  // Early returns — SIEMPRE después de todos los hooks
   if (!isActive && !showGameEndModal) {
     return <GameSetupScreen />;
   }
@@ -748,6 +732,7 @@ export default function GameScreen() {
             flowState.phase === 'question' ||
             flowState.phase === 'idle'
           }
+          onFreezePlayer={handleFreezePlayer}
         />
       </ScrollView>
 
@@ -806,7 +791,7 @@ export default function GameScreen() {
       />
 
       <PowerCardScanModal
-        visible={comboFlowState.showScanner && !!comboFlowState.playerId} // ← Controla visibilidad
+        visible={comboFlowState.showScanner && !!comboFlowState.playerId}
         onClose={handlePowerCardScanClose}
         onCardScanned={handlePowerCardScanned}
         playerName={comboFlowState.playerName || ''}

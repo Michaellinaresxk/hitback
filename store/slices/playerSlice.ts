@@ -14,11 +14,9 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     if (name.trim().length < 2) {
       throw new Error('El nombre debe tener al menos 2 caracteres');
     }
-
     if (players.length >= 8) {
       throw new Error('Máximo 8 jugadores');
     }
-
     if (
       players.some((p) => p.name.toLowerCase() === name.toLowerCase().trim())
     ) {
@@ -39,13 +37,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       consecutiveWins: 0,
       cardTypeStreaks: {},
       difficultyStreaks: {},
+      isFrozen: false, // ⏸️ PAUSA: true = salta su próxima ronda
+      frozenForRound: null, // ronda en la que fue congelado
     };
 
-    set((state) => ({
-      players: [...state.players, newPlayer],
-      error: null,
-    }));
-
+    set((state) => ({ players: [...state.players, newPlayer], error: null }));
     console.log(`✅ Player added: ${newPlayer.name} with tokens [1, 2, 3]`);
   },
 
@@ -61,12 +57,31 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       }
 
       console.log(`❌ Player removed: ${removedPlayer?.name}`);
-
-      return {
-        players: newPlayers,
-        currentTurn: newCurrentTurn,
-      };
+      return { players: newPlayers, currentTurn: newCurrentTurn };
     });
+  },
+
+  // ⏸️ PAUSA: tap en el tile del scoreboard → toggle freeze
+  toggleFreezePlayer: (playerId: string) => {
+    const { players, round } = get();
+    const player = players.find((p) => p.id === playerId);
+    if (!player) return;
+
+    const next = !player.isFrozen;
+
+    set((state) => ({
+      players: state.players.map((p) =>
+        p.id === playerId
+          ? { ...p, isFrozen: next, frozenForRound: next ? round : null }
+          : p,
+      ),
+    }));
+
+    console.log(
+      next
+        ? `⏸️ ${player.name} — PAUSA activada (ronda ${round})`
+        : `▶️ ${player.name} — PAUSA cancelada`,
+    );
   },
 
   placeBet: (playerId: string, tokenValue: number) => {
@@ -121,27 +136,18 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         `🎯 Updated players state:`,
         updatedPlayers.map(
           (p) =>
-            `${p.name}: tokens=[${p.availableTokens.join(',')}], bet=${
-              p.currentBet
-            }`,
+            `${p.name}: tokens=[${p.availableTokens.join(',')}], bet=${p.currentBet}`,
         ),
       );
 
-      return {
-        ...state,
-        players: updatedPlayers,
-        error: null,
-      };
+      return { ...state, players: updatedPlayers, error: null };
     });
   },
 
   clearBets: () => {
     console.log('🔄 Clearing all bets');
     set((state) => ({
-      players: state.players.map((p) => ({
-        ...p,
-        currentBet: 0,
-      })),
+      players: state.players.map((p) => ({ ...p, currentBet: 0 })),
     }));
   },
 
@@ -150,19 +156,14 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       const updatedPlayers = state.players.map((p) => {
         if (p.id === playerId) {
           console.log(`⚡ Adding power card ${powerCard.name} to ${p.name}`);
-          return {
-            ...p,
-            powerCards: [...p.powerCards, powerCard],
-          };
+          return { ...p, powerCards: [...p.powerCards, powerCard] };
         }
         return p;
       });
-
       return { ...state, players: updatedPlayers };
     });
   },
 
-  // ✅ FIXED: usePowerCard ahora maneja 'replay' correctamente
   usePowerCard: (
     playerId: string,
     powerCardId: string,
@@ -188,7 +189,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       console.log(`⚡ Using PowerCard: ${powerCard.name} (type: ${cardType})`);
 
       switch (cardType) {
-        // ✅ FIXED: Manejar tanto 'replay' como 'boost'
         case 'replay':
         case 'boost':
           newPlayers = newPlayers.map((p) =>
@@ -283,12 +283,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       }
 
       console.log(`⚡ Power card used: ${powerCard.name} by ${player.name}`);
-
       return { ...state, players: newPlayers, error: null };
     });
   },
 
-  // ✅ NEW: Activar boost para un jugador (útil para sincronización con backend)
   activateBoost: (playerId: string) => {
     console.log(`⚡ Activating boost for player: ${playerId}`);
     set((state) => ({
@@ -298,7 +296,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
-  // ✅ NEW: Desactivar boost para un jugador
   deactivateBoost: (playerId: string) => {
     console.log(`⚡ Deactivating boost for player: ${playerId}`);
     set((state) => ({
@@ -321,7 +318,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     let tokenBonus = player.currentBet || 0;
     let multiplier = 1;
 
-    // Aplicar boost si está activo
     if (player.boostActive) {
       multiplier = 2;
       basePoints = basePoints * multiplier;
@@ -336,8 +332,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     console.log(`🏆 Previous score: ${player.score}`);
     console.log(`🏆 New score: ${player.score + totalPoints}`);
 
-    // ── Resolver alianza ANTES del set() ────────────────────────────────────
-    // get() dentro de set() es inconsistente — se lee aquí, en estado actual
     const alliance = get().getPlayerAlliance(playerId);
     const partnerId = alliance
       ? alliance.player1Id === playerId
@@ -353,10 +347,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       );
     }
 
-    // ── Un solo set() atómico: ganador + partner en la misma operación ──────
     set((state) => ({
       players: state.players.map((p) => {
-        // Ganador
         if (p.id === playerId) {
           return {
             ...p,
@@ -377,7 +369,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           };
         }
 
-        // Partner de alianza: recibe 50% redondeado hacia abajo
         if (partnerId && p.id === partnerId) {
           return {
             ...p,
@@ -387,14 +378,12 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           };
         }
 
-        // Resto de jugadores: resetear streak y apuesta
         return { ...p, consecutiveWins: 0, currentBet: 0 };
       }),
     }));
 
     get().nextTurn();
 
-    // Check for winner
     const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) {
       console.log(`🏆 Winner: ${winner.name} with ${winner.score} points!`);
@@ -402,7 +391,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }
   },
 
-  // ✅ Sincronizar jugadores desde backend
   syncPlayersFromBackend: (
     backendPlayers: Array<{
       id: string;
@@ -449,9 +437,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         '🔄 Players after sync:',
         updatedPlayers.map(
           (p) =>
-            `${p.name}: score=${p.score}, tokens=[${p.availableTokens.join(
-              ',',
-            )}]`,
+            `${p.name}: score=${p.score}, tokens=[${p.availableTokens.join(',')}]`,
         ),
       );
 
