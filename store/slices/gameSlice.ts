@@ -21,10 +21,10 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   battleModeActive: false,
   speedRoundActive: false,
   selectedBattlePlayers: null,
+  featuringPlayerId: null,
+  featuringTargetId: null,
 
   createNewGame: () => {
-    console.log('🎮 Creating new game...');
-
     audioService.stopAudio();
     const { timerInterval } = get();
     if (timerInterval) {
@@ -51,9 +51,9 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       showGameEndModal: false,
       backendConnected: false,
       lastBackendCheck: null,
+      featuringPlayerId: null,
+      featuringTargetId: null,
     });
-
-    console.log('✅ New game created');
   },
 
   startGame: async () => {
@@ -64,8 +64,6 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     }
 
     try {
-      console.log('🎮 Starting game...');
-
       const backendConnected = await get().checkBackendConnection();
       if (!backendConnected) {
         console.warn('⚠️ Backend not connected');
@@ -83,6 +81,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
         consecutiveWins: 0,
         cardTypeStreaks: {},
         difficultyStreaks: {},
+        isFrozen: false,
+        frozenForRound: null,
       }));
 
       set({
@@ -97,7 +97,6 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       });
 
       get().startTimer(1200);
-      console.log('✅ Game started - Each player has tokens: [+1, +2, +3]');
     } catch (error) {
       console.error('❌ Error starting game:', error);
       set({ error: 'No se pudo iniciar el juego' });
@@ -116,17 +115,11 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       availableTokens: number[];
     }>,
   ) => {
-    console.log('🔄 Syncing players from backend');
-
     set((state: { players: any[] }) => {
       const updatedPlayers = state.players.map((localPlayer, index) => {
         const backendPlayer = backendPlayers[index];
 
         if (backendPlayer) {
-          console.log(
-            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`,
-          );
-
           return {
             ...localPlayer,
             score: backendPlayer.score || localPlayer.score,
@@ -143,8 +136,6 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   },
 
   endGame: async () => {
-    console.log('🏁 Ending game...');
-
     await audioService.stopAudio();
     get().stopTimer();
 
@@ -167,20 +158,37 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
   },
 
-  // clearBets() is called separately in the game flow for better control
+  // ─── nextTurn ──────────────────────────────────────────────────────────────
+  // FIX FREEZE: ya no se resetea isFrozen de todos en cada turno.
+  // Si el siguiente jugador está congelado → se le salta el turno y se consume
+  // su freeze (isFrozen: false). El ❄️ visual se mantendrá hasta que el set()
+  // lo quite al consumirlo.
   nextTurn: () => {
     const { players, currentTurn } = get();
-    const nextTurnIndex = (currentTurn + 1) % players.length;
+
+    let nextTurnIndex = (currentTurn + 1) % players.length;
+    let skippedPlayerId: string | null = null;
+
+    // ❄️ ¿El próximo jugador está congelado? Saltarlo una vez.
+    const candidatePlayer = players[nextTurnIndex];
+    if (candidatePlayer?.isFrozen) {
+      skippedPlayerId = candidatePlayer.id;
+      console.log(`❄️ ${candidatePlayer.name} está FROZEN — turno saltado`);
+      // Avanzar al siguiente jugador después del congelado
+      nextTurnIndex = (nextTurnIndex + 1) % players.length;
+    }
 
     const updatedPlayers = players.map((player, index) => ({
       ...player,
       isCurrentTurn: index === nextTurnIndex,
+      // Solo se consume el freeze del jugador que fue saltado
+      isFrozen: player.id === skippedPlayerId ? false : player.isFrozen,
+      frozenForRound:
+        player.id === skippedPlayerId ? null : player.frozenForRound,
+      // Limpiar flags de ronda
       isImmune: player.isImmune && Math.random() > 0.5,
       peekUsed: false,
-      // Reset currentBet here instead of calling clearBets()
       currentBet: 0,
-      isFrozen: false,
-      frozenForRound: null,
     }));
 
     set({
@@ -193,7 +201,15 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       showAnswer: false,
     });
 
-    console.log(`➡️ Next turn: ${updatedPlayers[nextTurnIndex].name}`);
+    const nextPlayer = updatedPlayers[nextTurnIndex];
+    if (skippedPlayerId) {
+      const skipped = players.find((p) => p.id === skippedPlayerId);
+      console.log(
+        `❄️ Turno saltado: ${skipped?.name} → ahora juega ${nextPlayer?.name}`,
+      );
+    } else {
+      console.log(`➡️ Next turn: ${nextPlayer?.name}`);
+    }
 
     get().decrementAllianceRounds();
   },
@@ -249,5 +265,17 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       gameMode: 'viral',
       viralMomentActive: true,
     });
+  },
+
+  activateFeaturing: (portadorId: string, targetId: string) => {
+    const { players } = get();
+    const portador = players.find((p) => p.id === portadorId);
+    const target = players.find((p) => p.id === targetId);
+    console.log(`🎤 Featuring activado: ${portador?.name} ft. ${target?.name}`);
+    set({ featuringPlayerId: portadorId, featuringTargetId: targetId });
+  },
+
+  clearFeaturing: () => {
+    set({ featuringPlayerId: null, featuringTargetId: null });
   },
 });

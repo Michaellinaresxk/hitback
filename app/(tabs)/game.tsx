@@ -36,6 +36,7 @@ import { CurrentTurn } from '@/components/game/gameScreen/CurrentTurn';
 import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
 import AllianceModal from '@/components/modal/AllianceModal';
+import FeaturingModal from '@/components/modal/FeaturingModal';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -60,6 +61,25 @@ export default function GameScreen() {
   // ✅ FREEZE — selector junto al resto de acciones del store
   const toggleFreezePlayer = useGameStore((state) => state.toggleFreezePlayer);
 
+  // Featuring state
+  const featuringPlayerId = useGameStore((state) => state.featuringPlayerId);
+  const featuringTargetId = useGameStore((state) => state.featuringTargetId);
+  const activateFeaturing = useGameStore((state) => state.activateFeaturing);
+  const clearFeaturing = useGameStore((state) => state.clearFeaturing);
+
+  // 2. Estado local para el modal:
+  const [showFeaturingModal, setShowFeaturingModal] = useState(false);
+  const [featuringPortadorId, setFeaturingPortadorId] = useState<string | null>(
+    null,
+  );
+
+  // Local State
+  const [showPointsModal, setShowPointsModal] = useState(false);
+  const [showBettingModal, setShowBettingModal] = useState(false);
+  const [showAllianceModal, setShowAllianceModal] = useState(false);
+  const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
+  const [gameStarted, setGameStarted] = useState(false);
+
   // Game Flow
   const {
     flowState,
@@ -81,13 +101,6 @@ export default function GameScreen() {
     showInfo,
     showWarning,
   } = useFeedback();
-
-  // Local State
-  const [showPointsModal, setShowPointsModal] = useState(false);
-  const [showBettingModal, setShowBettingModal] = useState(false);
-  const [showAllianceModal, setShowAllianceModal] = useState(false);
-  const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
-  const [gameStarted, setGameStarted] = useState(false);
 
   // ✅ COMBO FLOW STATE - Initial state object for reuse
   const INITIAL_COMBO_STATE = {
@@ -190,6 +203,13 @@ export default function GameScreen() {
       if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, [comboFlowState.isActive]);
+
+  const committedFeaturingIds = useMemo<string[]>(() => {
+    const ids: string[] = [];
+    if (featuringPlayerId) ids.push(featuringPlayerId);
+    if (featuringTargetId) ids.push(featuringTargetId);
+    return ids;
+  }, [featuringPlayerId, featuringTargetId]);
 
   const handleScoreboardUsePowerCard = useCallback(
     async (playerId: string, cardId: string) => {
@@ -399,6 +419,7 @@ export default function GameScreen() {
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
 
+    clearFeaturing();
     clearBets();
     setShowPointsModal(false);
 
@@ -408,11 +429,16 @@ export default function GameScreen() {
   }, [
     revealAnswer,
     players,
+    clearFeaturing,
     clearBets,
     showInfo,
     showWarning,
     advanceToNextTurn,
   ]);
+
+  const applyFeaturingBonus = useGameStore(
+    (state) => state.applyFeaturingBonus,
+  );
 
   const handleAwardPoints = useCallback(
     async (playerId: string) => {
@@ -428,21 +454,51 @@ export default function GameScreen() {
         playerIdMap,
       );
 
+      // 1️⃣ Backend calcula los puntos del ganador (100%)
       const result = await revealAnswer(backendPlayerId);
 
       if (result) {
+        const pts = result.pointsAwarded as number;
+
         showSuccess(
           '🎉 ¡Correcto!',
-          `${player.name} gana ${result.pointsAwarded} puntos\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+          `${player.name} gana ${pts} pts\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
         );
 
-        if (result?.pointsAwarded) {
-          awardAllianceBonus(playerId, result.pointsAwarded);
+        // 2️⃣ Alliance 50/50
+        // Funciona en ambas direcciones — getPlayerAlliance es simétrico.
+        // Sustrae 50% al ganador (queda con 50%) y da 50% al partner.
+        if (pts) {
+          awardAllianceBonus(playerId, pts);
         }
 
-        if (result.comboStatus) {
-          console.log('🔥 COMBO DETECTED:', result.comboStatus);
+        // 3️⃣ Featuring 100/100
+        // Funciona en ambas direcciones — playerId puede ser holder o target.
+        // El partner recibe los mismos puntos. Uso único → clearFeaturing().
+        if (pts && featuringPlayerId && featuringTargetId) {
+          const isInFeaturing =
+            playerId === featuringPlayerId || playerId === featuringTargetId;
 
+          if (isInFeaturing) {
+            const partnerId =
+              playerId === featuringPlayerId
+                ? featuringTargetId
+                : featuringPlayerId;
+
+            applyFeaturingBonus(partnerId, pts);
+
+            const partner = players.find((p) => p.id === partnerId);
+            showSuccess(
+              '🎤 ¡Featuring!',
+              `${partner?.name ?? 'Partner'} también recibe ${pts} pts`,
+            );
+
+            clearFeaturing();
+          }
+        }
+
+        // 4️⃣ Combo flow
+        if (result.comboStatus) {
           isPowerCardProcessingRef.current = false;
           isAdvancingTurnRef.current = false;
 
@@ -450,7 +506,7 @@ export default function GameScreen() {
             isActive: true,
             showNotification: true,
             showScanner: false,
-            playerId: playerId,
+            playerId,
             playerName: player.name,
             comboName: result.comboStatus.type.replace('_', ' '),
             comboEmoji: '🔥',
@@ -461,20 +517,16 @@ export default function GameScreen() {
           return;
         }
 
+        // 5️⃣ Game over
         if (result.gameOver && result.gameWinner) {
-          setTimeout(() => {
-            setShowGameEndModal(true);
-          }, 1500);
+          setTimeout(() => setShowGameEndModal(true), 1500);
           setShowPointsModal(false);
           return;
         }
       }
 
       setShowPointsModal(false);
-
-      setTimeout(() => {
-        advanceToNextTurn();
-      }, 2000);
+      setTimeout(() => advanceToNextTurn(), 2000);
     },
     [
       flowState.currentRound,
@@ -485,6 +537,10 @@ export default function GameScreen() {
       setShowGameEndModal,
       advanceToNextTurn,
       awardAllianceBonus,
+      applyFeaturingBonus,
+      featuringPlayerId,
+      featuringTargetId,
+      clearFeaturing,
     ],
   );
 
@@ -646,6 +702,31 @@ export default function GameScreen() {
     }, 300);
   }, [advanceToNextTurn]);
 
+  const handleFeaturingPlayer = useCallback(
+    (playerId: string) => {
+      // Si ya tiene featuring activo → cancelar
+      if (featuringPlayerId === playerId) {
+        clearFeaturing();
+        return;
+      }
+      // Abrir modal para elegir compañero
+      setFeaturingPortadorId(playerId);
+      setShowFeaturingModal(true);
+    },
+    [featuringPlayerId, clearFeaturing],
+  );
+
+  // Handler cuando el GM selecciona el compañero en el modal:
+  const handleFeaturingPartnerSelected = useCallback(
+    (partnerId: string) => {
+      if (!featuringPortadorId) return;
+      activateFeaturing(featuringPortadorId, partnerId);
+      setShowFeaturingModal(false);
+      setFeaturingPortadorId(null);
+    },
+    [featuringPortadorId, activateFeaturing],
+  );
+
   // ✅ FREEZE — handler antes de los early returns
   const handleFreezePlayer = useCallback(
     (playerId: string) => {
@@ -678,9 +759,7 @@ export default function GameScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
-
       <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
-
       <ScrollView>
         <GameHeader
           timeLeft={timeLeft}
@@ -733,9 +812,11 @@ export default function GameScreen() {
             flowState.phase === 'idle'
           }
           onFreezePlayer={handleFreezePlayer}
+          onFeaturingPlayer={handleFeaturingPlayer}
+          featuringPlayerId={featuringPlayerId}
+          featuringTargetId={featuringTargetId}
         />
       </ScrollView>
-
       {/* Modals */}
       <PointsAwardModal
         visible={showPointsModal}
@@ -745,7 +826,6 @@ export default function GameScreen() {
         onWrongAnswer={handleWrongAnswer}
         onClose={() => setShowPointsModal(false)}
       />
-
       <BettingModal
         visible={showBettingModal}
         onClose={() => setShowBettingModal(false)}
@@ -766,12 +846,25 @@ export default function GameScreen() {
         onSkipBetting={handleSkipBetting}
         onConfirmBets={handleConfirmBets}
       />
-
       <AllianceModal
         visible={showAllianceModal}
         onClose={() => setShowAllianceModal(false)}
       />
 
+      <FeaturingModal
+        visible={showFeaturingModal}
+        portadorId={featuringPortadorId ?? ''}
+        portadorName={
+          players.find((p) => p.id === featuringPortadorId)?.name ?? ''
+        }
+        players={players}
+        committedPlayerIds={committedFeaturingIds}
+        onSelectPartner={handleFeaturingPartnerSelected}
+        onClose={() => {
+          setShowFeaturingModal(false);
+          setFeaturingPortadorId(null);
+        }}
+      />
       <GameEndModal
         visible={showGameEndModal}
         players={players}
@@ -780,7 +873,6 @@ export default function GameScreen() {
         onNewGame={handleNewGame}
         onBackToMenu={handleBackToMenu}
       />
-
       <ComboNotification
         visible={comboFlowState.showNotification}
         onClose={handleComboNotificationClose}
@@ -789,7 +881,6 @@ export default function GameScreen() {
         comboDescription={comboFlowState.comboDescription || ''}
         playerName={comboFlowState.playerName || ''}
       />
-
       <PowerCardScanModal
         visible={comboFlowState.showScanner && !!comboFlowState.playerId}
         onClose={handlePowerCardScanClose}
