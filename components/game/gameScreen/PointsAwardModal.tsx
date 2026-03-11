@@ -38,6 +38,10 @@ interface PointsAwardModalProps {
   // ── STOP-BLAST ──────────────────────────────────────────────────────────
   stopBlastActive?: boolean;
   stopBlastHolderId?: string | null;
+  // ── DUEL ────────────────────────────────────────────────────────────────
+  duelActive?: boolean;
+  duelPlayer1Id?: string | null;
+  duelPlayer2Id?: string | null;
 }
 
 const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
@@ -49,6 +53,9 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
   onClose,
   stopBlastActive = false,
   stopBlastHolderId = null,
+  duelActive = false,
+  duelPlayer1Id = null,
+  duelPlayer2Id = null,
 }) => {
   const getBettingMultiplier = (amount: number): number => {
     return gameSessionService.getBettingMultiplier(amount);
@@ -58,11 +65,24 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
 
   const { question } = flowState.currentRound;
 
-  // Si STOP-BLAST activo → solo el holder puede recibir puntos
-  const eligiblePlayers =
-    stopBlastActive && stopBlastHolderId
-      ? players.filter((p) => p.id === stopBlastHolderId)
-      : players;
+  // STOP-BLAST → solo el holder
+  // DUEL       → solo los dos duelistas
+  // Normal     → todos
+  const eligiblePlayers = (() => {
+    if (stopBlastActive && stopBlastHolderId)
+      return players.filter((p) => p.id === stopBlastHolderId);
+    if (duelActive && duelPlayer1Id && duelPlayer2Id)
+      return players.filter(
+        (p) => p.id === duelPlayer1Id || p.id === duelPlayer2Id,
+      );
+    return players;
+  })();
+
+  const activeMechanic = stopBlastActive
+    ? 'stopBlast'
+    : duelActive
+      ? 'duel'
+      : null;
 
   return (
     <Modal
@@ -78,11 +98,30 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
             <Text style={styles.modalTitle}>{question.type.toUpperCase()}</Text>
           </View>
 
-          {/* STOP-BLAST banner */}
-          {stopBlastActive && (
-            <View style={styles.stopBlastBanner}>
-              <Text style={styles.stopBlastBannerText}>
-                🛑 STOP-BLAST activo — solo un jugador puede ganar
+          {/* Banners de mecánicas activas */}
+          {activeMechanic === 'stopBlast' && (
+            <View
+              style={[styles.mechanicBanner, styles.mechanicBannerStopBlast]}
+            >
+              <Text
+                style={[
+                  styles.mechanicBannerText,
+                  styles.mechanicBannerTextStopBlast,
+                ]}
+              >
+                🛑 STOP-BLAST — solo un jugador puede ganar
+              </Text>
+            </View>
+          )}
+          {activeMechanic === 'duel' && (
+            <View style={[styles.mechanicBanner, styles.mechanicBannerDuel]}>
+              <Text
+                style={[
+                  styles.mechanicBannerText,
+                  styles.mechanicBannerTextDuel,
+                ]}
+              >
+                ⚔️ DUEL — solo los duelistas pueden ganar
               </Text>
             </View>
           )}
@@ -119,7 +158,9 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                   style={[
                     styles.playerButton,
                     frozen && styles.playerButtonFrozen,
-                    stopBlastActive && styles.playerButtonStopBlast,
+                    activeMechanic === 'stopBlast' &&
+                      styles.playerButtonStopBlast,
+                    activeMechanic === 'duel' && styles.playerButtonDuel,
                   ]}
                   onPress={() => onAwardPoints(player.id)}
                   disabled={frozen}
@@ -132,7 +173,8 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                     ]}
                   >
                     {frozen ? '⏸️  ' : ''}
-                    {stopBlastActive ? '🛑  ' : ''}
+                    {activeMechanic === 'stopBlast' ? '🛑  ' : ''}
+                    {activeMechanic === 'duel' ? '⚔️  ' : ''}
                     {player.name}
                   </Text>
                   {player.currentBet > 0 && !frozen && (
@@ -183,10 +225,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  modalEmoji: {
-    fontSize: 48,
-    marginBottom: 8,
-  },
+  modalEmoji: { fontSize: 48, marginBottom: 8 },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
@@ -194,23 +233,31 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── STOP-BLAST banner ──────────────────────────────────────────────────
-  stopBlastBanner: {
-    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+  // ── Mechanic banners ──────────────────────────────────────────────────
+  mechanicBanner: {
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 8,
     marginBottom: 12,
     borderWidth: 1,
+  },
+  mechanicBannerStopBlast: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
     borderColor: 'rgba(239, 68, 68, 0.35)',
   },
-  stopBlastBannerText: {
+  mechanicBannerDuel: {
+    backgroundColor: 'rgba(249, 115, 22, 0.12)',
+    borderColor: 'rgba(249, 115, 22, 0.35)',
+  },
+  mechanicBannerText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#F87171',
     textAlign: 'center',
   },
+  mechanicBannerTextStopBlast: { color: '#F87171' },
+  mechanicBannerTextDuel: { color: '#FB923C' },
 
+  // ── Answer ────────────────────────────────────────────────────────────
   answerContainer: {
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
     padding: 16,
@@ -240,6 +287,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
+
+  // ── Player buttons ────────────────────────────────────────────────────
   playerButton: {
     backgroundColor: '#3B82F6',
     padding: 16,
@@ -251,6 +300,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#DC2626',
     borderWidth: 2,
     borderColor: '#EF4444',
+  },
+  playerButtonDuel: {
+    backgroundColor: '#C2410C',
+    borderWidth: 2,
+    borderColor: '#FB923C',
   },
   playerButtonFrozen: {
     backgroundColor: '#1E293B',

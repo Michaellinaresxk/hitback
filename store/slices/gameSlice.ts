@@ -24,6 +24,9 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   featuringPlayerId: null,
   stopBlastActive: false,
   stopBlastHolderId: null,
+  duelActive: false,
+  duelPlayer1Id: null,
+  duelPlayer2Id: null,
   featuringTargetId: null,
 
   createNewGame: () => {
@@ -57,6 +60,9 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       featuringTargetId: null,
       stopBlastActive: false,
       stopBlastHolderId: null,
+      duelActive: false,
+      duelPlayer1Id: null,
+      duelPlayer2Id: null,
     });
   },
 
@@ -217,6 +223,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
     get().decrementAllianceRounds();
     get().clearStopBlast();
+    get().clearDuel();
   },
 
   startTimer: (duration: number) => {
@@ -293,5 +300,21 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
   clearStopBlast: () => {
     set({ stopBlastActive: false, stopBlastHolderId: null });
+  },
+
+  activateDuel: (player1Id: string, player2Id: string) => {
+    const { players } = get();
+    const p1 = players.find((p) => p.id === player1Id);
+    const p2 = players.find((p) => p.id === player2Id);
+    console.log(`⚔️ Duel: ${p1?.name} vs ${p2?.name}`);
+    set({
+      duelActive: true,
+      duelPlayer1Id: player1Id,
+      duelPlayer2Id: player2Id,
+    });
+  },
+
+  clearDuel: () => {
+    set({ duelActive: false, duelPlayer1Id: null, duelPlayer2Id: null });
   },
 });
