@@ -29,6 +29,9 @@ interface PlayerScoreboardProps {
   stopBlastHolderId?: string | null;
   featuringPlayerId?: string | null;
   featuringTargetId?: string | null;
+  onDuel?: (playerId: string) => void;
+  duelPlayer1Id?: string | null;
+  duelPlayer2Id?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -48,12 +51,17 @@ export default function PlayerScoreboard({
   stopBlastHolderId,
   featuringPlayerId,
   featuringTargetId,
+  onDuel,
+  duelPlayer1Id,
+  duelPlayer2Id,
 }: PlayerScoreboardProps) {
   const getPlayerAlliance = useGameStore((s) => s.getPlayerAlliance);
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const leader = sortedPlayers[0];
   const isGameWon = leader && leader.score >= SCORE_TO_WIN;
+
+  const duelActive = !!(duelPlayer1Id && duelPlayer2Id);
 
   // Si hay un holder activo, STOP-BLAST está activo
   const stopBlastActive = !!stopBlastHolderId;
@@ -184,12 +192,31 @@ export default function PlayerScoreboard({
         </View>
       )}
 
+      {duelActive && (
+        <View style={styles.duelBanner}>
+          <Text style={styles.duelBannerText}>
+            ⚔️ DUEL —{' '}
+            <Text style={styles.duelBannerName}>
+              {players.find((p) => p.id === duelPlayer1Id)?.name}
+            </Text>
+            {' vs '}
+            <Text style={styles.duelBannerName}>
+              {players.find((p) => p.id === duelPlayer2Id)?.name}
+            </Text>
+          </Text>
+        </View>
+      )}
+
       {/* Lista de Jugadores */}
       <View style={styles.playersList}>
         {sortedPlayers.map((player, index) => {
           const availablePowerCards = getAvailablePowerCards(player);
           const hasPowerCards = availablePowerCards.length > 0;
           const isFrozen = player.isFrozen ?? false;
+
+          const isDuelist =
+            duelPlayer1Id === player.id || duelPlayer2Id === player.id;
+          const isDuelBlocked = duelActive && !isDuelist;
 
           // ── STOP-BLAST ────────────────────────────────────────────────
           const isStopBlastHolder = stopBlastHolderId === player.id;
@@ -226,10 +253,9 @@ export default function PlayerScoreboard({
                   onFreezePlayer?.(player.id);
                   return;
                 }
-
                 Alert.alert(player.name, '¿Qué hacemos con este jugador?', [
                   {
-                    text: '⏸️ Pausar esta ronda',
+                    text: '⏸️ Pause for one round',
                     style: 'destructive',
                     onPress: () => onFreezePlayer?.(player.id),
                   },
@@ -241,6 +267,7 @@ export default function PlayerScoreboard({
                     text: '🛑 STOP-BLAST',
                     onPress: () => onStopBlast?.(player.id),
                   },
+                  { text: '⚔️ DUEL', onPress: () => onDuel?.(player.id) },
                   { text: 'Cancelar', style: 'cancel' },
                 ]);
               }}
@@ -259,6 +286,8 @@ export default function PlayerScoreboard({
                 // STOP-BLAST — holder destacado, resto bloqueado
                 isStopBlastHolder && styles.playerCardStopBlastHolder,
                 isStopBlastBlocked && styles.playerCardStopBlastBlocked,
+                isDuelist && styles.playerCardDuelist,
+                isDuelBlocked && styles.playerCardDuelBlocked,
               ]}
             >
               {/* Posición */}
@@ -335,6 +364,19 @@ export default function PlayerScoreboard({
                   {isStopBlastBlocked && (
                     <View style={styles.stopBlastBlockedBadge}>
                       <Text style={styles.stopBlastBlockedBadgeText}>
+                        🔇 BLOQUEADO
+                      </Text>
+                    </View>
+                  )}
+
+                  {isDuelist && (
+                    <View style={styles.duelistBadge}>
+                      <Text style={styles.duelistBadgeText}>⚔️ DUEL</Text>
+                    </View>
+                  )}
+                  {isDuelBlocked && (
+                    <View style={styles.duelBlockedBadge}>
+                      <Text style={styles.duelBlockedBadgeText}>
                         🔇 BLOQUEADO
                       </Text>
                     </View>
@@ -864,4 +906,62 @@ const styles = StyleSheet.create({
   compactBoostText: { fontSize: 10, fontWeight: '800', color: '#000' },
   compactFrozenText: { fontSize: 12 },
   compactBSideText: { fontSize: 12 },
+
+  duelBanner: {
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(249, 115, 22, 0.3)',
+  },
+  duelBannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FB923C',
+    textAlign: 'center',
+  },
+  duelBannerName: {
+    fontWeight: '800',
+    color: '#FED7AA',
+  },
+  playerCardDuelist: {
+    borderColor: '#F97316',
+    borderWidth: 2,
+    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+  },
+  playerCardDuelBlocked: {
+    opacity: 0.35,
+    borderColor: '#1E293B',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
+  duelistBadge: {
+    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#F97316',
+  },
+  duelistBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FB923C',
+    letterSpacing: 0.5,
+  },
+  duelBlockedBadge: {
+    backgroundColor: 'rgba(71, 85, 105, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  duelBlockedBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
 });

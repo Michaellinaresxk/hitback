@@ -38,6 +38,7 @@ import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
 import AllianceModal from '@/components/modal/AllianceModal';
 import FeaturingModal from '@/components/modal/FeaturingModal';
 import LossStreakModal from '@/components/modal/LossStreakModal';
+import DuelModal from '@/components/modal/DuelModal';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -82,16 +83,23 @@ export default function GameScreen() {
     null,
   );
 
+  const duelActive = useGameStore((state) => state.duelActive);
+  const duelPlayer1Id = useGameStore((state) => state.duelPlayer1Id);
+  const duelPlayer2Id = useGameStore((state) => state.duelPlayer2Id);
+  const activateDuel = useGameStore((state) => state.activateDuel);
+
+  const stopBlastActive = useGameStore((state) => state.stopBlastActive);
+  const stopBlastHolderId = useGameStore((state) => state.stopBlastHolderId);
+  const activateStopBlast = useGameStore((state) => state.activateStopBlast);
+
   // Local State
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [showBettingModal, setShowBettingModal] = useState(false);
   const [showAllianceModal, setShowAllianceModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
-
-  const stopBlastActive = useGameStore((state) => state.stopBlastActive);
-  const stopBlastHolderId = useGameStore((state) => state.stopBlastHolderId);
-  const activateStopBlast = useGameStore((state) => state.activateStopBlast);
+  const [showDuelModal, setShowDuelModal] = useState(false);
+  const [duelChallengerId, setDuelChallengerId] = useState<string | null>(null);
 
   // Game Flow
   const {
@@ -773,6 +781,21 @@ export default function GameScreen() {
     [activateStopBlast],
   );
 
+  const handleDuel = useCallback((playerId: string) => {
+    setDuelChallengerId(playerId);
+    setShowDuelModal(true);
+  }, []);
+
+  const handleDuelOpponentSelected = useCallback(
+    (opponentId: string) => {
+      if (!duelChallengerId) return;
+      activateDuel(duelChallengerId, opponentId);
+      setShowDuelModal(false);
+      setDuelChallengerId(null);
+    },
+    [duelChallengerId, activateDuel],
+  );
+
   // Early returns — SIEMPRE después de todos los hooks
   if (!isActive && !showGameEndModal) {
     return <GameSetupScreen />;
@@ -852,6 +875,9 @@ export default function GameScreen() {
           onFreezePlayer={handleFreezePlayer}
           onFeaturingPlayer={handleFeaturingPlayer}
           onStopBlast={handleStopBlast}
+          onDuel={handleDuel}
+          duelPlayer1Id={duelPlayer1Id}
+          duelPlayer2Id={duelPlayer2Id}
           stopBlastHolderId={stopBlastHolderId}
           featuringPlayerId={featuringPlayerId}
           featuringTargetId={featuringTargetId}
@@ -867,6 +893,9 @@ export default function GameScreen() {
         onClose={() => setShowPointsModal(false)}
         stopBlastActive={stopBlastActive}
         stopBlastHolderId={stopBlastHolderId}
+        duelActive={duelActive}
+        duelPlayer1Id={duelPlayer1Id}
+        duelPlayer2Id={duelPlayer2Id}
       />
       <BettingModal
         visible={showBettingModal}
@@ -935,6 +964,20 @@ export default function GameScreen() {
         visible={bSideNotification?.visible ?? false}
         playerNames={bSideNotification?.playerNames ?? []}
         onClose={() => setBSideNotification(null)}
+      />
+
+      <DuelModal
+        visible={showDuelModal}
+        challengerId={duelChallengerId ?? ''}
+        challengerName={
+          players.find((p) => p.id === duelChallengerId)?.name ?? ''
+        }
+        players={players}
+        onSelectOpponent={handleDuelOpponentSelected}
+        onClose={() => {
+          setShowDuelModal(false);
+          setDuelChallengerId(null);
+        }}
       />
     </View>
   );
