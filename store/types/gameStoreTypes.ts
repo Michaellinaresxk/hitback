@@ -14,9 +14,15 @@ export interface Player {
   consecutiveWins: number;
   cardTypeStreaks: Record<string, number>;
   difficultyStreaks: Record<string, number>;
+  isFrozen: boolean; // ❄️ true = su próximo turno será saltado
+  frozenForRound: number | null;
 }
 
 export type Card = CurrentCard;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GAME STATE
+// ─────────────────────────────────────────────────────────────────────────────
 
 export interface GameState {
   id: string;
@@ -44,6 +50,103 @@ export interface GameState {
   battleModeActive: boolean;
   speedRoundActive: boolean;
   selectedBattlePlayers: { player1Id: string; player2Id: string } | null;
+  featuringPlayerId: string | null;
+  featuringTargetId: string | null;
   backendConnected: boolean;
   lastBackendCheck: string | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GAME STORE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface GameStore extends GameState {
+  // ── Player slice ───────────────────────────────────────────────────────────
+  addPlayer: (name: string) => void;
+  removePlayer: (id: string) => void;
+  toggleFreezePlayer: (playerId: string) => void;
+  placeBet: (playerId: string, tokenValue: number) => void;
+  clearBets: () => void;
+  addPowerCard: (playerId: string, powerCard: any) => void;
+  usePowerCard: (
+    playerId: string,
+    powerCardId: string,
+    targetPlayerId?: string,
+  ) => void;
+  activateBoost: (playerId: string) => void;
+  deactivateBoost: (playerId: string) => void;
+  awardPoints: (playerId: string, points?: number, answerTime?: number) => void;
+
+  /**
+   * Alliance 50/50
+   * Llama después de syncPlayersFromBackend.
+   * Deducta 50% al ganador y se los da al partner.
+   * Funciona en ambas direcciones (cualquiera de los dos puede responder).
+   */
+  awardAllianceBonus: (winnerId: string, pointsAwarded: number) => void;
+
+  /**
+   * Featuring 100/100
+   * Llama después de awardAllianceBonus.
+   * Da los mismos puntos que el ganador al partner del featuring.
+   * El featuring se consume (uso único) — clearFeaturing() se llama desde game.tsx.
+   */
+  applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
+
+  syncPlayersFromBackend: (
+    backendPlayers: Array<{
+      id: string;
+      name: string;
+      score: number;
+      availableTokens: number[];
+    }>,
+  ) => void;
+
+  // ── Game slice ────────────────────────────────────────────────────────────
+  createNewGame: () => void;
+  startGame: () => Promise<void>;
+  setGameActive: (active: boolean) => void;
+  endGame: () => Promise<void>;
+  nextTurn: () => void;
+  startTimer: (duration: number) => void;
+  stopTimer: () => void;
+  startBattleMode: (player1Id: string, player2Id: string) => void;
+  startSpeedRound: () => void;
+  startViralMoment: () => void;
+  activateFeaturing: (portadorId: string, targetId: string) => void;
+  clearFeaturing: () => void;
+
+  // ── Card slice ────────────────────────────────────────────────────────────
+  scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;
+
+  // ── UI slice ──────────────────────────────────────────────────────────────
+  setAudioFinished: (finished: boolean) => void;
+  setShowQuestion: (show: boolean) => void;
+  setShowAnswer: (show: boolean) => void;
+  setShowGameEndModal: (show: boolean) => void;
+  setScanning: (scanning: boolean) => void;
+  setError: (error: string | null) => void;
+
+  // ── Backend slice ─────────────────────────────────────────────────────────
+  checkBackendConnection: () => Promise<boolean>;
+  syncWithBackend: () => Promise<void>;
+
+  // ── Alliance slice ────────────────────────────────────────────────────────
+  alliances: Alliance[];
+  declareAlliance: (player1Id: string, player2Id: string) => void;
+  dissolveAlliance: (allianceId: string) => void;
+  decrementAllianceRounds: () => void;
+  getPlayerAlliance: (playerId: string) => Alliance | null;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALLIANCE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface Alliance {
+  id: string;
+  player1Id: string;
+  player2Id: string;
+  roundsLeft: number;
+  createdAtRound: number;
 }

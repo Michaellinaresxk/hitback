@@ -197,4 +197,26 @@ export interface BackendSlice {
   syncWithBackend: () => Promise<void>;
 }
 
-export type GameStore = GameState & BackendSlice & AllianceSlice;
+// ─── PlayerSlice — acciones que viven en playerSlice.ts ───────────────────────
+export interface PlayerSlice {
+  /**
+   * Alliance 50/50
+   * Llama DESPUÉS de syncPlayersFromBackend.
+   * Deduce 50% al ganador y lo da al partner.
+   * Funciona en ambas direcciones (cualquiera de los dos puede responder).
+   */
+  awardAllianceBonus: (winnerId: string, pointsAwarded: number) => void;
+
+  /**
+   * Featuring 100/100
+   * Llama DESPUÉS de awardAllianceBonus.
+   * El partner recibe exactamente los mismos puntos que el ganador.
+   * clearFeaturing() se llama desde game.tsx justo después.
+   */
+  applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
+
+  /** Activa el freeze (❄️) de un jugador — su próximo turno será saltado */
+  toggleFreezePlayer: (playerId: string) => void;
+}
+
+export type GameStore = GameState & BackendSlice & AllianceSlice & PlayerSlice;

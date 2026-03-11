@@ -37,17 +37,15 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       consecutiveWins: 0,
       cardTypeStreaks: {},
       difficultyStreaks: {},
-      isFrozen: false, // ⏸️ PAUSA: true = salta su próxima ronda
-      frozenForRound: null, // ronda en la que fue congelado
+      isFrozen: false,
+      frozenForRound: null,
     };
 
     set((state) => ({ players: [...state.players, newPlayer], error: null }));
-    console.log(`✅ Player added: ${newPlayer.name} with tokens [1, 2, 3]`);
   },
 
   removePlayer: (id: string) => {
     set((state) => {
-      const removedPlayer = state.players.find((p) => p.id === id);
       const newPlayers = state.players.filter((p) => p.id !== id);
       const currentPlayerIndex = state.players.findIndex((p) => p.id === id);
 
@@ -56,12 +54,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         newCurrentTurn = Math.max(0, state.currentTurn - 1);
       }
 
-      console.log(`❌ Player removed: ${removedPlayer?.name}`);
       return { players: newPlayers, currentTurn: newCurrentTurn };
     });
   },
 
-  // ⏸️ PAUSA: tap en el tile del scoreboard → toggle freeze
+  // ❄️ FREEZE — toggle desde el scoreboard
   toggleFreezePlayer: (playerId: string) => {
     const { players, round } = get();
     const player = players.find((p) => p.id === playerId);
@@ -79,47 +76,29 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
     console.log(
       next
-        ? `⏸️ ${player.name} — PAUSA activada (ronda ${round})`
-        : `▶️ ${player.name} — PAUSA cancelada`,
+        ? `❄️ ${player.name} — FREEZE activado (ronda ${round})`
+        : `▶️ ${player.name} — FREEZE cancelado`,
     );
   },
 
   placeBet: (playerId: string, tokenValue: number) => {
-    console.log(`🎯 placeBet called: ${playerId} -> ${tokenValue}`);
-
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
 
       if (!player) {
-        console.error('❌ Player not found');
         return { ...state, error: 'Jugador no encontrado' };
       }
 
-      console.log(`🎯 Player found: ${player.name}`);
-      console.log(
-        `🎯 Available tokens: [${player.availableTokens.join(', ')}]`,
-      );
-      console.log(`🎯 Token to use: ${tokenValue}`);
-      console.log(
-        `🎯 Is token available: ${player.availableTokens.includes(tokenValue)}`,
-      );
-
       if (!player.availableTokens.includes(tokenValue)) {
-        console.error(`❌ Token +${tokenValue} not available`);
         return {
           ...state,
           error: `Token +${tokenValue} ya fue usado o no disponible`,
         };
       }
 
-      console.log(`🪙 ${player.name} usa token +${tokenValue}`);
-      console.log(`   Tokens antes: [${player.availableTokens.join(', ')}]`);
-
       const newAvailableTokens = player.availableTokens.filter(
         (t) => t !== tokenValue,
       );
-
-      console.log(`   Tokens después: [${newAvailableTokens.join(', ')}]`);
 
       const updatedPlayers = state.players.map((p) => {
         if (p.id === playerId) {
@@ -132,20 +111,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         return p;
       });
 
-      console.log(
-        `🎯 Updated players state:`,
-        updatedPlayers.map(
-          (p) =>
-            `${p.name}: tokens=[${p.availableTokens.join(',')}], bet=${p.currentBet}`,
-        ),
-      );
-
       return { ...state, players: updatedPlayers, error: null };
     });
   },
 
   clearBets: () => {
-    console.log('🔄 Clearing all bets');
     set((state) => ({
       players: state.players.map((p) => ({ ...p, currentBet: 0 })),
     }));
@@ -155,7 +125,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     set((state) => {
       const updatedPlayers = state.players.map((p) => {
         if (p.id === playerId) {
-          console.log(`⚡ Adding power card ${powerCard.name} to ${p.name}`);
           return { ...p, powerCards: [...p.powerCards, powerCard] };
         }
         return p;
@@ -174,19 +143,15 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
 
       if (!player || !powerCard) {
-        console.error('❌ PowerCard not found:', { playerId, powerCardId });
         return { ...state, error: 'Carta de poder no encontrada' };
       }
 
       if (powerCard.currentUses >= powerCard.usageLimit) {
-        console.error('❌ PowerCard already used');
         return { ...state, error: 'Carta de poder ya usada' };
       }
 
       let newPlayers = [...state.players];
       const cardType = powerCard.type?.toLowerCase() || '';
-
-      console.log(`⚡ Using PowerCard: ${powerCard.name} (type: ${cardType})`);
 
       switch (cardType) {
         case 'replay':
@@ -208,7 +173,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                 }
               : p,
           );
-          console.log(`✅ ${player.name}: Boost activado (x2 puntos)`);
           break;
 
         case 'robo':
@@ -218,7 +182,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
             newPlayers = newPlayers.map((p) => {
               if (p.id === targetPlayerId && p.availableTokens.length > 0) {
                 const stolenToken = Math.max(...p.availableTokens);
-                console.log(`🥷 Robando token +${stolenToken} de ${p.name}`);
                 return {
                   ...p,
                   availableTokens: p.availableTokens.filter(
@@ -257,7 +220,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                 }
               : p,
           );
-          console.log(`🛡️ ${player.name}: Escudo activado`);
           break;
 
         case 'peek':
@@ -274,7 +236,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                 }
               : p,
           );
-          console.log(`👁️ ${player.name}: Peek usado`);
           break;
 
         default:
@@ -282,13 +243,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           break;
       }
 
-      console.log(`⚡ Power card used: ${powerCard.name} by ${player.name}`);
       return { ...state, players: newPlayers, error: null };
     });
   },
 
   activateBoost: (playerId: string) => {
-    console.log(`⚡ Activating boost for player: ${playerId}`);
     set((state) => ({
       players: state.players.map((p) =>
         p.id === playerId ? { ...p, boostActive: true } : p,
@@ -297,7 +256,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   },
 
   deactivateBoost: (playerId: string) => {
-    console.log(`⚡ Deactivating boost for player: ${playerId}`);
     set((state) => ({
       players: state.players.map((p) =>
         p.id === playerId ? { ...p, boostActive: false } : p,
@@ -305,47 +263,23 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
+  // ─── awardPoints ────────────────────────────────────────────────────────────
+  // Nota: en el flujo principal (revealAnswer → syncPlayersFromBackend) los puntos
+  // vienen del backend. Este método queda para usos directos / modo offline.
   awardPoints: (playerId: string, points?: number, answerTime?: number) => {
     const { currentCard, players } = get();
     const player = players.find((p) => p.id === playerId);
 
-    if (!player || !currentCard) {
-      console.error('❌ Cannot award points: player or card not found');
-      return;
-    }
+    if (!player || !currentCard) return;
 
     let basePoints = points || currentCard.question.points || 0;
     let tokenBonus = player.currentBet || 0;
-    let multiplier = 1;
 
     if (player.boostActive) {
-      multiplier = 2;
-      basePoints = basePoints * multiplier;
-      console.log(`⚡ Boost aplicado: ${basePoints / 2} x2 = ${basePoints}`);
+      basePoints = basePoints * 2;
     }
 
     const totalPoints = basePoints + tokenBonus;
-
-    console.log(
-      `🏆 ${player.name}: base=${basePoints}${player.boostActive ? ' (x2)' : ''} + token=${tokenBonus} = ${totalPoints} pts`,
-    );
-    console.log(`🏆 Previous score: ${player.score}`);
-    console.log(`🏆 New score: ${player.score + totalPoints}`);
-
-    const alliance = get().getPlayerAlliance(playerId);
-    const partnerId = alliance
-      ? alliance.player1Id === playerId
-        ? alliance.player2Id
-        : alliance.player1Id
-      : null;
-    const allianceBonus = alliance ? Math.floor(totalPoints / 2) : 0;
-
-    if (alliance && partnerId) {
-      const partner = players.find((p) => p.id === partnerId);
-      console.log(
-        `🤝 Alliance bonus: ${player.name} ganó ${totalPoints} pts → ${partner?.name ?? partnerId} recibe ${allianceBonus} pts`,
-      );
-    }
 
     set((state) => ({
       players: state.players.map((p) => {
@@ -368,16 +302,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
             },
           };
         }
-
-        if (partnerId && p.id === partnerId) {
-          return {
-            ...p,
-            score: p.score + allianceBonus,
-            consecutiveWins: 0,
-            currentBet: 0,
-          };
-        }
-
         return { ...p, consecutiveWins: 0, currentBet: 0 };
       }),
     }));
@@ -385,10 +309,58 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     get().nextTurn();
 
     const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
-    if (winner) {
-      console.log(`🏆 Winner: ${winner.name} with ${winner.score} points!`);
-      get().endGame();
-    }
+    if (winner) get().endGame();
+  },
+
+  // ─── awardAllianceBonus ─────────────────────────────────────────────────────
+  // FIX 50/50: deducimos la mitad al ganador Y se la damos al partner.
+  // Se llama desde handleAwardPoints en game.tsx DESPUÉS de syncPlayersFromBackend.
+  // Funciona sin importar cuál de los dos responda (getPlayerAlliance es simétrico).
+  awardAllianceBonus: (winnerId: string, pointsAwarded: number) => {
+    const alliance = get().getPlayerAlliance(winnerId);
+    if (!alliance) return;
+
+    const partnerId =
+      alliance.player1Id === winnerId ? alliance.player2Id : alliance.player1Id;
+
+    const share = Math.floor(pointsAwarded / 2);
+
+    const winner = get().players.find((p) => p.id === winnerId);
+    const partner = get().players.find((p) => p.id === partnerId);
+    if (!winner || !partner) return;
+
+    console.log(
+      `🤝 Alliance 50/50: ${winner.name} −${share} pts | ${partner.name} +${share} pts`,
+    );
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) => {
+        // Ganador cede la mitad (queda con 50%)
+        if (p.id === winnerId) return { ...p, score: p.score - share };
+        // Partner recibe la mitad
+        if (p.id === partnerId) return { ...p, score: p.score + share };
+        return p;
+      }),
+    }));
+  },
+
+  // ─── applyFeaturingBonus ────────────────────────────────────────────────────
+  // FIX 100/100: el partner recibe EXACTAMENTE los mismos puntos que el ganador.
+  // El ganador ya tiene sus puntos del backend; aquí solo sumamos al partner.
+  // Se llama desde handleAwardPoints en game.tsx justo después de awardAllianceBonus.
+  applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => {
+    const partner = get().players.find((p) => p.id === partnerId);
+    if (!partner) return;
+
+    console.log(
+      `🎤 Featuring 100/100: ${partner.name} recibe ${pointsAwarded} pts (igual que el ganador)`,
+    );
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === partnerId ? { ...p, score: p.score + pointsAwarded } : p,
+      ),
+    }));
   },
 
   syncPlayersFromBackend: (
@@ -399,8 +371,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       availableTokens: number[];
     }>,
   ) => {
-    console.log('🔄 Syncing players from backend:', backendPlayers);
-
     set((state) => {
       const updatedPlayers = state.players.map((localPlayer, index) => {
         const backendPlayer =
@@ -412,15 +382,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           ) || backendPlayers[index];
 
         if (backendPlayer) {
-          console.log(
-            `   ${localPlayer.name}: score ${localPlayer.score} → ${backendPlayer.score}`,
-          );
-          console.log(
-            `   Tokens: [${localPlayer.availableTokens.join(',')}] → [${
-              backendPlayer.availableTokens?.join(',') || 'no data'
-            }]`,
-          );
-
           return {
             ...localPlayer,
             score: backendPlayer.score || localPlayer.score,
@@ -429,40 +390,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           };
         }
 
-        console.log(`   ⚠️ No backend data for ${localPlayer.name}`);
         return localPlayer;
       });
 
-      console.log(
-        '🔄 Players after sync:',
-        updatedPlayers.map(
-          (p) =>
-            `${p.name}: score=${p.score}, tokens=[${p.availableTokens.join(',')}]`,
-        ),
-      );
-
       return { players: updatedPlayers };
     });
-  },
-
-  awardAllianceBonus: (winnerId: string, pointsAwarded: number) => {
-    const alliance = get().getPlayerAlliance(winnerId);
-    if (!alliance) return;
-
-    const partnerId =
-      alliance.player1Id === winnerId ? alliance.player2Id : alliance.player1Id;
-
-    const bonus = Math.floor(pointsAwarded / 2);
-    const partner = get().players.find((p) => p.id === partnerId);
-
-    if (!partner) return;
-
-    console.log(`🤝 Alliance bonus: ${partner.name} recibe ${bonus} pts`);
-
-    set((state: { players: any[] }) => ({
-      players: state.players.map((p) =>
-        p.id === partnerId ? { ...p, score: p.score + bonus } : p,
-      ),
-    }));
   },
 });
