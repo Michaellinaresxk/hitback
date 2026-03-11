@@ -51,10 +51,6 @@ export default function PlayerScoreboard({
   const leader = sortedPlayers[0];
   const isGameWon = leader && leader.score >= SCORE_TO_WIN;
 
-  // ═══════════════════════════════════════════════════════════════════════════
-  // HELPERS
-  // ═══════════════════════════════════════════════════════════════════════════
-
   const getPositionStyle = (index: number) => {
     switch (index) {
       case 0:
@@ -92,9 +88,7 @@ export default function PlayerScoreboard({
   };
 
   const handleUsePowerCard = (playerId: string, cardId: string) => {
-    if (onUsePowerCard && canUsePowerCards) {
-      onUsePowerCard(playerId, cardId);
-    }
+    if (onUsePowerCard && canUsePowerCards) onUsePowerCard(playerId, cardId);
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -135,6 +129,9 @@ export default function PlayerScoreboard({
               {player.isFrozen && (
                 <Text style={styles.compactFrozenText}>⏸️</Text>
               )}
+              {player.bSideActive && (
+                <Text style={styles.compactBSideText}>🎶</Text>
+              )}
             </View>
           ))}
         </ScrollView>
@@ -148,27 +145,25 @@ export default function PlayerScoreboard({
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🏆 Puntuaciones</Text>
         <Text style={styles.headerSubtitle}>Meta: {SCORE_TO_WIN} puntos</Text>
       </View>
 
-      {/* Lista de Jugadores */}
       <View style={styles.playersList}>
         {sortedPlayers.map((player, index) => {
           const availablePowerCards = getAvailablePowerCards(player);
           const hasPowerCards = availablePowerCards.length > 0;
           const isFrozen = player.isFrozen ?? false;
 
-          // ── Featuring ──────────────────────────────────────────────────
           const isFeaturingHolder = featuringPlayerId === player.id;
           const isFeaturingTarget = featuringTargetId === player.id;
           const isInFeaturing = isFeaturingHolder || isFeaturingTarget;
 
-          // ── Alliance ───────────────────────────────────────────────────
           const alliance = getPlayerAlliance(player.id);
           const isInAlliance = alliance !== null;
+
+          const isBSide = player.bSideActive ?? false;
 
           return (
             <TouchableOpacity
@@ -177,7 +172,6 @@ export default function PlayerScoreboard({
                 if (!onFreezePlayer && !onFeaturingPlayer) return;
 
                 if (isInFeaturing) {
-                  // Solo el portador puede cancelar el featuring
                   if (isFeaturingHolder) onFeaturingPlayer?.(player.id);
                   return;
                 }
@@ -211,6 +205,7 @@ export default function PlayerScoreboard({
                   styles.playerCardWinner,
                 isFrozen && styles.playerCardFrozen,
                 isInFeaturing && styles.playerCardFeaturing,
+                isBSide && styles.playerCardBSide,
               ]}
             >
               {/* Posición */}
@@ -229,6 +224,7 @@ export default function PlayerScoreboard({
                       player.isCurrentTurn && styles.playerNameActive,
                       isFrozen && styles.playerNameFrozen,
                       isInFeaturing && styles.playerNameFeaturing,
+                      isBSide && styles.playerNameBSide,
                     ]}
                     numberOfLines={1}
                   >
@@ -250,7 +246,6 @@ export default function PlayerScoreboard({
                       <Text style={styles.freezeBadgeText}>⏸️ PAUSA</Text>
                     </View>
                   )}
-                  {/* ── FEATURING badge ── */}
                   {isInFeaturing && (
                     <View
                       style={[
@@ -263,12 +258,17 @@ export default function PlayerScoreboard({
                       </Text>
                     </View>
                   )}
-                  {/* ── ALLIANCE badge ── */}
                   {isInAlliance && alliance && (
                     <View style={styles.allianceBadge}>
                       <Text style={styles.allianceBadgeText}>
                         🤝 {alliance.roundsLeft}R
                       </Text>
+                    </View>
+                  )}
+                  {/* ── B-SIDE badge ── */}
+                  {isBSide && (
+                    <View style={styles.bSideBadge}>
+                      <Text style={styles.bSideBadgeText}>🎶 B-SIDE +1</Text>
                     </View>
                   )}
                 </View>
@@ -282,6 +282,7 @@ export default function PlayerScoreboard({
                       index === 0 && styles.progressBarLeader,
                       isFrozen && styles.progressBarFrozen,
                       isInFeaturing && styles.progressBarFeaturing,
+                      isBSide && styles.progressBarBSide,
                     ]}
                   />
                 </View>
@@ -312,6 +313,14 @@ export default function PlayerScoreboard({
                         <Text style={styles.statText}>
                           ⚡ {availablePowerCards.length} carta
                           {availablePowerCards.length > 1 ? 's' : ''}
+                        </Text>
+                      </View>
+                    )}
+                    {/* Contador lossStreak visible en debug */}
+                    {(player.lossStreak ?? 0) > 0 && !isBSide && (
+                      <View style={styles.statItem}>
+                        <Text style={styles.statText}>
+                          📉 {player.lossStreak} sin puntuar
                         </Text>
                       </View>
                     )}
@@ -368,6 +377,7 @@ export default function PlayerScoreboard({
                       index === 0 && styles.scoreValueLeader,
                       isFrozen && styles.scoreValueFrozen,
                       isInFeaturing && styles.scoreValueFeaturing,
+                      isBSide && styles.scoreValueBSide,
                     ]}
                   >
                     {player.score}
@@ -395,7 +405,6 @@ export default function PlayerScoreboard({
         })}
       </View>
 
-      {/* Footer ganador */}
       {highlightWinner && isGameWon && (
         <View style={styles.winnerBanner}>
           <Text style={styles.winnerText}>
@@ -433,7 +442,6 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
   playersList: { gap: 10 },
 
-  // ── Player Card ──────────────────────────────────────────────────────
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -460,8 +468,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(168, 85, 247, 0.5)',
     backgroundColor: 'rgba(168, 85, 247, 0.08)',
   },
+  playerCardBSide: {
+    borderColor: 'rgba(234, 179, 8, 0.45)',
+    backgroundColor: 'rgba(234, 179, 8, 0.06)',
+  },
 
-  // ── Position ─────────────────────────────────────────────────────────
   firstPlace: {
     borderColor: 'rgba(245, 158, 11, 0.3)',
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
@@ -475,6 +486,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180, 83, 9, 0.05)',
   },
   otherPlace: {},
+
   positionContainer: {
     width: 36,
     height: 36,
@@ -486,7 +498,6 @@ const styles = StyleSheet.create({
   },
   positionText: { fontSize: 16 },
 
-  // ── Player Info ──────────────────────────────────────────────────────
   playerInfo: { flex: 1, marginRight: 12 },
   playerNameRow: {
     flexDirection: 'row',
@@ -499,8 +510,8 @@ const styles = StyleSheet.create({
   playerNameActive: { color: '#60A5FA' },
   playerNameFrozen: { color: '#475569', textDecorationLine: 'line-through' },
   playerNameFeaturing: { color: '#C084FC' },
+  playerNameBSide: { color: '#FCD34D' },
 
-  // ── Badges ───────────────────────────────────────────────────────────
   turnIndicator: {
     backgroundColor: '#3B82F6',
     paddingHorizontal: 6,
@@ -513,6 +524,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+
   boostBadge: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 8,
@@ -520,6 +532,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   boostBadgeText: { fontSize: 11, fontWeight: '800', color: '#000000' },
+
   freezeBadge: {
     backgroundColor: '#1E293B',
     paddingHorizontal: 6,
@@ -534,6 +547,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     letterSpacing: 0.5,
   },
+
   featuringBadge: {
     backgroundColor: 'rgba(168, 85, 247, 0.15)',
     paddingHorizontal: 6,
@@ -552,6 +566,7 @@ const styles = StyleSheet.create({
     color: '#A855F7',
     letterSpacing: 0.5,
   },
+
   allianceBadge: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
     paddingHorizontal: 6,
@@ -567,7 +582,21 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // ── Progress Bar ─────────────────────────────────────────────────────
+  bSideBadge: {
+    backgroundColor: 'rgba(234, 179, 8, 0.15)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(234, 179, 8, 0.4)',
+  },
+  bSideBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FCD34D',
+    letterSpacing: 0.5,
+  },
+
   progressBarContainer: {
     height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -579,13 +608,12 @@ const styles = StyleSheet.create({
   progressBarLeader: { backgroundColor: '#F59E0B' },
   progressBarFrozen: { backgroundColor: '#334155' },
   progressBarFeaturing: { backgroundColor: '#A855F7' },
+  progressBarBSide: { backgroundColor: '#EAB308' },
 
-  // ── Detailed Stats ────────────────────────────────────────────────────
   detailedStats: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statText: { fontSize: 11, color: '#94A3B8' },
 
-  // ── PowerCards ────────────────────────────────────────────────────────
   powerCardsSection: {
     marginTop: 8,
     paddingTop: 8,
@@ -628,13 +656,13 @@ const styles = StyleSheet.create({
   },
   activeText: { fontSize: 10, fontWeight: 'bold', color: '#000' },
 
-  // ── Score Container ───────────────────────────────────────────────────
   scoreContainer: { alignItems: 'flex-end' },
   scoreBox: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 4 },
   scoreValue: { fontSize: 24, fontWeight: '800', color: '#F8FAFC' },
   scoreValueLeader: { color: '#F59E0B' },
   scoreValueFrozen: { color: '#475569' },
   scoreValueFeaturing: { color: '#C084FC' },
+  scoreValueBSide: { color: '#FCD34D' },
   scoreLabel: {
     fontSize: 11,
     color: '#94A3B8',
@@ -645,7 +673,6 @@ const styles = StyleSheet.create({
   tokensValue: { fontSize: 13, fontWeight: '600', color: '#F59E0B' },
   tokensValueFrozen: { color: '#475569' },
 
-  // ── Winner Banner ─────────────────────────────────────────────────────
   winnerBanner: {
     marginTop: 16,
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -662,7 +689,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // ── Compact Mode ──────────────────────────────────────────────────────
   compactContainer: { paddingVertical: 8, paddingHorizontal: 16 },
   compactCard: {
     flexDirection: 'row',
@@ -699,4 +725,5 @@ const styles = StyleSheet.create({
   },
   compactBoostText: { fontSize: 10, fontWeight: '800', color: '#000' },
   compactFrozenText: { fontSize: 12 },
+  compactBSideText: { fontSize: 12 },
 });

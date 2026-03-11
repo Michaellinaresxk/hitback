@@ -37,6 +37,7 @@ import { MainAction } from '@/components/game/gameScreen/MainAction';
 import PointsAwardModal from '@/components/game/gameScreen/PointsAwardModal';
 import AllianceModal from '@/components/modal/AllianceModal';
 import FeaturingModal from '@/components/modal/FeaturingModal';
+import LossStreakModal from '@/components/modal/LossStreakModal';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -66,6 +67,14 @@ export default function GameScreen() {
   const featuringTargetId = useGameStore((state) => state.featuringTargetId);
   const activateFeaturing = useGameStore((state) => state.activateFeaturing);
   const clearFeaturing = useGameStore((state) => state.clearFeaturing);
+
+  const updateLossStreaks = useGameStore((state) => state.updateLossStreaks);
+  const applyBSideBonus = useGameStore((state) => state.applyBSideBonus);
+
+  const [bSideNotification, setBSideNotification] = useState<{
+    visible: boolean;
+    playerNames: string[];
+  } | null>(null);
 
   // 2. Estado local para el modal:
   const [showFeaturingModal, setShowFeaturingModal] = useState(false);
@@ -419,13 +428,20 @@ export default function GameScreen() {
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
 
+    // ✅ B-SIDE — nadie ganó → todos suman lossStreak
+    const newlyActivated = updateLossStreaks(null);
+    if (newlyActivated.length > 0) {
+      const names = newlyActivated
+        .map((id) => players.find((p) => p.id === id)?.name)
+        .filter((name): name is string => !!name);
+      setBSideNotification({ visible: true, playerNames: names });
+    }
+
     clearFeaturing();
     clearBets();
     setShowPointsModal(false);
 
-    setTimeout(() => {
-      advanceToNextTurn();
-    }, 2000);
+    setTimeout(() => advanceToNextTurn(), 2000);
   }, [
     revealAnswer,
     players,
@@ -434,6 +450,7 @@ export default function GameScreen() {
     showInfo,
     showWarning,
     advanceToNextTurn,
+    updateLossStreaks, // ← agregar a dependencias
   ]);
 
   const applyFeaturingBonus = useGameStore(
@@ -466,15 +483,9 @@ export default function GameScreen() {
         );
 
         // 2️⃣ Alliance 50/50
-        // Funciona en ambas direcciones — getPlayerAlliance es simétrico.
-        // Sustrae 50% al ganador (queda con 50%) y da 50% al partner.
-        if (pts) {
-          awardAllianceBonus(playerId, pts);
-        }
+        if (pts) awardAllianceBonus(playerId, pts);
 
         // 3️⃣ Featuring 100/100
-        // Funciona en ambas direcciones — playerId puede ser holder o target.
-        // El partner recibe los mismos puntos. Uso único → clearFeaturing().
         if (pts && featuringPlayerId && featuringTargetId) {
           const isInFeaturing =
             playerId === featuringPlayerId || playerId === featuringTargetId;
@@ -492,12 +503,26 @@ export default function GameScreen() {
               '🎤 ¡Featuring!',
               `${partner?.name ?? 'Partner'} también recibe ${pts} pts`,
             );
-
             clearFeaturing();
           }
         }
 
-        // 4️⃣ Combo flow
+        // 4️⃣ B-SIDE comeback +1
+        const bSideApplied = applyBSideBonus(playerId);
+        if (bSideApplied) {
+          showSuccess('🎶 ¡B-SIDE!', `${player.name} recupera con +1 bonus`);
+        }
+
+        // 5️⃣ Actualizar lossStreaks — el ganador resetea, el resto suma
+        const newlyActivated = updateLossStreaks(playerId);
+        if (newlyActivated.length > 0) {
+          const names = newlyActivated
+            .map((id) => players.find((p) => p.id === id)?.name)
+            .filter((name): name is string => !!name);
+          setBSideNotification({ visible: true, playerNames: names });
+        }
+
+        // 6️⃣ Combo flow
         if (result.comboStatus) {
           isPowerCardProcessingRef.current = false;
           isAdvancingTurnRef.current = false;
@@ -517,7 +542,7 @@ export default function GameScreen() {
           return;
         }
 
-        // 5️⃣ Game over
+        // 7️⃣ Game over
         if (result.gameOver && result.gameWinner) {
           setTimeout(() => setShowGameEndModal(true), 1500);
           setShowPointsModal(false);
@@ -538,6 +563,8 @@ export default function GameScreen() {
       advanceToNextTurn,
       awardAllianceBonus,
       applyFeaturingBonus,
+      applyBSideBonus,
+      updateLossStreaks,
       featuringPlayerId,
       featuringTargetId,
       clearFeaturing,
@@ -887,6 +914,12 @@ export default function GameScreen() {
         onCardScanned={handlePowerCardScanned}
         playerName={comboFlowState.playerName || ''}
         comboType={comboFlowState.comboName || ''}
+      />
+
+      <LossStreakModal
+        visible={bSideNotification?.visible ?? false}
+        playerNames={bSideNotification?.playerNames ?? []}
+        onClose={() => setBSideNotification(null)}
       />
     </View>
   );

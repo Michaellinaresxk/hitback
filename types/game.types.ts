@@ -1,12 +1,8 @@
 // types/game.types.ts - HITBACK Game Types
 
-// 🎯 Card Types
 export type CardType = 'song' | 'artist' | 'decade' | 'lyrics' | 'challenge';
-
-// 🎮 Difficulty Levels
 export type Difficulty = 'easy' | 'medium' | 'hard' | 'expert';
 
-// 🎵 Track
 export interface Track {
   id: string;
   title: string;
@@ -24,7 +20,6 @@ export interface Track {
   questions?: Record<CardType, QuestionData>;
 }
 
-// ❓ Question Data
 export interface QuestionData {
   question: string;
   answer: string;
@@ -33,7 +28,6 @@ export interface QuestionData {
   challengeType?: 'dance' | 'sing' | 'imitate' | 'performance' | 'rap' | 'pose';
 }
 
-// 👤 Player
 export interface Player {
   id: string;
   name: string;
@@ -49,7 +43,6 @@ export interface Player {
   isActive: boolean;
 }
 
-// ⚡ Power Card
 export interface PowerCard {
   id: string;
   type: PowerCardType;
@@ -69,7 +62,6 @@ export type PowerCardType =
   | 'PEEK'
   | 'PRECISION';
 
-// 🃏 Current Card in Game
 export interface CurrentCard {
   qrCode: string;
   track: {
@@ -111,7 +103,6 @@ export interface CurrentCard {
   winnerId?: string;
 }
 
-// 💰 Player Bet
 export interface PlayerBet {
   playerId: string;
   playerName: string;
@@ -120,7 +111,6 @@ export interface PlayerBet {
   potentialPoints: number;
 }
 
-// 🎮 Game State
 export interface GameState {
   id: string;
   status: GameStatus;
@@ -136,7 +126,6 @@ export interface GameState {
 }
 
 export type GameStatus = 'setup' | 'playing' | 'paused' | 'finished';
-
 export type GamePhase =
   | 'idle'
   | 'scanning'
@@ -146,7 +135,6 @@ export type GamePhase =
   | 'answer'
   | 'results';
 
-// ⚙️ Game Settings
 export interface GameSettings {
   maxPlayers: number;
   minPlayers: number;
@@ -160,7 +148,6 @@ export interface GameSettings {
   allowBetting: boolean;
 }
 
-// 🏆 Game Result
 export interface GameResult {
   winnerId: string;
   winnerName: string;
@@ -197,26 +184,26 @@ export interface BackendSlice {
   syncWithBackend: () => Promise<void>;
 }
 
-// ─── PlayerSlice — acciones que viven en playerSlice.ts ───────────────────────
 export interface PlayerSlice {
-  /**
-   * Alliance 50/50
-   * Llama DESPUÉS de syncPlayersFromBackend.
-   * Deduce 50% al ganador y lo da al partner.
-   * Funciona en ambas direcciones (cualquiera de los dos puede responder).
-   */
   awardAllianceBonus: (winnerId: string, pointsAwarded: number) => void;
+  applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
+  toggleFreezePlayer: (playerId: string) => void;
 
   /**
-   * Featuring 100/100
-   * Llama DESPUÉS de awardAllianceBonus.
-   * El partner recibe exactamente los mismos puntos que el ganador.
-   * clearFeaturing() se llama desde game.tsx justo después.
+   * Actualiza lossStreak al final de cada ronda.
+   * - winnerId: el jugador que ganó → su streak se resetea a 0 y bSideActive a false
+   * - null (nadie ganó) → todos suman +1 al streak
+   * Cuando un jugador alcanza exactamente 3, se activa bSideActive = true.
+   * Retorna los IDs de jugadores que recién activaron B-SIDE (para la notificación).
    */
-  applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
+  updateLossStreaks: (winnerId: string | null) => string[];
 
-  /** Activa el freeze (❄️) de un jugador — su próximo turno será saltado */
-  toggleFreezePlayer: (playerId: string) => void;
+  /**
+   * Aplica el +1 comeback bonus al ganador si tenía bSideActive.
+   * Llama DESPUÉS de syncPlayersFromBackend y alliance/featuring bonuses.
+   * Limpia bSideActive y resetea lossStreak.
+   */
+  applyBSideBonus: (winnerId: string) => boolean;
 }
 
 export type GameStore = GameState & BackendSlice & AllianceSlice & PlayerSlice;
