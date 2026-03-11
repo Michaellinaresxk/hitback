@@ -30,11 +30,14 @@ interface PointsAwardModalProps {
     id: string;
     name: string;
     currentBet: number;
-    isFrozen?: boolean; // ← CAMBIO 1: agregar al tipo
+    isFrozen?: boolean;
   }>;
   onAwardPoints: (playerId: string) => void;
   onWrongAnswer: () => void;
   onClose?: () => void;
+  // ── STOP-BLAST ──────────────────────────────────────────────────────────
+  stopBlastActive?: boolean;
+  stopBlastHolderId?: string | null;
 }
 
 const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
@@ -44,6 +47,8 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
   onAwardPoints,
   onWrongAnswer,
   onClose,
+  stopBlastActive = false,
+  stopBlastHolderId = null,
 }) => {
   const getBettingMultiplier = (amount: number): number => {
     return gameSessionService.getBettingMultiplier(amount);
@@ -52,6 +57,12 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
   if (!flowState.currentRound) return null;
 
   const { question } = flowState.currentRound;
+
+  // Si STOP-BLAST activo → solo el holder puede recibir puntos
+  const eligiblePlayers =
+    stopBlastActive && stopBlastHolderId
+      ? players.filter((p) => p.id === stopBlastHolderId)
+      : players;
 
   return (
     <Modal
@@ -67,7 +78,16 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
             <Text style={styles.modalTitle}>{question.type.toUpperCase()}</Text>
           </View>
 
-          {/* ✅ RESPUESTA - SIEMPRE VISIBLE */}
+          {/* STOP-BLAST banner */}
+          {stopBlastActive && (
+            <View style={styles.stopBlastBanner}>
+              <Text style={styles.stopBlastBannerText}>
+                🛑 STOP-BLAST activo — solo un jugador puede ganar
+              </Text>
+            </View>
+          )}
+
+          {/* Respuesta */}
           <View style={styles.answerContainer}>
             <Text style={styles.answerText}>
               {flowState.correctAnswer ||
@@ -89,16 +109,17 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
           </Text>
 
           <FlatList
-            data={players}
+            data={eligiblePlayers}
             keyExtractor={(item) => item.id}
             renderItem={({ item: player }) => {
-              const frozen = player.isFrozen ?? false; // ← CAMBIO 2
+              const frozen = player.isFrozen ?? false;
 
               return (
                 <TouchableOpacity
                   style={[
                     styles.playerButton,
-                    frozen && styles.playerButtonFrozen, // ← CAMBIO 3
+                    frozen && styles.playerButtonFrozen,
+                    stopBlastActive && styles.playerButtonStopBlast,
                   ]}
                   onPress={() => onAwardPoints(player.id)}
                   disabled={frozen}
@@ -111,6 +132,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                     ]}
                   >
                     {frozen ? '⏸️  ' : ''}
+                    {stopBlastActive ? '🛑  ' : ''}
                     {player.name}
                   </Text>
                   {player.currentBet > 0 && !frozen && (
@@ -171,11 +193,45 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     textAlign: 'center',
   },
+
+  // ── STOP-BLAST banner ──────────────────────────────────────────────────
+  stopBlastBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.35)',
+  },
+  stopBlastBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F87171',
+    textAlign: 'center',
+  },
+
+  answerContainer: {
+    backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#10B981',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
+  },
   answerText: {
     fontSize: 18,
     fontWeight: '700',
     color: '#10B981',
     textAlign: 'center',
+  },
+  trackInfoText: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   pointsLabel: {
     fontSize: 14,
@@ -191,15 +247,36 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignItems: 'center',
   },
+  playerButtonStopBlast: {
+    backgroundColor: '#DC2626',
+    borderWidth: 2,
+    borderColor: '#EF4444',
+  },
+  playerButtonFrozen: {
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    opacity: 0.5,
+  },
   playerButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
   },
+  playerButtonTextFrozen: {
+    color: '#475569',
+    textDecorationLine: 'line-through',
+  },
   playerBetIndicator: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 4,
+  },
+  frozenLabel: {
+    fontSize: 11,
+    color: '#475569',
+    marginTop: 3,
+    fontStyle: 'italic',
   },
   noWinnerButton: {
     backgroundColor: '#64748B',
@@ -212,39 +289,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
-  },
-  answerContainer: {
-    backgroundColor: 'rgba(16, 185, 129, 0.15)',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#10B981',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.3)',
-  },
-  trackInfoText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  // ── Freeze ───────────────────────────────────────────────────────────────
-  playerButtonFrozen: {
-    backgroundColor: '#1E293B',
-    borderWidth: 1,
-    borderColor: '#334155',
-    opacity: 0.5,
-  },
-  playerButtonTextFrozen: {
-    color: '#475569',
-    textDecorationLine: 'line-through',
-  },
-  frozenLabel: {
-    fontSize: 11,
-    color: '#475569',
-    marginTop: 3,
-    fontStyle: 'italic',
   },
 });
 

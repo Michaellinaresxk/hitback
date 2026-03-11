@@ -43,7 +43,7 @@ export default function GameScreen() {
   const { t } = useTranslation();
 
   // Store
-  const players = useGameStore((state) => state.players);
+  const players = useGameStore((state) => state.players ?? []);
   const isActive = useGameStore((state) => state.isActive);
   const timeLeft = useGameStore((state) => state.timeLeft);
   const showGameEndModal = useGameStore((state) => state.showGameEndModal);
@@ -88,6 +88,10 @@ export default function GameScreen() {
   const [showAllianceModal, setShowAllianceModal] = useState(false);
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
+
+  const stopBlastActive = useGameStore((state) => state.stopBlastActive);
+  const stopBlastHolderId = useGameStore((state) => state.stopBlastHolderId);
+  const activateStopBlast = useGameStore((state) => state.activateStopBlast);
 
   // Game Flow
   const {
@@ -762,6 +766,13 @@ export default function GameScreen() {
     [toggleFreezePlayer],
   );
 
+  const handleStopBlast = useCallback(
+    (playerId: string) => {
+      activateStopBlast(playerId);
+    },
+    [activateStopBlast],
+  );
+
   // Early returns — SIEMPRE después de todos los hooks
   if (!isActive && !showGameEndModal) {
     return <GameSetupScreen />;
@@ -840,6 +851,8 @@ export default function GameScreen() {
           }
           onFreezePlayer={handleFreezePlayer}
           onFeaturingPlayer={handleFeaturingPlayer}
+          onStopBlast={handleStopBlast}
+          stopBlastHolderId={stopBlastHolderId}
           featuringPlayerId={featuringPlayerId}
           featuringTargetId={featuringTargetId}
         />
@@ -852,6 +865,8 @@ export default function GameScreen() {
         onAwardPoints={handleAwardPoints}
         onWrongAnswer={handleWrongAnswer}
         onClose={() => setShowPointsModal(false)}
+        stopBlastActive={stopBlastActive}
+        stopBlastHolderId={stopBlastHolderId}
       />
       <BettingModal
         visible={showBettingModal}

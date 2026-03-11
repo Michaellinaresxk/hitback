@@ -25,6 +25,8 @@ interface PlayerScoreboardProps {
   canUsePowerCards?: boolean;
   onFreezePlayer?: (playerId: string) => void;
   onFeaturingPlayer?: (playerId: string) => void;
+  onStopBlast?: (playerId: string) => void;
+  stopBlastHolderId?: string | null;
   featuringPlayerId?: string | null;
   featuringTargetId?: string | null;
 }
@@ -42,6 +44,8 @@ export default function PlayerScoreboard({
   canUsePowerCards = true,
   onFreezePlayer,
   onFeaturingPlayer,
+  onStopBlast,
+  stopBlastHolderId,
   featuringPlayerId,
   featuringTargetId,
 }: PlayerScoreboardProps) {
@@ -50,6 +54,13 @@ export default function PlayerScoreboard({
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const leader = sortedPlayers[0];
   const isGameWon = leader && leader.score >= SCORE_TO_WIN;
+
+  // Si hay un holder activo, STOP-BLAST está activo
+  const stopBlastActive = !!stopBlastHolderId;
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // HELPERS
+  // ═══════════════════════════════════════════════════════════════════════
 
   const getPositionStyle = (index: number) => {
     switch (index) {
@@ -91,85 +102,120 @@ export default function PlayerScoreboard({
     if (onUsePowerCard && canUsePowerCards) onUsePowerCard(playerId, cardId);
   };
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
   // MODO COMPACT
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
 
   if (compact) {
     return (
       <View style={styles.compactContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {sortedPlayers.map((player, index) => (
-            <View
-              key={player.id}
-              style={[
-                styles.compactCard,
-                player.isCurrentTurn && styles.compactCardActive,
-                index === 0 && styles.compactCardLeader,
-                player.isFrozen && styles.compactCardFrozen,
-              ]}
-            >
-              <Text style={styles.compactPosition}>
-                {getPositionIcon(index)}
-              </Text>
-              <Text style={styles.compactName} numberOfLines={1}>
-                {player.name}
-              </Text>
-              <Text style={styles.compactScore}>{player.score}</Text>
-              {getAvailablePowerCards(player).length > 0 && (
-                <Text style={styles.compactPowerCard}>
-                  ⚡{getAvailablePowerCards(player).length}
+          {sortedPlayers.map((player, index) => {
+            const isStopBlastHolder = stopBlastHolderId === player.id;
+            const isStopBlastBlocked = stopBlastActive && !isStopBlastHolder;
+            return (
+              <View
+                key={player.id}
+                style={[
+                  styles.compactCard,
+                  player.isCurrentTurn && styles.compactCardActive,
+                  index === 0 && styles.compactCardLeader,
+                  player.isFrozen && styles.compactCardFrozen,
+                  isStopBlastHolder && styles.compactCardStopBlastHolder,
+                  isStopBlastBlocked && styles.compactCardFrozen,
+                ]}
+              >
+                <Text style={styles.compactPosition}>
+                  {getPositionIcon(index)}
                 </Text>
-              )}
-              {player.boostActive && (
-                <View style={styles.compactBoostBadge}>
-                  <Text style={styles.compactBoostText}>x2</Text>
-                </View>
-              )}
-              {player.isFrozen && (
-                <Text style={styles.compactFrozenText}>⏸️</Text>
-              )}
-              {player.bSideActive && (
-                <Text style={styles.compactBSideText}>🎶</Text>
-              )}
-            </View>
-          ))}
+                <Text style={styles.compactName} numberOfLines={1}>
+                  {player.name}
+                </Text>
+                <Text style={styles.compactScore}>{player.score}</Text>
+                {getAvailablePowerCards(player).length > 0 && (
+                  <Text style={styles.compactPowerCard}>
+                    ⚡{getAvailablePowerCards(player).length}
+                  </Text>
+                )}
+                {player.boostActive && (
+                  <View style={styles.compactBoostBadge}>
+                    <Text style={styles.compactBoostText}>x2</Text>
+                  </View>
+                )}
+                {player.isFrozen && (
+                  <Text style={styles.compactFrozenText}>⏸️</Text>
+                )}
+                {player.bSideActive && (
+                  <Text style={styles.compactBSideText}>🎶</Text>
+                )}
+                {isStopBlastHolder && (
+                  <Text style={styles.compactBSideText}>🛑</Text>
+                )}
+              </View>
+            );
+          })}
         </ScrollView>
       </View>
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
   // MODO NORMAL
-  // ═══════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════════
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🏆 Puntuaciones</Text>
         <Text style={styles.headerSubtitle}>Meta: {SCORE_TO_WIN} puntos</Text>
       </View>
 
+      {/* Banner STOP-BLAST activo */}
+      {stopBlastActive && (
+        <View style={styles.stopBlastBanner}>
+          <Text style={styles.stopBlastBannerText}>
+            🛑 STOP-BLAST — solo{' '}
+            <Text style={styles.stopBlastBannerName}>
+              {players.find((p) => p.id === stopBlastHolderId)?.name}
+            </Text>{' '}
+            puede ganar esta ronda
+          </Text>
+        </View>
+      )}
+
+      {/* Lista de Jugadores */}
       <View style={styles.playersList}>
         {sortedPlayers.map((player, index) => {
           const availablePowerCards = getAvailablePowerCards(player);
           const hasPowerCards = availablePowerCards.length > 0;
           const isFrozen = player.isFrozen ?? false;
 
+          // ── STOP-BLAST ────────────────────────────────────────────────
+          const isStopBlastHolder = stopBlastHolderId === player.id;
+          // Bloqueado = stop blast activo pero este jugador NO es el holder
+          const isStopBlastBlocked = stopBlastActive && !isStopBlastHolder;
+
+          // ── Featuring ─────────────────────────────────────────────────
           const isFeaturingHolder = featuringPlayerId === player.id;
           const isFeaturingTarget = featuringTargetId === player.id;
           const isInFeaturing = isFeaturingHolder || isFeaturingTarget;
 
+          // ── Alliance ──────────────────────────────────────────────────
           const alliance = getPlayerAlliance(player.id);
           const isInAlliance = alliance !== null;
 
           const isBSide = player.bSideActive ?? false;
 
+          // Visual bloqueado = frozen O bloqueado por stop-blast
+          const isVisuallyBlocked = isFrozen || isStopBlastBlocked;
+
           return (
             <TouchableOpacity
               key={player.id}
               onPress={() => {
-                if (!onFreezePlayer && !onFeaturingPlayer) return;
+                if (!onFreezePlayer && !onFeaturingPlayer && !onStopBlast)
+                  return;
 
                 if (isInFeaturing) {
                   if (isFeaturingHolder) onFeaturingPlayer?.(player.id);
@@ -191,10 +237,14 @@ export default function PlayerScoreboard({
                     text: '🎤 Featuring',
                     onPress: () => onFeaturingPlayer?.(player.id),
                   },
+                  {
+                    text: '🛑 STOP-BLAST',
+                    onPress: () => onStopBlast?.(player.id),
+                  },
                   { text: 'Cancelar', style: 'cancel' },
                 ]);
               }}
-              activeOpacity={onFreezePlayer ? 0.75 : 1}
+              activeOpacity={0.75}
               style={[
                 styles.playerCard,
                 getPositionStyle(index),
@@ -206,6 +256,9 @@ export default function PlayerScoreboard({
                 isFrozen && styles.playerCardFrozen,
                 isInFeaturing && styles.playerCardFeaturing,
                 isBSide && styles.playerCardBSide,
+                // STOP-BLAST — holder destacado, resto bloqueado
+                isStopBlastHolder && styles.playerCardStopBlastHolder,
+                isStopBlastBlocked && styles.playerCardStopBlastBlocked,
               ]}
             >
               {/* Posición */}
@@ -222,9 +275,10 @@ export default function PlayerScoreboard({
                     style={[
                       styles.playerName,
                       player.isCurrentTurn && styles.playerNameActive,
-                      isFrozen && styles.playerNameFrozen,
+                      isVisuallyBlocked && styles.playerNameFrozen,
                       isInFeaturing && styles.playerNameFeaturing,
                       isBSide && styles.playerNameBSide,
+                      isStopBlastHolder && styles.playerNameStopBlastHolder,
                     ]}
                     numberOfLines={1}
                   >
@@ -265,10 +319,24 @@ export default function PlayerScoreboard({
                       </Text>
                     </View>
                   )}
-                  {/* ── B-SIDE badge ── */}
                   {isBSide && (
                     <View style={styles.bSideBadge}>
                       <Text style={styles.bSideBadgeText}>🎶 B-SIDE +1</Text>
+                    </View>
+                  )}
+                  {/* ── STOP-BLAST badges ── */}
+                  {isStopBlastHolder && (
+                    <View style={styles.stopBlastHolderBadge}>
+                      <Text style={styles.stopBlastHolderBadgeText}>
+                        🛑 STOP-BLAST
+                      </Text>
+                    </View>
+                  )}
+                  {isStopBlastBlocked && (
+                    <View style={styles.stopBlastBlockedBadge}>
+                      <Text style={styles.stopBlastBlockedBadgeText}>
+                        🔇 BLOQUEADO
+                      </Text>
                     </View>
                   )}
                 </View>
@@ -280,9 +348,10 @@ export default function PlayerScoreboard({
                       styles.progressBar,
                       { width: `${getProgressPercentage(player.score)}%` },
                       index === 0 && styles.progressBarLeader,
-                      isFrozen && styles.progressBarFrozen,
+                      isVisuallyBlocked && styles.progressBarFrozen,
                       isInFeaturing && styles.progressBarFeaturing,
                       isBSide && styles.progressBarBSide,
+                      isStopBlastHolder && styles.progressBarStopBlast,
                     ]}
                   />
                 </View>
@@ -316,7 +385,6 @@ export default function PlayerScoreboard({
                         </Text>
                       </View>
                     )}
-                    {/* Contador lossStreak visible en debug */}
                     {(player.lossStreak ?? 0) > 0 && !isBSide && (
                       <View style={styles.statItem}>
                         <Text style={styles.statText}>
@@ -375,9 +443,10 @@ export default function PlayerScoreboard({
                     style={[
                       styles.scoreValue,
                       index === 0 && styles.scoreValueLeader,
-                      isFrozen && styles.scoreValueFrozen,
+                      isVisuallyBlocked && styles.scoreValueFrozen,
                       isInFeaturing && styles.scoreValueFeaturing,
                       isBSide && styles.scoreValueBSide,
+                      isStopBlastHolder && styles.scoreValueStopBlast,
                     ]}
                   >
                     {player.score}
@@ -388,12 +457,12 @@ export default function PlayerScoreboard({
                   <IconSymbol
                     name='bitcoinsign.circle.fill'
                     size={16}
-                    color={isFrozen ? '#475569' : '#F59E0B'}
+                    color={isVisuallyBlocked ? '#475569' : '#F59E0B'}
                   />
                   <Text
                     style={[
                       styles.tokensValue,
-                      isFrozen && styles.tokensValueFrozen,
+                      isVisuallyBlocked && styles.tokensValueFrozen,
                     ]}
                   >
                     {player.availableTokens?.length || player.tokens || 0}
@@ -405,6 +474,7 @@ export default function PlayerScoreboard({
         })}
       </View>
 
+      {/* Footer ganador */}
       {highlightWinner && isGameWon && (
         <View style={styles.winnerBanner}>
           <Text style={styles.winnerText}>
@@ -440,8 +510,31 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#F8FAFC' },
   headerSubtitle: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
+
+  // ── STOP-BLAST banner ─────────────────────────────────────────────────
+  stopBlastBanner: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
+  },
+  stopBlastBannerText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#F87171',
+    textAlign: 'center',
+  },
+  stopBlastBannerName: {
+    fontWeight: '800',
+    color: '#FECACA',
+  },
+
   playersList: { gap: 10 },
 
+  // ── Player Card ───────────────────────────────────────────────────────
   playerCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -472,7 +565,18 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(234, 179, 8, 0.45)',
     backgroundColor: 'rgba(234, 179, 8, 0.06)',
   },
+  playerCardStopBlastHolder: {
+    borderColor: '#EF4444',
+    borderWidth: 2,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+  },
+  playerCardStopBlastBlocked: {
+    opacity: 0.35,
+    borderColor: '#1E293B',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+  },
 
+  // ── Position ──────────────────────────────────────────────────────────
   firstPlace: {
     borderColor: 'rgba(245, 158, 11, 0.3)',
     backgroundColor: 'rgba(245, 158, 11, 0.08)',
@@ -486,7 +590,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(180, 83, 9, 0.05)',
   },
   otherPlace: {},
-
   positionContainer: {
     width: 36,
     height: 36,
@@ -498,6 +601,7 @@ const styles = StyleSheet.create({
   },
   positionText: { fontSize: 16 },
 
+  // ── Player Info ───────────────────────────────────────────────────────
   playerInfo: { flex: 1, marginRight: 12 },
   playerNameRow: {
     flexDirection: 'row',
@@ -511,7 +615,9 @@ const styles = StyleSheet.create({
   playerNameFrozen: { color: '#475569', textDecorationLine: 'line-through' },
   playerNameFeaturing: { color: '#C084FC' },
   playerNameBSide: { color: '#FCD34D' },
+  playerNameStopBlastHolder: { color: '#FCA5A5' },
 
+  // ── Badges ────────────────────────────────────────────────────────────
   turnIndicator: {
     backgroundColor: '#3B82F6',
     paddingHorizontal: 6,
@@ -524,7 +630,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-
   boostBadge: {
     backgroundColor: '#FFD700',
     paddingHorizontal: 8,
@@ -532,7 +637,6 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   boostBadgeText: { fontSize: 11, fontWeight: '800', color: '#000000' },
-
   freezeBadge: {
     backgroundColor: '#1E293B',
     paddingHorizontal: 6,
@@ -547,7 +651,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     letterSpacing: 0.5,
   },
-
   featuringBadge: {
     backgroundColor: 'rgba(168, 85, 247, 0.15)',
     paddingHorizontal: 6,
@@ -566,7 +669,6 @@ const styles = StyleSheet.create({
     color: '#A855F7',
     letterSpacing: 0.5,
   },
-
   allianceBadge: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
     paddingHorizontal: 6,
@@ -581,7 +683,6 @@ const styles = StyleSheet.create({
     color: '#60A5FA',
     letterSpacing: 0.5,
   },
-
   bSideBadge: {
     backgroundColor: 'rgba(234, 179, 8, 0.15)',
     paddingHorizontal: 6,
@@ -596,7 +697,36 @@ const styles = StyleSheet.create({
     color: '#FCD34D',
     letterSpacing: 0.5,
   },
+  stopBlastHolderBadge: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  stopBlastHolderBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#F87171',
+    letterSpacing: 0.5,
+  },
+  stopBlastBlockedBadge: {
+    backgroundColor: 'rgba(71, 85, 105, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#475569',
+  },
+  stopBlastBlockedBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
 
+  // ── Progress Bar ──────────────────────────────────────────────────────
   progressBarContainer: {
     height: 4,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
@@ -609,11 +739,14 @@ const styles = StyleSheet.create({
   progressBarFrozen: { backgroundColor: '#334155' },
   progressBarFeaturing: { backgroundColor: '#A855F7' },
   progressBarBSide: { backgroundColor: '#EAB308' },
+  progressBarStopBlast: { backgroundColor: '#EF4444' },
 
+  // ── Detailed Stats ────────────────────────────────────────────────────
   detailedStats: { flexDirection: 'row', gap: 12, flexWrap: 'wrap' },
   statItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   statText: { fontSize: 11, color: '#94A3B8' },
 
+  // ── PowerCards ────────────────────────────────────────────────────────
   powerCardsSection: {
     marginTop: 8,
     paddingTop: 8,
@@ -656,6 +789,7 @@ const styles = StyleSheet.create({
   },
   activeText: { fontSize: 10, fontWeight: 'bold', color: '#000' },
 
+  // ── Score Container ───────────────────────────────────────────────────
   scoreContainer: { alignItems: 'flex-end' },
   scoreBox: { flexDirection: 'row', alignItems: 'baseline', marginBottom: 4 },
   scoreValue: { fontSize: 24, fontWeight: '800', color: '#F8FAFC' },
@@ -663,6 +797,7 @@ const styles = StyleSheet.create({
   scoreValueFrozen: { color: '#475569' },
   scoreValueFeaturing: { color: '#C084FC' },
   scoreValueBSide: { color: '#FCD34D' },
+  scoreValueStopBlast: { color: '#F87171' },
   scoreLabel: {
     fontSize: 11,
     color: '#94A3B8',
@@ -673,6 +808,7 @@ const styles = StyleSheet.create({
   tokensValue: { fontSize: 13, fontWeight: '600', color: '#F59E0B' },
   tokensValueFrozen: { color: '#475569' },
 
+  // ── Winner Banner ─────────────────────────────────────────────────────
   winnerBanner: {
     marginTop: 16,
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
@@ -689,6 +825,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
+  // ── Compact Mode ──────────────────────────────────────────────────────
   compactContainer: { paddingVertical: 8, paddingHorizontal: 16 },
   compactCard: {
     flexDirection: 'row',
@@ -708,6 +845,7 @@ const styles = StyleSheet.create({
   },
   compactCardLeader: { borderColor: '#F59E0B' },
   compactCardFrozen: { opacity: 0.4, borderColor: '#334155' },
+  compactCardStopBlastHolder: { borderColor: '#EF4444', borderWidth: 2 },
   compactPosition: { fontSize: 14 },
   compactName: {
     fontSize: 13,
