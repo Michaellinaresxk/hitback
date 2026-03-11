@@ -1,6 +1,7 @@
 import { StateCreator } from 'zustand';
 import { GameStore, Player } from '../types/gameTypes';
 import { SCORE_TO_WIN } from '@/constants/Points';
+import { BSIDE_LOSS_THRESHOLD } from '@/constants/LossStreak';
 
 export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   set,
@@ -11,17 +12,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   addPlayer: (name: string) => {
     const { players } = get();
 
-    if (name.trim().length < 2) {
+    if (name.trim().length < 2)
       throw new Error('El nombre debe tener al menos 2 caracteres');
-    }
-    if (players.length >= 8) {
-      throw new Error('Máximo 8 jugadores');
-    }
-    if (
-      players.some((p) => p.name.toLowerCase() === name.toLowerCase().trim())
-    ) {
+    if (players.length >= 8) throw new Error('Máximo 8 jugadores');
+    if (players.some((p) => p.name.toLowerCase() === name.toLowerCase().trim()))
       throw new Error('Ya existe un jugador con ese nombre');
-    }
 
     const newPlayer: Player = {
       id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -39,6 +34,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       difficultyStreaks: {},
       isFrozen: false,
       frozenForRound: null,
+      lossStreak: 0,
+      bSideActive: false,
     };
 
     set((state) => ({ players: [...state.players, newPlayer], error: null }));
@@ -48,24 +45,20 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     set((state) => {
       const newPlayers = state.players.filter((p) => p.id !== id);
       const currentPlayerIndex = state.players.findIndex((p) => p.id === id);
-
       let newCurrentTurn = state.currentTurn;
       if (currentPlayerIndex <= state.currentTurn && newPlayers.length > 0) {
         newCurrentTurn = Math.max(0, state.currentTurn - 1);
       }
-
       return { players: newPlayers, currentTurn: newCurrentTurn };
     });
   },
 
-  // ❄️ FREEZE — toggle desde el scoreboard
   toggleFreezePlayer: (playerId: string) => {
     const { players, round } = get();
     const player = players.find((p) => p.id === playerId);
     if (!player) return;
 
     const next = !player.isFrozen;
-
     set((state) => ({
       players: state.players.map((p) =>
         p.id === playerId
@@ -73,44 +66,32 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           : p,
       ),
     }));
-
     console.log(
-      next
-        ? `❄️ ${player.name} — FREEZE activado (ronda ${round})`
-        : `▶️ ${player.name} — FREEZE cancelado`,
+      next ? `❄️ ${player.name} FROZEN` : `▶️ ${player.name} unfreeze`,
     );
   },
 
   placeBet: (playerId: string, tokenValue: number) => {
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
-
-      if (!player) {
-        return { ...state, error: 'Jugador no encontrado' };
-      }
-
-      if (!player.availableTokens.includes(tokenValue)) {
+      if (!player) return { ...state, error: 'Jugador no encontrado' };
+      if (!player.availableTokens.includes(tokenValue))
         return {
           ...state,
           error: `Token +${tokenValue} ya fue usado o no disponible`,
         };
-      }
 
-      const newAvailableTokens = player.availableTokens.filter(
-        (t) => t !== tokenValue,
+      const updatedPlayers = state.players.map((p) =>
+        p.id === playerId
+          ? {
+              ...p,
+              availableTokens: p.availableTokens.filter(
+                (t) => t !== tokenValue,
+              ),
+              currentBet: tokenValue,
+            }
+          : p,
       );
-
-      const updatedPlayers = state.players.map((p) => {
-        if (p.id === playerId) {
-          return {
-            ...p,
-            availableTokens: newAvailableTokens,
-            currentBet: tokenValue,
-          };
-        }
-        return p;
-      });
-
       return { ...state, players: updatedPlayers, error: null };
     });
   },
@@ -122,15 +103,13 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   },
 
   addPowerCard: (playerId: string, powerCard: any) => {
-    set((state) => {
-      const updatedPlayers = state.players.map((p) => {
-        if (p.id === playerId) {
-          return { ...p, powerCards: [...p.powerCards, powerCard] };
-        }
-        return p;
-      });
-      return { ...state, players: updatedPlayers };
-    });
+    set((state) => ({
+      players: state.players.map((p) =>
+        p.id === playerId
+          ? { ...p, powerCards: [...p.powerCards, powerCard] }
+          : p,
+      ),
+    }));
   },
 
   usePowerCard: (
@@ -141,14 +120,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     set((state) => {
       const player = state.players.find((p) => p.id === playerId);
       const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
-
-      if (!player || !powerCard) {
+      if (!player || !powerCard)
         return { ...state, error: 'Carta de poder no encontrada' };
-      }
-
-      if (powerCard.currentUses >= powerCard.usageLimit) {
-        return { ...state, error: 'Carta de poder ya usada' };
-      }
+      if (powerCard.currentUses >= powerCard.usageLimit)
+        return { ...state, error: 'Carta ya usada' };
 
       let newPlayers = [...state.players];
       const cardType = powerCard.type?.toLowerCase() || '';
@@ -174,7 +149,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               : p,
           );
           break;
-
         case 'robo':
         case 'thief':
         case 'hit_steal':
@@ -189,7 +163,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   ),
                 };
               }
-              if (p.id === playerId) {
+              if (p.id === playerId)
                 return {
                   ...p,
                   powerCards: p.powerCards.map((pc) =>
@@ -198,12 +172,10 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                       : pc,
                   ),
                 };
-              }
               return p;
             });
           }
           break;
-
         case 'escudo':
         case 'shield':
         case 'stop':
@@ -221,7 +193,6 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               : p,
           );
           break;
-
         case 'peek':
           newPlayers = newPlayers.map((p) =>
             p.id === playerId
@@ -237,10 +208,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               : p,
           );
           break;
-
         default:
           console.warn(`⚠️ Unknown PowerCard type: ${cardType}`);
-          break;
       }
 
       return { ...state, players: newPlayers, error: null };
@@ -263,104 +232,130 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
-  // ─── awardPoints ────────────────────────────────────────────────────────────
-  // Nota: en el flujo principal (revealAnswer → syncPlayersFromBackend) los puntos
-  // vienen del backend. Este método queda para usos directos / modo offline.
-  awardPoints: (playerId: string, points?: number, answerTime?: number) => {
+  awardPoints: (playerId: string, points?: number) => {
     const { currentCard, players } = get();
     const player = players.find((p) => p.id === playerId);
-
     if (!player || !currentCard) return;
 
     let basePoints = points || currentCard.question.points || 0;
-    let tokenBonus = player.currentBet || 0;
-
-    if (player.boostActive) {
-      basePoints = basePoints * 2;
-    }
-
-    const totalPoints = basePoints + tokenBonus;
+    if (player.boostActive) basePoints = basePoints * 2;
+    const totalPoints = basePoints + (player.currentBet || 0);
 
     set((state) => ({
       players: state.players.map((p) => {
-        if (p.id === playerId) {
+        if (p.id === playerId)
           return {
             ...p,
             score: p.score + totalPoints,
             consecutiveWins: p.consecutiveWins + 1,
             currentBet: 0,
             boostActive: false,
-            cardTypeStreaks: {
-              ...p.cardTypeStreaks,
-              [currentCard.question.type]:
-                (p.cardTypeStreaks[currentCard.question.type] || 0) + 1,
-            },
-            difficultyStreaks: {
-              ...p.difficultyStreaks,
-              [currentCard.scan.difficulty]:
-                (p.difficultyStreaks[currentCard.scan.difficulty] || 0) + 1,
-            },
           };
-        }
         return { ...p, consecutiveWins: 0, currentBet: 0 };
       }),
     }));
 
     get().nextTurn();
-
     const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) get().endGame();
   },
 
-  // ─── awardAllianceBonus ─────────────────────────────────────────────────────
-  // FIX 50/50: deducimos la mitad al ganador Y se la damos al partner.
-  // Se llama desde handleAwardPoints en game.tsx DESPUÉS de syncPlayersFromBackend.
-  // Funciona sin importar cuál de los dos responda (getPlayerAlliance es simétrico).
+  // ─── Alliance 50/50 ────────────────────────────────────────────────────────
   awardAllianceBonus: (winnerId: string, pointsAwarded: number) => {
     const alliance = get().getPlayerAlliance(winnerId);
     if (!alliance) return;
 
     const partnerId =
       alliance.player1Id === winnerId ? alliance.player2Id : alliance.player1Id;
-
     const share = Math.floor(pointsAwarded / 2);
-
     const winner = get().players.find((p) => p.id === winnerId);
     const partner = get().players.find((p) => p.id === partnerId);
     if (!winner || !partner) return;
 
     console.log(
-      `🤝 Alliance 50/50: ${winner.name} −${share} pts | ${partner.name} +${share} pts`,
+      `🤝 Alliance 50/50: ${winner.name} −${share} | ${partner.name} +${share}`,
     );
 
     set((state: { players: any[] }) => ({
       players: state.players.map((p) => {
-        // Ganador cede la mitad (queda con 50%)
         if (p.id === winnerId) return { ...p, score: p.score - share };
-        // Partner recibe la mitad
         if (p.id === partnerId) return { ...p, score: p.score + share };
         return p;
       }),
     }));
   },
 
-  // ─── applyFeaturingBonus ────────────────────────────────────────────────────
-  // FIX 100/100: el partner recibe EXACTAMENTE los mismos puntos que el ganador.
-  // El ganador ya tiene sus puntos del backend; aquí solo sumamos al partner.
-  // Se llama desde handleAwardPoints en game.tsx justo después de awardAllianceBonus.
+  // ─── Featuring 100/100 ─────────────────────────────────────────────────────
   applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => {
     const partner = get().players.find((p) => p.id === partnerId);
     if (!partner) return;
 
-    console.log(
-      `🎤 Featuring 100/100: ${partner.name} recibe ${pointsAwarded} pts (igual que el ganador)`,
-    );
+    console.log(`🎤 Featuring 100/100: ${partner.name} +${pointsAwarded}`);
 
     set((state: { players: any[] }) => ({
       players: state.players.map((p) =>
         p.id === partnerId ? { ...p, score: p.score + pointsAwarded } : p,
       ),
     }));
+  },
+
+  // ─── B-SIDE: updateLossStreaks ─────────────────────────────────────────────
+  // Llama al final de cada ronda (handleAwardPoints / handleWrongAnswer).
+  // winnerId = quien ganó (null = nadie ganó).
+  // Retorna IDs de jugadores que RECIÉN alcanzaron el threshold → para notificación.
+  updateLossStreaks: (winnerId: string | null): string[] => {
+    const { players } = get();
+    const newlyActivated: string[] = [];
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) => {
+        // Ganador: reset
+        if (winnerId && p.id === winnerId) {
+          return { ...p, lossStreak: 0 };
+        }
+
+        const prevStreak = p.lossStreak ?? 0;
+        const nextStreak = prevStreak + 1;
+        const justHitThreshold =
+          nextStreak === BSIDE_LOSS_THRESHOLD && !p.bSideActive;
+
+        if (justHitThreshold) {
+          newlyActivated.push(p.id);
+          console.log(
+            `🎶 B-SIDE activado: ${p.name} (${nextStreak} rondas sin puntuar)`,
+          );
+        }
+
+        return {
+          ...p,
+          lossStreak: nextStreak,
+          // bSideActive se activa al threshold y se mantiene hasta que gane
+          bSideActive: p.bSideActive || justHitThreshold,
+        };
+      }),
+    }));
+
+    return newlyActivated;
+  },
+
+  // ─── B-SIDE: applyBSideBonus ───────────────────────────────────────────────
+  // Llama DESPUÉS de syncPlayersFromBackend cuando el ganador tenía bSideActive.
+  // Suma +1 y limpia el flag. Retorna true si aplicó el bonus.
+  applyBSideBonus: (winnerId: string): boolean => {
+    const player = get().players.find((p) => p.id === winnerId);
+    if (!player?.bSideActive) return false;
+
+    console.log(`🎶 B-SIDE comeback: ${player.name} +1 bonus`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === winnerId
+          ? { ...p, score: p.score + 1, lossStreak: 0, bSideActive: false }
+          : p,
+      ),
+    }));
+
+    return true;
   },
 
   syncPlayersFromBackend: (
@@ -389,10 +384,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               backendPlayer.availableTokens || localPlayer.availableTokens,
           };
         }
-
         return localPlayer;
       });
-
       return { players: updatedPlayers };
     });
   },
