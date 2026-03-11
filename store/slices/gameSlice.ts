@@ -22,6 +22,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   speedRoundActive: false,
   selectedBattlePlayers: null,
   featuringPlayerId: null,
+  stopBlastActive: false,
+  stopBlastHolderId: null,
   featuringTargetId: null,
 
   createNewGame: () => {
@@ -53,6 +55,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       lastBackendCheck: null,
       featuringPlayerId: null,
       featuringTargetId: null,
+      stopBlastActive: false,
+      stopBlastHolderId: null,
     });
   },
 
@@ -212,6 +216,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     }
 
     get().decrementAllianceRounds();
+    get().clearStopBlast();
   },
 
   startTimer: (duration: number) => {
@@ -277,5 +282,16 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
   clearFeaturing: () => {
     set({ featuringPlayerId: null, featuringTargetId: null });
+  },
+
+  activateStopBlast: (holderId: string) => {
+    const { players } = get();
+    const holder = players.find((p) => p.id === holderId);
+    console.log(`🛑 STOP-BLAST activado por: ${holder?.name}`);
+    set({ stopBlastActive: true, stopBlastHolderId: holderId });
+  },
+
+  clearStopBlast: () => {
+    set({ stopBlastActive: false, stopBlastHolderId: null });
   },
 });
