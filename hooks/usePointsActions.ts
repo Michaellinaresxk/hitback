@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import type { GameFlow } from '@/hooks/useGameFlow';
 import type { Player } from '@/store/types/gameStoreTypes';
 import type { ComboActivationData } from '@/hooks/useComboFlow';
@@ -61,6 +61,8 @@ export function usePointsActions({
 }: UsePointsActionsParams) {
   const [showPointsModal, setShowPointsModal] = useState(false);
   const [bSideNotification, setBSideNotification] = useState<BSideNotification | null>(null);
+  /** Puntos ganados en la última ronda — usado por COPYRIGHTS para calcular la deducción. */
+  const lastAwardedPointsRef = useRef<number>(0);
 
   const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
@@ -116,6 +118,7 @@ export function usePointsActions({
 
       if (result) {
         const pts = result.pointsAwarded as number;
+        lastAwardedPointsRef.current = pts;
 
         showSuccess(
           '🎉 ¡Correcto!',
@@ -208,6 +211,7 @@ export function usePointsActions({
     setShowPointsModal,
     bSideNotification,
     setBSideNotification,
+    lastAwardedPointsRef,
     handleAwardPoints,
     handleWrongAnswer,
   };

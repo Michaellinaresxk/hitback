@@ -74,6 +74,13 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     color: '#F59E0B',
   },
   {
+    type: 'COPYRIGHTS',
+    emoji: '©️',
+    label: 'COPYRIGHTS',
+    description: 'Pierde 50% de sus últimos puntos',
+    color: '#F59E0B',
+  },
+  {
     type: 'ARTIST_HOLD',
     emoji: '🚫',
     label: 'ARTIST HOLD',

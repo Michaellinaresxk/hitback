@@ -52,6 +52,7 @@ export function useGameScreenStore() {
   const activateDuel = useGameStore((state) => (state as any).activateDuel as (p1: string, p2: string) => void);
   const activateStopBlast = useGameStore((state) => (state as any).activateStopBlast as (holderId: string) => void);
   const applyFeaturingBonus = useGameStore((state) => state.applyFeaturingBonus);
+  const applyCopyrights = useGameStore((state) => (state as any).applyCopyrights as (playerId: string, points: number) => void);
 
   return {
     // State
@@ -87,5 +88,6 @@ export function useGameScreenStore() {
     activateDuel,
     activateStopBlast,
     applyFeaturingBonus,
+    applyCopyrights,
   };
 }

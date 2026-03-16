@@ -205,6 +205,12 @@ export interface PlayerSlice {
    * Limpia bSideActive y resetea lossStreak.
    */
   applyBSideBonus: (winnerId: string) => boolean;
+
+  /**
+   * COPYRIGHTS — roba el 50% de los últimos puntos ganados por un jugador.
+   * points: los puntos que ganó en la última ronda (capturados en lastAwardedPointsRef).
+   */
+  applyCopyrights: (playerId: string, points: number) => void;
 }
 
 export type GameStore = GameState & BackendSlice & AllianceSlice & PlayerSlice;

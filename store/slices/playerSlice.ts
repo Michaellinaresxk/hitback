@@ -321,6 +321,23 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
+  // ─── COPYRIGHTS ────────────────────────────────────────────────────────────
+  applyCopyrights: (playerId: string, points: number) => {
+    const deduction = Math.floor(points / 2);
+    const player = get().players.find((p) => p.id === playerId);
+    if (!player || deduction <= 0) return;
+
+    console.log(`©️ COPYRIGHTS: ${player.name} -${deduction} pts (50% de ${points})`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === playerId
+          ? { ...p, score: Math.max(0, p.score - deduction) }
+          : p,
+      ),
+    }));
+  },
+
   applyArtistHold: () => {
     const { players } = get();
     if (players.length < 2) return;
