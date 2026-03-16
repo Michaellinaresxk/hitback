@@ -1,7 +1,7 @@
 import { Dimensions } from 'react-native';
 
 export type ReactionCardType =
-  | 'FREEZE'
+  | 'MUTE'
   | 'DUEL'
   | 'STOP_BLAST'
   | 'FEATURING'
@@ -9,7 +9,8 @@ export type ReactionCardType =
   | 'COPYRIGHTS'
   | 'BLOCK'
   | 'OVERDRIVE'
-  | 'ROYALTIES';
+  | 'ROYALTIES'
+  | 'ARTIST_HOLD';
 
 export interface ReactionCardDef {
   type: ReactionCardType;
@@ -30,12 +31,13 @@ export interface ReactionCardPickerModalProps {
 
 export const REACTION_CARDS: ReactionCardDef[] = [
   {
-    type: 'FREEZE',
+    type: 'MUTE',
     emoji: '❄️',
-    label: 'FREEZE',
-    description: 'Salta su próxima ronda',
+    label: 'MUTE',
+    description: 'Pausa al jugador por 1 ronda',
     color: '#64748B',
   },
+
   {
     type: 'DUEL',
     emoji: '⚔️',
@@ -72,11 +74,11 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     color: '#F59E0B',
   },
   {
-    type: 'BLOCK',
+    type: 'ARTIST_HOLD',
     emoji: '🚫',
-    label: 'BLOCK',
+    label: 'ARTIST HOLD',
     description: 'Congela al líder 2 rondas',
-    color: '#6366F1',
+    color: '#64748B',
   },
   {
     type: 'OVERDRIVE',

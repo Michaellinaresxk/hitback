@@ -65,6 +65,7 @@ export default function GameScreen() {
   // ✅ FREEZE — selector junto al resto de acciones del store
   const toggleFreezePlayer = useGameStore((state) => state.toggleFreezePlayer);
   const applyRoyalties = useGameStore((state) => state.applyRoyalties);
+  const applyArtistHold = useGameStore((state) => state.applyArtistHold);
 
   // Featuring state
   const featuringPlayerId = useGameStore((state) => state.featuringPlayerId);
@@ -795,7 +796,7 @@ export default function GameScreen() {
   const handleReactionCard = useCallback(
     (cardType: ReactionCardType, playerId: string) => {
       switch (cardType) {
-        case 'FREEZE':
+        case 'MUTE':
           toggleFreezePlayer(playerId);
           break;
         case 'STOP_BLAST':
@@ -815,13 +816,16 @@ export default function GameScreen() {
         case 'ROYALTIES':
           applyRoyalties(playerId);
           break;
+        case 'ARTIST_HOLD':
+          applyArtistHold();
+          break;
         default:
           break;
       }
     },
-    [toggleFreezePlayer, activateStopBlast, applyRoyalties], // ✅
+    [toggleFreezePlayer, activateStopBlast, applyRoyalties, applyArtistHold],
   );
-  // Early returns — SIEMPRE después de todos los hooks
+
   if (!isActive && !showGameEndModal) {
     return <GameSetupScreen />;
   }

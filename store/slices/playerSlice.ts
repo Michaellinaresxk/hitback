@@ -34,6 +34,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       difficultyStreaks: {},
       isFrozen: false,
       frozenForRound: null,
+      artistHoldRoundsLeft: 0,
       lossStreak: 0,
       bSideActive: false,
     };
@@ -317,6 +318,22 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         if (p.id === holderId) return { ...p, score: p.score + 1 };
         return p;
       }),
+    }));
+  },
+
+  applyArtistHold: () => {
+    const { players } = get();
+    if (players.length < 2) return;
+
+    const leader = players.reduce((a, b) => (a.score > b.score ? a : b));
+    console.log(`🔒 ARTIST HOLD: ${leader.name} bloqueado por 2 rondas`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === leader.id
+          ? { ...p, isFrozen: true, artistHoldRoundsLeft: 2 }
+          : p,
+      ),
     }));
   },
 
