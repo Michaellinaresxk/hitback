@@ -299,6 +299,27 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
+  applyRoyalties: (holderId: string) => {
+    const { players } = get();
+    if (players.length < 2) return;
+
+    const leader = players.reduce((a, b) => (a.score > b.score ? a : b));
+    if (leader.id === holderId) return; // no te robás a vos mismo
+
+    console.log(
+      `📜 ROYALTIES: ${leader.name} -1 → ${players.find((p) => p.id === holderId)?.name} +1`,
+    );
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) => {
+        if (p.id === leader.id)
+          return { ...p, score: Math.max(0, p.score - 1) };
+        if (p.id === holderId) return { ...p, score: p.score + 1 };
+        return p;
+      }),
+    }));
+  },
+
   // ─── B-SIDE: updateLossStreaks ─────────────────────────────────────────────
   // Llama al final de cada ronda (handleAwardPoints / handleWrongAnswer).
   // winnerId = quien ganó (null = nadie ganó).

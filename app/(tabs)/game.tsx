@@ -64,6 +64,7 @@ export default function GameScreen() {
   const awardAllianceBonus = useGameStore((state) => state.awardAllianceBonus);
   // ✅ FREEZE — selector junto al resto de acciones del store
   const toggleFreezePlayer = useGameStore((state) => state.toggleFreezePlayer);
+  const applyRoyalties = useGameStore((state) => state.applyRoyalties);
 
   // Featuring state
   const featuringPlayerId = useGameStore((state) => state.featuringPlayerId);
@@ -811,13 +812,15 @@ export default function GameScreen() {
         case 'ALLIANCE':
           setShowAllianceModal(true);
           break;
+        case 'ROYALTIES':
+          applyRoyalties(playerId);
+          break;
         default:
           break;
       }
     },
-    [toggleFreezePlayer, activateStopBlast],
+    [toggleFreezePlayer, activateStopBlast, applyRoyalties], // ✅
   );
-
   // Early returns — SIEMPRE después de todos los hooks
   if (!isActive && !showGameEndModal) {
     return <GameSetupScreen />;

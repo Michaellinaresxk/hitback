@@ -8,7 +8,8 @@ export type ReactionCardType =
   | 'ALLIANCE'
   | 'COPYRIGHTS'
   | 'BLOCK'
-  | 'OVERDRIVE';
+  | 'OVERDRIVE'
+  | 'ROYALTIES';
 
 export interface ReactionCardDef {
   type: ReactionCardType;
@@ -64,9 +65,9 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     color: '#3B82F6',
   },
   {
-    type: 'COPYRIGHTS',
+    type: 'ROYALTIES',
     emoji: '📜',
-    label: 'COPYRIGHTS',
+    label: 'ROYALTIES',
     description: 'Roba 1pt al líder',
     color: '#F59E0B',
   },

@@ -188,6 +188,7 @@ export interface PlayerSlice {
   awardAllianceBonus: (winnerId: string, pointsAwarded: number) => void;
   applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
   toggleFreezePlayer: (playerId: string) => void;
+  applyRoyalties: (holderId: string) => void;
 
   /**
    * Actualiza lossStreak al final de cada ronda.
