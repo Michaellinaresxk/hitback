@@ -65,6 +65,7 @@ export interface GameStore extends GameState {
   addPlayer: (name: string) => void;
   removePlayer: (id: string) => void;
   toggleFreezePlayer: (playerId: string) => void;
+  applyRoyalties: (holderId: string) => void;
   placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;
   addPowerCard: (playerId: string, powerCard: any) => void;
