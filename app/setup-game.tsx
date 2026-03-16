@@ -4,6 +4,7 @@
 // ✅ Sin QR - control desde la app
 
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { GAME_DURATION } from '@/constants/Game';
 import { gameSessionService } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
 import { router } from 'expo-router';
@@ -52,6 +53,8 @@ export default function GameSetupScreen() {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const { t } = useTranslation();
 
+  const { gameDurationMinutes } = useGameStore();
+
   const handleAddPlayer = () => {
     if (playerName.trim().length === 0) {
       Alert.alert('Error', 'Ingresa un nombre válido');
@@ -70,7 +73,7 @@ export default function GameSetupScreen() {
     setSelectedGenres((prev) =>
       prev.includes(genreId)
         ? prev.filter((g) => g !== genreId)
-        : [...prev, genreId]
+        : [...prev, genreId],
     );
   };
 
@@ -78,7 +81,7 @@ export default function GameSetupScreen() {
     setSelectedDecades((prev) =>
       prev.includes(decadeId)
         ? prev.filter((d) => d !== decadeId)
-        : [...prev, decadeId]
+        : [...prev, decadeId],
     );
   };
 
@@ -102,7 +105,7 @@ export default function GameSetupScreen() {
         decades,
         difficulty: 'ANY',
         targetScore: 15,
-        timeLimit: 1200, // 20 minutos
+        timeLimit: gameDurationMinutes * 60,
         tokensPerPlayer: 5,
         powerCardsPerPlayer: 3,
       });
@@ -126,7 +129,7 @@ export default function GameSetupScreen() {
       Alert.alert(
         'Error de Conexión',
         'No se pudo conectar al servidor. ¿Está el backend corriendo?\n\n' +
-          error.message
+          error.message,
       );
     } finally {
       setIsCreatingSession(false);
@@ -459,10 +462,6 @@ const styles = StyleSheet.create({
     minWidth: 48,
   },
 
-  // Player list
-  playersList: {
-    maxHeight: 200,
-  },
   playerItem: {
     flexDirection: 'row',
     alignItems: 'center',

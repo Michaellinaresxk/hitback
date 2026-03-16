@@ -5,6 +5,7 @@ import {
   SPEED_ROUND_TIME_LIMIT,
   CURRENT_SPEED_ROUND_INDEX,
 } from '@/constants/SpeedRound';
+import { GAME_DURATION } from '@/constants/Game';
 
 export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   id: '',
@@ -28,6 +29,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   duelPlayer1Id: null,
   duelPlayer2Id: null,
   featuringTargetId: null,
+  gameDurationMinutes: GAME_DURATION / 60,
 
   createNewGame: () => {
     audioService.stopAudio();
@@ -80,6 +82,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       }
 
       await audioService.initializeAudio();
+      const durationSeconds = get().gameDurationMinutes * 60;
 
       const updatedPlayers = players.map((player, index) => ({
         ...player,
@@ -99,14 +102,14 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
         players: updatedPlayers,
         isActive: true,
         currentTurn: 0,
-        timeLeft: 1200,
+        timeLeft: durationSeconds,
         gameMode: 'normal',
         round: 1,
         error: null,
         backendConnected,
       });
 
-      get().startTimer(1200);
+      get().startTimer(durationSeconds);
     } catch (error) {
       console.error('❌ Error starting game:', error);
       set({ error: 'No se pudo iniciar el juego' });
@@ -316,5 +319,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
   clearDuel: () => {
     set({ duelActive: false, duelPlayer1Id: null, duelPlayer2Id: null });
+  },
+  setGameDuration: (minutes: number) => {
+    set({ gameDurationMinutes: minutes });
   },
 });
