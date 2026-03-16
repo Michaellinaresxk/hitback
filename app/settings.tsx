@@ -1,35 +1,22 @@
 import LanguageSelector from '@/components/LanguagePicker';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { GAME_DURATION_OPTIONS } from '@/constants/Game';
+import { useGameStore } from '@/store/gameStore';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
-  Switch,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const { t } = useTranslation();
-
-  // Future settings state (not functional yet, just for UI)
-  const [settings, setSettings] = useState({
-    gameDuration: 20, // minutes
-    winningScore: 22, // points
-    audioPreviewTime: 8, // seconds
-    enableBetting: true,
-    enablePowerCards: true,
-    enableSpecialModes: true,
-    autoAdvanceTurn: true,
-    soundEffects: true,
-    hapticFeedback: true,
-  });
+  const { gameDurationMinutes, setGameDuration } = useGameStore();
 
   const renderSectionHeader = (title: string, icon: string) => (
     <View style={styles.sectionHeader}>
@@ -47,12 +34,40 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           {renderSectionHeader(
             t('settingPage.sections.game_config').toUpperCase(),
-            'globe'
+            'globe',
           )}
 
           {/* Language Selector Component */}
           <View style={styles.languageSelectorContainer}>
             <LanguageSelector />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          {renderSectionHeader('⏱ DURACIÓN DEL JUEGO', 'clock')}
+
+          <View style={styles.durationSelector}>
+            {GAME_DURATION_OPTIONS.map((minutes) => (
+              <TouchableOpacity
+                key={minutes}
+                style={[
+                  styles.durationOption,
+                  gameDurationMinutes === minutes &&
+                    styles.durationOptionSelected,
+                ]}
+                onPress={() => setGameDuration(minutes)}
+              >
+                <Text
+                  style={[
+                    styles.durationLabel,
+                    gameDurationMinutes === minutes &&
+                      styles.durationLabelSelected,
+                  ]}
+                >
+                  {minutes} min
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
 
@@ -255,5 +270,31 @@ const styles = StyleSheet.create({
   versionSubtext: {
     fontSize: 12,
     color: '#475569',
+  },
+
+  durationSelector: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  durationOption: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  durationOptionSelected: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    borderColor: '#3B82F6',
+  },
+  durationLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  durationLabelSelected: {
+    color: '#3B82F6',
   },
 });
