@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
@@ -23,15 +22,14 @@ interface PlayerScoreboardProps {
   compact?: boolean;
   onUsePowerCard?: (playerId: string, cardId: string) => void;
   canUsePowerCards?: boolean;
-  onFreezePlayer?: (playerId: string) => void;
-  onFeaturingPlayer?: (playerId: string) => void;
-  onStopBlast?: (playerId: string) => void;
+
   stopBlastHolderId?: string | null;
   featuringPlayerId?: string | null;
   featuringTargetId?: string | null;
-  onDuel?: (playerId: string) => void;
   duelPlayer1Id?: string | null;
   duelPlayer2Id?: string | null;
+
+  onPlayerPress?: (player: { id: string; name: string; score: number }) => void;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -45,15 +43,14 @@ export default function PlayerScoreboard({
   compact = false,
   onUsePowerCard,
   canUsePowerCards = true,
-  onFreezePlayer,
-  onFeaturingPlayer,
-  onStopBlast,
+
   stopBlastHolderId,
   featuringPlayerId,
   featuringTargetId,
-  onDuel,
+
   duelPlayer1Id,
   duelPlayer2Id,
+  onPlayerPress,
 }: PlayerScoreboardProps) {
   const getPlayerAlliance = useGameStore((s) => s.getPlayerAlliance);
 
@@ -240,37 +237,13 @@ export default function PlayerScoreboard({
           return (
             <TouchableOpacity
               key={player.id}
-              onPress={() => {
-                if (!onFreezePlayer && !onFeaturingPlayer && !onStopBlast)
-                  return;
-
-                if (isInFeaturing) {
-                  if (isFeaturingHolder) onFeaturingPlayer?.(player.id);
-                  return;
-                }
-
-                if (isFrozen) {
-                  onFreezePlayer?.(player.id);
-                  return;
-                }
-                Alert.alert(player.name, '¿Qué hacemos con este jugador?', [
-                  {
-                    text: '⏸️ Pause for one round',
-                    style: 'destructive',
-                    onPress: () => onFreezePlayer?.(player.id),
-                  },
-                  {
-                    text: '🎤 Featuring',
-                    onPress: () => onFeaturingPlayer?.(player.id),
-                  },
-                  {
-                    text: '🛑 STOP-BLAST',
-                    onPress: () => onStopBlast?.(player.id),
-                  },
-                  { text: '⚔️ DUEL', onPress: () => onDuel?.(player.id) },
-                  { text: 'Cancelar', style: 'cancel' },
-                ]);
-              }}
+              onPress={() =>
+                onPlayerPress?.({
+                  id: player.id,
+                  name: player.name,
+                  score: player.score,
+                })
+              }
               activeOpacity={0.75}
               style={[
                 styles.playerCard,
