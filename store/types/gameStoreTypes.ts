@@ -72,6 +72,7 @@ export interface GameStore extends GameState {
   updateLossStreaks: (winnerId: string | null) => string[];
   applyBSideBonus: (winnerId: string) => boolean;
   applyArtistHold: () => void;
+  applyCopyrights: (playerId: string, points: number) => void;
 
   placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;

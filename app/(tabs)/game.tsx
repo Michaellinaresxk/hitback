@@ -78,6 +78,7 @@ export default function GameScreen() {
     activateDuel,
     activateStopBlast,
     applyFeaturingBonus,
+    applyCopyrights,
   } = useGameScreenStore();
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
@@ -173,6 +174,7 @@ export default function GameScreen() {
     setShowPointsModal,
     bSideNotification,
     setBSideNotification,
+    lastAwardedPointsRef,
     handleAwardPoints,
     handleWrongAnswer,
   } = usePointsActions({
@@ -372,6 +374,9 @@ export default function GameScreen() {
         case 'ARTIST_HOLD':
           applyArtistHold();
           break;
+        case 'COPYRIGHTS':
+          applyCopyrights(playerId, lastAwardedPointsRef.current);
+          break;
         default:
           break;
       }
@@ -383,6 +388,8 @@ export default function GameScreen() {
       handleFeaturingPlayer,
       applyRoyalties,
       applyArtistHold,
+      applyCopyrights,
+      lastAwardedPointsRef,
     ],
   );
 
