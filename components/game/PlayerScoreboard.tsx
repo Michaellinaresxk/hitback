@@ -302,6 +302,14 @@ export default function PlayerScoreboard({
                       <Text style={styles.freezeBadgeText}>⏸️ PAUSA</Text>
                     </View>
                   )}
+                  {(player.artistHoldRoundsLeft ?? 0) > 0 && (
+                    <View style={styles.artistHoldBadge}>
+                      <Text style={styles.artistHoldBadgeText}>
+                        🔒 HOLD {player.artistHoldRoundsLeft}R
+                      </Text>
+                    </View>
+                  )}
+
                   {isInFeaturing && (
                     <View
                       style={[
@@ -935,6 +943,20 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  artistHoldBadge: {
+    backgroundColor: 'rgba(99, 102, 241, 0.2)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#6366F1',
+  },
+  artistHoldBadgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#818CF8',
     letterSpacing: 0.5,
   },
 });

@@ -16,6 +16,9 @@ export interface Player {
   difficultyStreaks: Record<string, number>;
   isFrozen: boolean; // ❄️ true = su próximo turno será saltado
   frozenForRound: number | null;
+  artistHoldRoundsLeft: number;
+  lossStreak: number;
+  bSideActive: boolean;
 }
 
 export type Card = CurrentCard;
@@ -66,6 +69,10 @@ export interface GameStore extends GameState {
   removePlayer: (id: string) => void;
   toggleFreezePlayer: (playerId: string) => void;
   applyRoyalties: (holderId: string) => void;
+  updateLossStreaks: (winnerId: string | null) => string[];
+  applyBSideBonus: (winnerId: string) => boolean;
+  applyArtistHold: () => void;
+
   placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;
   addPowerCard: (playerId: string, powerCard: any) => void;
