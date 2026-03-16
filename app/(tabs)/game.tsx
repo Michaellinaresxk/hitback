@@ -39,6 +39,8 @@ import AllianceModal from '@/components/modal/AllianceModal';
 import FeaturingModal from '@/components/modal/FeaturingModal';
 import LossStreakModal from '@/components/modal/LossStreakModal';
 import DuelModal from '@/components/modal/DuelModal';
+import ReactionCardPickerModal from '@/components/modal/ReactionCardPickerModal';
+import { ReactionCardType } from '@/constants/ReactionCard';
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -100,6 +102,12 @@ export default function GameScreen() {
   const [gameStarted, setGameStarted] = useState(false);
   const [showDuelModal, setShowDuelModal] = useState(false);
   const [duelChallengerId, setDuelChallengerId] = useState<string | null>(null);
+
+  const [reactionTarget, setReactionTarget] = useState<{
+    id: string;
+    name: string;
+    score: number;
+  } | null>(null);
 
   // Game Flow
   const {
@@ -224,6 +232,13 @@ export default function GameScreen() {
       if (safetyTimer) clearTimeout(safetyTimer);
     };
   }, [comboFlowState.isActive]);
+
+  const reactionDisabledCards = useMemo(() => {
+    const disabled: Partial<Record<ReactionCardType, string>> = {};
+    if (duelActive) disabled.DUEL = 'Duel ya activo';
+    if (stopBlastActive) disabled.STOP_BLAST = 'Ya activo';
+    return disabled;
+  }, [duelActive, stopBlastActive]);
 
   const committedFeaturingIds = useMemo<string[]>(() => {
     const ids: string[] = [];
@@ -766,26 +781,6 @@ export default function GameScreen() {
     [featuringPortadorId, activateFeaturing],
   );
 
-  // ✅ FREEZE — handler antes de los early returns
-  const handleFreezePlayer = useCallback(
-    (playerId: string) => {
-      toggleFreezePlayer(playerId);
-    },
-    [toggleFreezePlayer],
-  );
-
-  const handleStopBlast = useCallback(
-    (playerId: string) => {
-      activateStopBlast(playerId);
-    },
-    [activateStopBlast],
-  );
-
-  const handleDuel = useCallback((playerId: string) => {
-    setDuelChallengerId(playerId);
-    setShowDuelModal(true);
-  }, []);
-
   const handleDuelOpponentSelected = useCallback(
     (opponentId: string) => {
       if (!duelChallengerId) return;
@@ -794,6 +789,33 @@ export default function GameScreen() {
       setDuelChallengerId(null);
     },
     [duelChallengerId, activateDuel],
+  );
+
+  const handleReactionCard = useCallback(
+    (cardType: ReactionCardType, playerId: string) => {
+      switch (cardType) {
+        case 'FREEZE':
+          toggleFreezePlayer(playerId);
+          break;
+        case 'STOP_BLAST':
+          activateStopBlast(playerId);
+          break;
+        case 'DUEL':
+          setDuelChallengerId(playerId);
+          setShowDuelModal(true);
+          break;
+        case 'FEATURING':
+          setFeaturingPortadorId(playerId);
+          setShowFeaturingModal(true);
+          break;
+        case 'ALLIANCE':
+          setShowAllianceModal(true);
+          break;
+        default:
+          break;
+      }
+    },
+    [toggleFreezePlayer, activateStopBlast],
   );
 
   // Early returns — SIEMPRE después de todos los hooks
@@ -872,10 +894,7 @@ export default function GameScreen() {
             flowState.phase === 'question' ||
             flowState.phase === 'idle'
           }
-          onFreezePlayer={handleFreezePlayer}
-          onFeaturingPlayer={handleFeaturingPlayer}
-          onStopBlast={handleStopBlast}
-          onDuel={handleDuel}
+          onPlayerPress={setReactionTarget}
           duelPlayer1Id={duelPlayer1Id}
           duelPlayer2Id={duelPlayer2Id}
           stopBlastHolderId={stopBlastHolderId}
@@ -978,6 +997,14 @@ export default function GameScreen() {
           setShowDuelModal(false);
           setDuelChallengerId(null);
         }}
+      />
+
+      <ReactionCardPickerModal
+        visible={reactionTarget !== null}
+        targetPlayer={reactionTarget}
+        disabledCards={reactionDisabledCards}
+        onSelect={handleReactionCard}
+        onClose={() => setReactionTarget(null)}
       />
     </View>
   );
