@@ -327,7 +327,9 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     const player = get().players.find((p) => p.id === playerId);
     if (!player || deduction <= 0) return;
 
-    console.log(`©️ COPYRIGHTS: ${player.name} -${deduction} pts (50% de ${points})`);
+    console.log(
+      `©️ COPYRIGHTS: ${player.name} -${deduction} pts (50% de ${points})`,
+    );
 
     set((state: { players: any[] }) => ({
       players: state.players.map((p) =>
@@ -350,6 +352,36 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         p.id === leader.id
           ? { ...p, isFrozen: true, artistHoldRoundsLeft: 2 }
           : p,
+      ),
+    }));
+  },
+
+  // ─── SOLD OUT ───────────────────────────────────────────────────────────────
+  // +1 al portador de la carta. Sin target: el playerId ES el holder.
+  applySoldOut: (holderId: string) => {
+    const player = get().players.find((p) => p.id === holderId);
+    if (!player) return;
+
+    console.log(`🎟️ SOLD OUT: ${player.name} +1`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === holderId ? { ...p, score: p.score + 1 } : p,
+      ),
+    }));
+  },
+
+  // ─── BAD REVIEW ─────────────────────────────────────────────────────────────
+  // -1 al jugador objetivo. Math.max(0) para no bajar de 0.
+  applyBadReview: (targetId: string) => {
+    const player = get().players.find((p) => p.id === targetId);
+    if (!player) return;
+
+    console.log(`💔 BAD REVIEW: ${player.name} -1`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === targetId ? { ...p, score: Math.max(0, p.score - 1) } : p,
       ),
     }));
   },

@@ -10,7 +10,9 @@ export type ReactionCardType =
   | 'BLOCK'
   | 'OVERDRIVE'
   | 'ROYALTIES'
-  | 'ARTIST_HOLD';
+  | 'ARTIST_HOLD'
+  | 'SOLD_OUT'
+  | 'BAD_REVIEW';
 
 export interface ReactionCardDef {
   type: ReactionCardType;
@@ -93,6 +95,20 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     label: 'OVERDRIVE',
     description: 'Próximas 3 respuestas ×1.5',
     color: '#10B981',
+  },
+  {
+    type: 'SOLD_OUT',
+    emoji: '🎟️',
+    label: 'SOLD OUT',
+    description: '+1 punto extra para ti',
+    color: '#22C55E',
+  },
+  {
+    type: 'BAD_REVIEW',
+    emoji: '💔',
+    label: 'BAD REVIEW',
+    description: 'El jugador pierde 1 pt',
+    color: '#F43F5E',
   },
 ];
 
