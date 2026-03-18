@@ -2,10 +2,10 @@
   "expo": {
     "name": "hitback-",
     "slug": "hitback-",
+    "scheme": "hitback",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "hitback",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "updates": {
@@ -26,7 +26,8 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "package": "com.michaelxk.hitback"
     },
     "web": {
       "bundler": "metro",
@@ -45,12 +46,6 @@
         }
       ],
       [
-        "expo-asset",
-        {
-          "useStaticAssets": true
-        }
-      ],
-      [
         "expo-camera",
         {
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
@@ -64,8 +59,7 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {},
-      "eas": {}
+      "router": {}
     }
   }
 }

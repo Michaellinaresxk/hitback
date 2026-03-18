@@ -79,6 +79,8 @@ export default function GameScreen() {
     activateStopBlast,
     applyFeaturingBonus,
     applyCopyrights,
+    applySoldOut,
+    applyBadReview,
   } = useGameScreenStore();
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
@@ -94,8 +96,14 @@ export default function GameScreen() {
   } = useGameFlow();
 
   // ── Feedback ───────────────────────────────────────────────────────────────
-  const { messages, dismissFeedback, showSuccess, showError, showInfo, showWarning } =
-    useFeedback();
+  const {
+    messages,
+    dismissFeedback,
+    showSuccess,
+    showError,
+    showInfo,
+    showWarning,
+  } = useFeedback();
 
   // ── Local State ────────────────────────────────────────────────────────────
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
@@ -218,14 +226,21 @@ export default function GameScreen() {
       !flowState.hasPlacedBet &&
       !flowState.audioPlaying
     );
-  }, [flowState.currentRound?.number, flowState.phase, flowState.hasPlacedBet, flowState.audioPlaying]);
+  }, [
+    flowState.currentRound?.number,
+    flowState.phase,
+    flowState.hasPlacedBet,
+    flowState.audioPlaying,
+  ]);
 
   const canStart = useMemo(() => {
     if (comboFlowState.isActive) {
       console.log('⛔ canStart blocked by comboFlowState.isActive');
       return false;
     }
-    const result = !flowState.isLoading && (flowState.phase === 'answer' || flowState.phase === 'idle');
+    const result =
+      !flowState.isLoading &&
+      (flowState.phase === 'answer' || flowState.phase === 'idle');
     console.log(`✅ canStart result: ${result}`);
     return result;
   }, [flowState.isLoading, flowState.phase, comboFlowState.isActive]);
@@ -312,7 +327,9 @@ export default function GameScreen() {
       }
 
       const storePlayer = player as any;
-      const powerCard = storePlayer.powerCards?.find((pc: any) => pc.id === cardId);
+      const powerCard = storePlayer.powerCards?.find(
+        (pc: any) => pc.id === cardId,
+      );
       if (!powerCard) {
         showError('Error', 'Carta no encontrada en el inventario');
         return;
@@ -326,11 +343,20 @@ export default function GameScreen() {
         return;
       }
 
-      console.log(`⚡ Activating PowerCard: ${powerCard.name} for ${player.name}`);
+      console.log(
+        `⚡ Activating PowerCard: ${powerCard.name} for ${player.name}`,
+      );
 
       try {
-        const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-        const result = await gameSessionService.usePowerCard(backendPlayerId, cardId);
+        const backendPlayerId = getBackendPlayerId(
+          playerId,
+          players,
+          playerIdMap,
+        );
+        const result = await gameSessionService.usePowerCard(
+          backendPlayerId,
+          cardId,
+        );
 
         if (result.success) {
           (useGameStore.getState() as any).usePowerCard(playerId, cardId);
@@ -377,6 +403,12 @@ export default function GameScreen() {
         case 'COPYRIGHTS':
           applyCopyrights(playerId, lastAwardedPointsRef.current);
           break;
+        case 'SOLD_OUT':
+          applySoldOut(playerId);
+          break;
+        case 'BAD_REVIEW':
+          applyBadReview(playerId);
+          break;
         default:
           break;
       }
@@ -390,6 +422,8 @@ export default function GameScreen() {
       applyArtistHold,
       applyCopyrights,
       lastAwardedPointsRef,
+      applySoldOut,
+      applyBadReview,
     ],
   );
 
@@ -429,16 +463,18 @@ export default function GameScreen() {
 
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}
 
-        {flowState.audioPlaying && flowState.audioUrl && flowState.currentRound && (
-          <AudioPlayer
-            previewUrl={flowState.audioUrl}
-            trackTitle='Escucha...'
-            artist={`${flowState.currentRound.question.type.toUpperCase()}`}
-            duration={REPRODUCTION_TIME_LIMIT}
-            autoPlay={true}
-            onAudioFinished={handleAudioFinished}
-          />
-        )}
+        {flowState.audioPlaying &&
+          flowState.audioUrl &&
+          flowState.currentRound && (
+            <AudioPlayer
+              previewUrl={flowState.audioUrl}
+              trackTitle='Escucha...'
+              artist={`${flowState.currentRound.question.type.toUpperCase()}`}
+              duration={REPRODUCTION_TIME_LIMIT}
+              autoPlay={true}
+              onAudioFinished={handleAudioFinished}
+            />
+          )}
 
         <CurrentTurn
           currentPlayerName={currentPlayer?.name || ''}
@@ -522,7 +558,9 @@ export default function GameScreen() {
       <FeaturingModal
         visible={showFeaturingModal}
         portadorId={featuringPortadorId ?? ''}
-        portadorName={players.find((p) => p.id === featuringPortadorId)?.name ?? ''}
+        portadorName={
+          players.find((p) => p.id === featuringPortadorId)?.name ?? ''
+        }
         players={players}
         committedPlayerIds={committedFeaturingIds}
         onSelectPartner={handleFeaturingPartnerSelected}
@@ -564,7 +602,9 @@ export default function GameScreen() {
       <DuelModal
         visible={showDuelModal}
         challengerId={duelChallengerId ?? ''}
-        challengerName={players.find((p) => p.id === duelChallengerId)?.name ?? ''}
+        challengerName={
+          players.find((p) => p.id === duelChallengerId)?.name ?? ''
+        }
         players={players}
         onSelectOpponent={handleDuelOpponentSelected}
         onClose={closeDuelModal}
