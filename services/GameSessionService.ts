@@ -1,9 +1,6 @@
-// services/gameSessionService.ts - HITBACK Game Session Service
 // ✅ Conecta con el nuevo API v2 (SIN QR)
 // ✅ Maneja sesiones de juego completas
 // ✅ Control 100% desde la app
-
-import { Platform } from 'react-native';
 
 // 🔧 CONFIGURACIÓN
 const getBaseUrl = (): string => {
@@ -160,7 +157,7 @@ class GameSessionService {
 
   private async fetchAPI<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
   ): Promise<T> {
     const url = `${this.baseUrl}/api/v2/game${endpoint}`;
 
@@ -260,7 +257,7 @@ class GameSessionService {
    */
   async nextRound(
     sessionId?: string,
-    forceQuestionType?: string
+    forceQuestionType?: string,
   ): Promise<{
     success: boolean;
     round?: {
@@ -300,7 +297,7 @@ class GameSessionService {
   async placeBet(
     playerId: string,
     tokens: number,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{
     success: boolean;
     bet: BetInfo;
@@ -329,7 +326,7 @@ class GameSessionService {
    */
   async revealAnswer(
     winnerId: string | null,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{
     success: boolean;
     results: RoundResult;
@@ -400,7 +397,7 @@ class GameSessionService {
   async scanPowerCard(
     qrCode: string,
     playerId: string,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{
     success: boolean;
     data: {
@@ -451,7 +448,7 @@ class GameSessionService {
     playerId: string,
     cardType: string,
     targetPlayerId?: string,
-    sessionId?: string
+    sessionId?: string,
   ): Promise<{
     success: boolean;
     message: string;
@@ -468,6 +465,46 @@ class GameSessionService {
       method: 'POST',
       body: JSON.stringify({ playerId, cardType, targetPlayerId }),
     });
+  }
+
+  /**
+   * Aplica un delta de puntos a un jugador en el backend.
+   * Llamado por Reaction Cards para mantener el backend sincronizado.
+   * El frontend ya aplicó la mutación local — esto asegura que el próximo
+   * syncPlayersFromBackend no restaure el score anterior.
+   *
+   * @param backendPlayerId - ID del jugador en el backend (player_1, player_2…)
+   * @param delta           - puntos a sumar (negativo para restar)
+   * @param reason          - nombre de la Reaction Card para logging
+   */
+  async applyScoreDelta(
+    backendPlayerId: string,
+    delta: number,
+    reason: string,
+  ): Promise<{ success: boolean }> {
+    const id = this.currentSessionId;
+    if (!id) {
+      console.warn('⚠️ applyScoreDelta: no hay sesión activa');
+      return { success: false };
+    }
+
+    console.log(
+      `🎴 applyScoreDelta → ${reason}: player ${backendPlayerId} ${delta > 0 ? '+' : ''}${delta}`,
+    );
+
+    try {
+      return await this.fetchAPI(
+        `/session/${id}/players/${backendPlayerId}/score`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ delta, reason }),
+        },
+      );
+    } catch (error) {
+      // No bloqueamos el juego si falla — el score local ya está actualizado
+      console.error(`❌ applyScoreDelta failed (${reason}):`, error);
+      return { success: false };
+    }
   }
 
   // ════════════════════════════════════════════════════════════

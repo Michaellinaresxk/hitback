@@ -81,6 +81,7 @@ export default function GameScreen() {
     applyCopyrights,
     applySoldOut,
     applyBadReview,
+    applyManagementFee,
   } = useGameScreenStore();
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
@@ -409,6 +410,9 @@ export default function GameScreen() {
         case 'BAD_REVIEW':
           applyBadReview(playerId);
           break;
+        case 'MANAGEMENT_FEE':
+          applyManagementFee(playerId);
+          break;
         default:
           break;
       }
@@ -424,6 +428,7 @@ export default function GameScreen() {
       lastAwardedPointsRef,
       applySoldOut,
       applyBadReview,
+      applyManagementFee,
     ],
   );
 

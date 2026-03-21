@@ -85,6 +85,10 @@ export function useGameScreenStore() {
   const applyBadReview = useGameStore(
     (state) => (state as any).applyBadReview as (targetId: string) => void,
   );
+
+  const applyManagementFee = useGameStore(
+    (state) => (state as any).applyManagementFee as (targetId: string) => void,
+  );
   return {
     // State
     players,
@@ -122,5 +126,6 @@ export function useGameScreenStore() {
     applyCopyrights,
     applySoldOut,
     applyBadReview,
+    applyManagementFee,
   };
 }

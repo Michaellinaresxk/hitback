@@ -386,6 +386,21 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
   },
 
+  // ─── MANAGEMENT FEE ─────────────────────────────────────────────────────────
+  // El manager cobra su corte. -1 al jugador objetivo.
+  applyManagementFee: (targetId: string) => {
+    const player = get().players.find((p) => p.id === targetId);
+    if (!player) return;
+
+    console.log(`🤵 MANAGEMENT FEE: ${player.name} -1 (el manager cobra)`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === targetId ? { ...p, score: Math.max(0, p.score - 1) } : p,
+      ),
+    }));
+  },
+
   // ─── B-SIDE: updateLossStreaks ─────────────────────────────────────────────
   // Llama al final de cada ronda (handleAwardPoints / handleWrongAnswer).
   // winnerId = quien ganó (null = nadie ganó).
@@ -466,7 +481,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         if (backendPlayer) {
           return {
             ...localPlayer,
-            score: backendPlayer.score || localPlayer.score,
+            score: backendPlayer.score,
             availableTokens:
               backendPlayer.availableTokens || localPlayer.availableTokens,
           };

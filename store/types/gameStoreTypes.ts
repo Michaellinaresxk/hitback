@@ -75,6 +75,7 @@ export interface GameStore extends GameState {
   applyCopyrights: (playerId: string, points: number) => void;
   applySoldOut: (holderId: string) => void;
   applyBadReview: (targetId: string) => void;
+  applyManagementFee: (targetId: string) => void;
 
   placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;
@@ -105,12 +106,12 @@ export interface GameStore extends GameState {
   applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
 
   syncPlayersFromBackend: (
-    backendPlayers: Array<{
+    backendPlayers: {
       id: string;
       name: string;
       score: number;
       availableTokens: number[];
-    }>,
+    }[],
   ) => void;
 
   // ── Game slice ────────────────────────────────────────────────────────────
