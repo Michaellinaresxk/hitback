@@ -82,6 +82,7 @@ export default function GameScreen() {
     applySoldOut,
     applyBadReview,
     applyManagementFee,
+    applyCharityShow,
   } = useGameScreenStore();
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
@@ -361,11 +362,12 @@ export default function GameScreen() {
 
         if (result.success) {
           (useGameStore.getState() as any).usePowerCard(playerId, cardId);
-          showSuccess(
-            '⚡ ¡Carta Activada!',
-            `${player.name} activó ${(powerCard as any).emoji || '⚡'} ${powerCard.name}\n¡Tu próxima respuesta correcta vale x2 puntos!`,
-          );
-          console.log(`✅ PowerCard activated: ${powerCard.name}`);
+          const cardTypeLower = ((powerCard as any).type || '').toLowerCase();
+          const toastMessage = cardTypeLower === 'festival'
+            ? `${player.name} usó 🎪 ${powerCard.name}\n¡Todos los jugadores ganan +1 pt!`
+            : `${player.name} activó ${(powerCard as any).emoji || '⚡'} ${powerCard.name}\n¡Tu próxima respuesta correcta vale x2 puntos!`;
+          showSuccess('⚡ ¡Carta Usada!', toastMessage);
+          console.log(`✅ PowerCard used: ${powerCard.name}`);
         } else {
           showError('Error', result.message || 'No se pudo activar la carta');
         }
@@ -395,24 +397,63 @@ export default function GameScreen() {
         case 'ALLIANCE':
           setShowAllianceModal(true);
           break;
-        case 'ROYALTIES':
+        case 'ROYALTIES': {
+          // Capturar líder ANTES de mutar el store local
+          const leader = [...players].reduce((a, b) => (a.score > b.score ? a : b));
           applyRoyalties(playerId);
+          // Sincronizar backend solo si el holder no es el líder
+          if (leader.id !== playerId) {
+            const leaderBackendId = getBackendPlayerId(leader.id, players, playerIdMap);
+            const holderBackendId = getBackendPlayerId(playerId, players, playerIdMap);
+            gameSessionService.applyScoreDelta(leaderBackendId, -1, 'ROYALTIES');
+            gameSessionService.applyScoreDelta(holderBackendId, +1, 'ROYALTIES');
+          }
           break;
+        }
         case 'ARTIST_HOLD':
           applyArtistHold();
           break;
-        case 'COPYRIGHTS':
+        case 'COPYRIGHTS': {
+          const deduction = Math.floor(lastAwardedPointsRef.current / 2);
           applyCopyrights(playerId, lastAwardedPointsRef.current);
+          if (deduction > 0) {
+            const backendId = getBackendPlayerId(playerId, players, playerIdMap);
+            gameSessionService.applyScoreDelta(backendId, -deduction, 'COPYRIGHTS');
+          }
           break;
-        case 'SOLD_OUT':
+        }
+        case 'SOLD_OUT': {
           applySoldOut(playerId);
+          const backendIdSoldOut = getBackendPlayerId(playerId, players, playerIdMap);
+          gameSessionService.applyScoreDelta(backendIdSoldOut, +1, 'SOLD_OUT');
           break;
-        case 'BAD_REVIEW':
+        }
+        case 'BAD_REVIEW': {
           applyBadReview(playerId);
+          const backendIdBadReview = getBackendPlayerId(playerId, players, playerIdMap);
+          gameSessionService.applyScoreDelta(backendIdBadReview, -1, 'BAD_REVIEW');
           break;
-        case 'MANAGEMENT_FEE':
+        }
+        case 'MANAGEMENT_FEE': {
           applyManagementFee(playerId);
+          const backendIdMgmt = getBackendPlayerId(playerId, players, playerIdMap);
+          gameSessionService.applyScoreDelta(backendIdMgmt, -1, 'MANAGEMENT_FEE');
           break;
+        }
+        case 'CHARITY_SHOW': {
+          // El sorteo y la mutación ocurren dentro del store
+          const charityResult = applyCharityShow();
+          if (charityResult) {
+            const { leaderId, leaderName, recipientId, recipientName, tiedCount } = charityResult;
+            const tiedNote = tiedCount > 1 ? ` (sorteado entre ${tiedCount})` : '';
+            showSuccess('🎸 Charity Show', `${leaderName} le regaló 1pt a ${recipientName}${tiedNote}`);
+            const leaderBackendId = getBackendPlayerId(leaderId, players, playerIdMap);
+            const recipientBackendId = getBackendPlayerId(recipientId, players, playerIdMap);
+            gameSessionService.applyScoreDelta(leaderBackendId, -1, 'CHARITY_SHOW');
+            gameSessionService.applyScoreDelta(recipientBackendId, +1, 'CHARITY_SHOW');
+          }
+          break;
+        }
         default:
           break;
       }
@@ -429,6 +470,9 @@ export default function GameScreen() {
       applySoldOut,
       applyBadReview,
       applyManagementFee,
+      applyCharityShow,
+      players,
+      playerIdMap,
     ],
   );
 

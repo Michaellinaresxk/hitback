@@ -8,7 +8,7 @@ export type ReactionCardType =
   | 'ALLIANCE'
   | 'COPYRIGHTS'
   | 'BLOCK'
-  | 'OVERDRIVE'
+  | 'CHARITY_SHOW'
   | 'ROYALTIES'
   | 'ARTIST_HOLD'
   | 'SOLD_OUT'
@@ -91,10 +91,10 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     color: '#64748B',
   },
   {
-    type: 'OVERDRIVE',
-    emoji: '⚡',
-    label: 'OVERDRIVE',
-    description: 'Próximas 3 respuestas ×1.5',
+    type: 'CHARITY_SHOW',
+    emoji: '🎸',
+    label: 'CHARITY SHOW',
+    description: 'El líder le regala 1 pt al último',
     color: '#10B981',
   },
   {

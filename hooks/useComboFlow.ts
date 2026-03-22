@@ -61,7 +61,7 @@ export function useComboFlow({
 }: UseComboFlowParams) {
   const [comboFlowState, setComboFlowState] = useState<ComboFlowState>(INITIAL_COMBO_STATE);
 
-  // Safety: resetea el flujo si lleva más de 30s activo
+  // Safety: resetea el flujo si lleva más de 30s activo y avanza el turno
   useEffect(() => {
     if (!comboFlowState.isActive) return;
 
@@ -69,10 +69,11 @@ export function useComboFlow({
       console.warn('⚠️ Safety: Combo flow was active for too long, resetting');
       setComboFlowState(INITIAL_COMBO_STATE);
       resetProcessingRefs();
+      advanceToNextTurn();
     }, 30000);
 
     return () => clearTimeout(safetyTimer);
-  }, [comboFlowState.isActive, resetProcessingRefs]);
+  }, [comboFlowState.isActive, resetProcessingRefs, advanceToNextTurn]);
 
   /** Activa el flujo de combo tras una respuesta correcta con streak. */
   const activateCombo = useCallback(
@@ -183,12 +184,6 @@ export function useComboFlow({
   /** El jugador omite el escáner (cierra el modal). */
   const handlePowerCardScanClose = useCallback(() => {
     console.log('⭕ Power card scan skipped');
-
-    if (isPowerCardProcessingRef.current) {
-      console.log('⏳ Processing in progress, ignoring close');
-      return;
-    }
-    isPowerCardProcessingRef.current = true;
     setComboFlowState(INITIAL_COMBO_STATE);
     isPowerCardProcessingRef.current = false;
     setTimeout(() => advanceToNextTurn(), 300);

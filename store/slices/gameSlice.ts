@@ -191,18 +191,28 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       nextTurnIndex = (nextTurnIndex + 1) % players.length;
     }
 
-    const updatedPlayers = players.map((player, index) => ({
-      ...player,
-      isCurrentTurn: index === nextTurnIndex,
-      // Solo se consume el freeze del jugador que fue saltado
-      isFrozen: player.id === skippedPlayerId ? false : player.isFrozen,
-      frozenForRound:
-        player.id === skippedPlayerId ? null : player.frozenForRound,
-      // Limpiar flags de ronda
-      isImmune: player.isImmune && Math.random() > 0.5,
-      peekUsed: false,
-      currentBet: 0,
-    }));
+    const updatedPlayers = players.map((player, index) => {
+      if (player.id === skippedPlayerId) {
+        const roundsLeft = Math.max(0, (player.artistHoldRoundsLeft || 0) - 1);
+        return {
+          ...player,
+          isCurrentTurn: index === nextTurnIndex,
+          artistHoldRoundsLeft: roundsLeft,
+          isFrozen: roundsLeft > 0,
+          frozenForRound: roundsLeft > 0 ? player.frozenForRound : null,
+          isImmune: player.isImmune && Math.random() > 0.5,
+          peekUsed: false,
+          currentBet: 0,
+        };
+      }
+      return {
+        ...player,
+        isCurrentTurn: index === nextTurnIndex,
+        isImmune: player.isImmune && Math.random() > 0.5,
+        peekUsed: false,
+        currentBet: 0,
+      };
+    });
 
     set({
       players: updatedPlayers,
