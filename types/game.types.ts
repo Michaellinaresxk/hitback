@@ -49,18 +49,14 @@ export interface PowerCard {
   name: string;
   description: string;
   icon: string;
-  usesRemaining: number;
-  maxUses: number;
+  currentUses: number;
+  usageLimit: number;
   isActive: boolean;
 }
 
 export type PowerCardType =
-  | 'THIEF'
-  | 'SHIELD'
   | 'BOOST'
-  | 'REFRESH'
-  | 'PEEK'
-  | 'PRECISION';
+  | 'FESTIVAL';
 
 export interface CurrentCard {
   qrCode: string;

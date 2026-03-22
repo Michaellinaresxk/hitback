@@ -8,11 +8,12 @@ export type ReactionCardType =
   | 'ALLIANCE'
   | 'COPYRIGHTS'
   | 'BLOCK'
-  | 'OVERDRIVE'
+  | 'CHARITY_SHOW'
   | 'ROYALTIES'
   | 'ARTIST_HOLD'
   | 'SOLD_OUT'
-  | 'BAD_REVIEW';
+  | 'BAD_REVIEW'
+  | 'MANAGEMENT_FEE';
 
 export interface ReactionCardDef {
   type: ReactionCardType;
@@ -90,10 +91,10 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     color: '#64748B',
   },
   {
-    type: 'OVERDRIVE',
-    emoji: '⚡',
-    label: 'OVERDRIVE',
-    description: 'Próximas 3 respuestas ×1.5',
+    type: 'CHARITY_SHOW',
+    emoji: '🎸',
+    label: 'CHARITY SHOW',
+    description: 'El líder le regala 1 pt al último',
     color: '#10B981',
   },
   {
@@ -109,6 +110,13 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     label: 'BAD REVIEW',
     description: 'El jugador pierde 1 pt',
     color: '#F43F5E',
+  },
+  {
+    type: 'MANAGEMENT_FEE',
+    emoji: '🤵',
+    label: 'MANAGEMENT FEE',
+    description: 'Tu manager cobra su corte — pierdes 1 pt',
+    color: '#6366F1',
   },
 ];
 

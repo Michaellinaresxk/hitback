@@ -53,7 +53,7 @@ export function ComboNotification({
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} transparent animationType='fade'>
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
       <View style={styles.comboOverlay}>
         <Animated.View
           style={[styles.comboContainer, { transform: [{ scale: pulseAnim }] }]}

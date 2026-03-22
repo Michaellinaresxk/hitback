@@ -206,22 +206,6 @@ class PowerCardService {
    */
   getCardInfo(cardType: string): PowerCardData | null {
     const cardMap: Record<string, PowerCardData> = {
-      hit_steal: {
-        cardId: 'power_robo_001',
-        cardName: 'Hit Steal',
-        cardType: 'THIEF',
-        emoji: '🥷',
-        description: 'Roba 1 power card de otro jugador',
-        usageLimit: 1,
-      },
-      stop: {
-        cardId: 'power_stop_001',
-        cardName: 'STOP',
-        cardType: 'SHIELD',
-        emoji: '🛡️',
-        description: 'Inmune a robos',
-        usageLimit: 1,
-      },
       replay: {
         cardId: 'power_replay_001',
         cardName: 'REPLAY',
@@ -230,21 +214,13 @@ class PowerCardService {
         description: 'Tu próxima respuesta vale doble puntos',
         usageLimit: 1,
       },
-      stop_blast: {
-        cardId: 'power_stop_blast_001',
-        cardName: 'STOP-BLAST',
-        cardType: 'REFRESH',
-        emoji: '🔄',
-        description: 'Inmune a robos y contraataque',
+      festival: {
+        cardId: 'power_festival_001',
+        cardName: 'FESTIVAL',
+        cardType: 'FESTIVAL',
+        emoji: '🎪',
+        description: 'Todos los jugadores ganan +1 pt',
         usageLimit: 1,
-      },
-      precision: {
-        cardId: 'power_precision_001',
-        cardName: 'Precisión Total',
-        cardType: 'PRECISION',
-        emoji: '🎯',
-        description: 'Si aciertas año exacto, +2 puntos extra',
-        usageLimit: 2,
       },
     };
 

@@ -32,14 +32,10 @@ export const PowerCardItem: React.FC<PowerCardItemProps> = ({
   // Mapeo de tipos a colores
   const getCardColor = (type: string) => {
     const colors = {
-      THIEF: '#ff6b6b', // Rojo - Robo
-      SHIELD: '#4ecdc4', // Cyan - Escudo
-      BOOST: '#ffe66d', // Amarillo - Boost
-      REFRESH: '#95e1d3', // Verde - Refresh
-      PEEK: '#a8e6cf', // Verde claro - Peek
-      PRECISION: '#dda15e', // Naranja - Precisión
+      BOOST: '#ffe66d', // Amarillo - Replay x2
+      FESTIVAL: '#ff9f43', // Naranja fiesta - Festival
     };
-    return colors[type] || '#FFD700';
+    return colors[type as keyof typeof colors] || '#FFD700';
   };
 
   const cardColor = getCardColor(card.type);

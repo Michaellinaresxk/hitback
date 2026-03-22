@@ -64,14 +64,21 @@ export const useGameFlow = () => {
       const roundNumber = result.round?.number || 0;
       console.log(`✅ Round ${roundNumber} received`);
 
+      const audioUrl = result.round?.track?.audioUrl || null;
+
       if (roundNumber === 1) {
+        // Sin audio → saltar directo a pregunta para no congelar el juego
+        const hasAudio = !!audioUrl;
+        if (!hasAudio) {
+          console.warn('⚠️ Ronda 1 sin audio — saltando directo a pregunta');
+        }
         setFlowState({
-          phase: 'audio',
+          phase: hasAudio ? 'audio' : 'question',
           isLoading: false,
           currentRound: result.round,
-          audioPlaying: true,
-          audioUrl: result.round?.track?.audioUrl || null,
-          questionVisible: false,
+          audioPlaying: hasAudio,
+          audioUrl,
+          questionVisible: !hasAudio,
           showBettingButton: false,
           hasPlacedBet: false,
           roundNumber: roundNumber,
@@ -83,14 +90,14 @@ export const useGameFlow = () => {
               }
             : null,
         });
-        console.log('🎵 Ronda 1: Audio directo');
+        console.log(hasAudio ? '🎵 Ronda 1: Audio directo' : '🎵 Ronda 1: Sin audio, mostrando pregunta');
       } else {
         setFlowState({
           phase: 'betting',
           isLoading: false,
           currentRound: result.round,
           audioPlaying: false,
-          audioUrl: result.round?.track?.audioUrl || null,
+          audioUrl,
           questionVisible: false,
           showBettingButton: true,
           hasPlacedBet: false,
@@ -141,13 +148,20 @@ export const useGameFlow = () => {
   // SALTAR APUESTAS
   const skipBetting = useCallback(() => {
     console.log('⏭️ Skipping betting, starting audio');
-    setFlowState((prev) => ({
-      ...prev,
-      hasPlacedBet: false,
-      showBettingButton: false,
-      phase: 'audio',
-      audioPlaying: true,
-    }));
+    setFlowState((prev) => {
+      const hasAudio = !!prev.audioUrl;
+      if (!hasAudio) {
+        console.warn('⚠️ skipBetting: sin audio — saltando directo a pregunta');
+      }
+      return {
+        ...prev,
+        hasPlacedBet: false,
+        showBettingButton: false,
+        phase: hasAudio ? 'audio' : 'question',
+        audioPlaying: hasAudio,
+        questionVisible: !hasAudio,
+      };
+    });
   }, []);
 
   // REVELAR RESPUESTA
@@ -219,12 +233,19 @@ export const useGameFlow = () => {
 
   const confirmBetsAndContinue = useCallback(() => {
     console.log('✅ Confirmando apuestas y continuando...');
-    setFlowState((prev) => ({
-      ...prev,
-      phase: 'audio',
-      audioPlaying: true,
-      showBettingButton: false,
-    }));
+    setFlowState((prev) => {
+      const hasAudio = !!prev.audioUrl;
+      if (!hasAudio) {
+        console.warn('⚠️ confirmBetsAndContinue: sin audio — saltando directo a pregunta');
+      }
+      return {
+        ...prev,
+        phase: hasAudio ? 'audio' : 'question',
+        audioPlaying: hasAudio,
+        questionVisible: !hasAudio,
+        showBettingButton: false,
+      };
+    });
     console.log('🎵 Iniciando audio después de confirmar apuestas');
   }, []);
 

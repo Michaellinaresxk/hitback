@@ -2,6 +2,7 @@ import { StateCreator } from 'zustand';
 import { GameStore, Player } from '../types/gameTypes';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { BSIDE_LOSS_THRESHOLD } from '@/constants/LossStreak';
+import { ARTIST_HOLD_ROUND } from '@/constants/Game';
 
 export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   set,
@@ -150,64 +151,19 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               : p,
           );
           break;
-        case 'robo':
-        case 'thief':
-        case 'hit_steal':
-          if (targetPlayerId) {
-            newPlayers = newPlayers.map((p) => {
-              if (p.id === targetPlayerId && p.availableTokens.length > 0) {
-                const stolenToken = Math.max(...p.availableTokens);
-                return {
-                  ...p,
-                  availableTokens: p.availableTokens.filter(
-                    (t) => t !== stolenToken,
-                  ),
-                };
-              }
-              if (p.id === playerId)
-                return {
-                  ...p,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc,
-                  ),
-                };
-              return p;
-            });
-          }
-          break;
-        case 'escudo':
-        case 'shield':
-        case 'stop':
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  isImmune: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc,
-                  ),
-                }
-              : p,
-          );
-          break;
-        case 'peek':
-          newPlayers = newPlayers.map((p) =>
-            p.id === playerId
-              ? {
-                  ...p,
-                  peekUsed: true,
-                  powerCards: p.powerCards.map((pc) =>
-                    pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1 }
-                      : pc,
-                  ),
-                }
-              : p,
-          );
+        case 'festival':
+          // +1 a todos los jugadores; marcar carta como usada
+          newPlayers = newPlayers.map((p) => ({
+            ...p,
+            score: p.score + 1,
+            powerCards: p.id === playerId
+              ? p.powerCards.map((pc) =>
+                  pc.id === powerCardId
+                    ? { ...pc, currentUses: pc.currentUses + 1, isActive: false }
+                    : pc,
+                )
+              : p.powerCards,
+          }));
           break;
         default:
           console.warn(`⚠️ Unknown PowerCard type: ${cardType}`);
@@ -344,13 +300,16 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     const { players } = get();
     if (players.length < 2) return;
 
-    const leader = players.reduce((a, b) => (a.score > b.score ? a : b));
+    const leader = players.reduce(
+      (a: { score: number }, b: { score: number }) =>
+        a.score > b.score ? a : b,
+    );
     console.log(`🔒 ARTIST HOLD: ${leader.name} bloqueado por 2 rondas`);
 
     set((state: { players: any[] }) => ({
       players: state.players.map((p) =>
         p.id === leader.id
-          ? { ...p, isFrozen: true, artistHoldRoundsLeft: 2 }
+          ? { ...p, isFrozen: true, artistHoldRoundsLeft: ARTIST_HOLD_ROUND }
           : p,
       ),
     }));
@@ -384,6 +343,53 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         p.id === targetId ? { ...p, score: Math.max(0, p.score - 1) } : p,
       ),
     }));
+  },
+
+  // ─── MANAGEMENT FEE ─────────────────────────────────────────────────────────
+  // El manager cobra su corte. -1 al jugador objetivo.
+  applyManagementFee: (targetId: string) => {
+    const player = get().players.find((p) => p.id === targetId);
+    if (!player) return;
+
+    console.log(`🤵 MANAGEMENT FEE: ${player.name} -1 (el manager cobra)`);
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) =>
+        p.id === targetId ? { ...p, score: Math.max(0, p.score - 1) } : p,
+      ),
+    }));
+  },
+
+  // ─── CHARITY SHOW ───────────────────────────────────────────────────────────
+  // El líder transfiere 1 pt a un jugador sorteado al azar entre los de menor puntaje.
+  // Devuelve { leader, recipient, tiedCount } para mostrar toast, o null si no aplica.
+  applyCharityShow: (): { leaderName: string; recipientName: string; tiedCount: number } | null => {
+    const { players } = get();
+    if (players.length < 2) return null;
+
+    const leader = players.reduce((a, b) => (a.score > b.score ? a : b));
+    if (leader.score === 0) return null;
+
+    const minScore = Math.min(...players.map((p) => p.score));
+    const tied = players.filter((p) => p.score === minScore && p.id !== leader.id);
+    if (tied.length === 0) return null;
+
+    const recipient = tied[Math.floor(Math.random() * tied.length)];
+
+    console.log(
+      `🎸 CHARITY SHOW: ${leader.name} (-1) → ${recipient.name} (+1)` +
+      (tied.length > 1 ? ` (sorteado entre ${tied.length})` : ''),
+    );
+
+    set((state: { players: any[] }) => ({
+      players: state.players.map((p) => {
+        if (p.id === leader.id) return { ...p, score: Math.max(0, p.score - 1) };
+        if (p.id === recipient.id) return { ...p, score: p.score + 1 };
+        return p;
+      }),
+    }));
+
+    return { leaderId: leader.id, leaderName: leader.name, recipientId: recipient.id, recipientName: recipient.name, tiedCount: tied.length };
   },
 
   // ─── B-SIDE: updateLossStreaks ─────────────────────────────────────────────
@@ -466,7 +472,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         if (backendPlayer) {
           return {
             ...localPlayer,
-            score: backendPlayer.score || localPlayer.score,
+            score: backendPlayer.score,
             availableTokens:
               backendPlayer.availableTokens || localPlayer.availableTokens,
           };
