@@ -42,6 +42,8 @@ interface UseComboFlowParams {
   advanceToNextTurn: () => void;
   resetProcessingRefs: () => void;
   isPowerCardProcessingRef: MutableRefObject<boolean>;
+  /** Aplica el efecto inmediato de cartas como LABEL FEE (-1 pt al que la toma) */
+  applyImmediateCardEffect: (playerId: string, scoreChange: number) => void;
 }
 
 /**
@@ -58,6 +60,7 @@ export function useComboFlow({
   advanceToNextTurn,
   resetProcessingRefs,
   isPowerCardProcessingRef,
+  applyImmediateCardEffect,
 }: UseComboFlowParams) {
   const [comboFlowState, setComboFlowState] = useState<ComboFlowState>(INITIAL_COMBO_STATE);
 
@@ -141,19 +144,35 @@ export function useComboFlow({
         const result = await gameSessionService.scanPowerCard(qrCode, backendPlayerId);
 
         if (result.success) {
-          console.log(`✅ Power card scanned: ${result.data.cardName}`);
-          addPowerCard(playerIdForScan, {
-            id: result.data.cardId,
-            name: result.data.cardName,
-            emoji: result.data.emoji,
-            type: result.data.cardId.split('_')[1],
-            currentUses: 0,
-            usageLimit: 1,
-          });
-          showSuccess(
-            '⚡ ¡Carta Obtenida!',
-            `${playerNameForScan} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
-          );
+          console.log(`✅ Power card scanned: ${result.data.cardName} (type: ${result.data.cardType})`);
+
+          if (result.data.effectOnDraw) {
+            // Carta con efecto inmediato (ej: LABEL FEE) — no va al inventario
+            const { scoreChange } = result.data.effectOnDraw;
+            if (scoreChange && scoreChange !== 0) {
+              applyImmediateCardEffect(playerIdForScan, scoreChange);
+            }
+            showError(
+              `${result.data.emoji} ${result.data.cardName}`,
+              `${playerNameForScan}: ${result.data.description}`,
+            );
+          } else {
+            // Carta normal — va al inventario del jugador
+            addPowerCard(playerIdForScan, {
+              id: result.data.cardId,
+              name: result.data.cardName,
+              emoji: result.data.emoji,
+              type: result.data.cardType,
+              description: result.data.description,
+              currentUses: 0,
+              usageLimit: result.data.usageLimit,
+              isActive: false,
+            });
+            showSuccess(
+              '⚡ ¡Carta Obtenida!',
+              `${playerNameForScan} ha obtenido: ${result.data.emoji} ${result.data.cardName}`,
+            );
+          }
         } else {
           showError('Error', 'No se pudo añadir la carta');
         }

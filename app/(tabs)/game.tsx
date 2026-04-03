@@ -137,6 +137,9 @@ export default function GameScreen() {
     advanceToNextTurn,
     resetProcessingRefs,
     isPowerCardProcessingRef,
+    applyImmediateCardEffect: (playerId, _scoreChange) => {
+      applyBadReview(playerId); // LABEL FEE siempre es -1: reusa applyBadReview
+    },
   });
 
   // ── Betting Actions ────────────────────────────────────────────────────────

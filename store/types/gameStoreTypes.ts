@@ -57,6 +57,7 @@ export interface GameState {
   featuringTargetId: string | null;
   backendConnected: boolean;
   lastBackendCheck: string | null;
+  doublePlatinumActive: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -128,6 +129,8 @@ export interface GameStore extends GameState {
   startViralMoment: () => void;
   activateFeaturing: (portadorId: string, targetId: string) => void;
   clearFeaturing: () => void;
+  activateDoublePlatinum: () => void;
+  clearDoublePlatinum: () => void;
 
   // ── Card slice ────────────────────────────────────────────────────────────
   scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;

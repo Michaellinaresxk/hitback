@@ -404,7 +404,11 @@ class GameSessionService {
       playerId: string;
       cardId: string;
       cardName: string;
+      cardType: string;
       emoji: string;
+      description: string;
+      usageLimit: number;
+      effectOnDraw: { scoreChange: number } | null;
       scannedAt: string;
     };
     message: string;
