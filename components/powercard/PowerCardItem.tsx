@@ -31,11 +31,11 @@ export const PowerCardItem: React.FC<PowerCardItemProps> = ({
 
   // Mapeo de tipos a colores
   const getCardColor = (type: string) => {
-    const colors = {
-      BOOST: '#ffe66d', // Amarillo - Replay x2
-      FESTIVAL: '#ff9f43', // Naranja fiesta - Festival
+    const colors: Record<string, string> = {
+      replay: '#ffe66d',   // Amarillo - Replay x2
+      festival: '#ff9f43', // Naranja - Festival
     };
-    return colors[type as keyof typeof colors] || '#FFD700';
+    return colors[type.toLowerCase()] ?? '#FFD700';
   };
 
   const cardColor = getCardColor(card.type);
@@ -45,7 +45,7 @@ export const PowerCardItem: React.FC<PowerCardItemProps> = ({
       <View
         style={[styles.compactCard, !isAvailable && styles.compactCardUsed]}
       >
-        <Text style={styles.compactEmoji}>{card.icon}</Text>
+        <Text style={styles.compactEmoji}>{card.emoji}</Text>
         <View style={styles.compactInfo}>
           <Text style={styles.compactName} numberOfLines={1}>
             {card.name}
@@ -79,7 +79,7 @@ export const PowerCardItem: React.FC<PowerCardItemProps> = ({
     >
       {/* Header */}
       <View style={styles.cardHeader}>
-        <Text style={styles.cardEmoji}>{card.icon}</Text>
+        <Text style={styles.cardEmoji}>{card.emoji}</Text>
         {card.isActive && (
           <View style={[styles.badge, { backgroundColor: cardColor }]}>
             <Text style={styles.badgeText}>ACTIVA</Text>

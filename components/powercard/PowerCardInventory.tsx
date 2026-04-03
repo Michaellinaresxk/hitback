@@ -88,7 +88,7 @@ export const PowerCardInventory: React.FC<PowerCardInventoryProps> = ({
               activeOpacity={0.7}
             >
               {/* Emoji */}
-              <Text style={styles.cardEmoji}>{card.icon}</Text>
+              <Text style={styles.cardEmoji}>{card.emoji}</Text>
 
               {/* Name */}
               <Text style={styles.cardName} numberOfLines={2}>

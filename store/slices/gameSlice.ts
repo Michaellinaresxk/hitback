@@ -29,6 +29,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   duelPlayer1Id: null,
   duelPlayer2Id: null,
   featuringTargetId: null,
+  doublePlatinumActive: false,
   gameDurationMinutes: GAME_DURATION / 60,
 
   createNewGame: () => {
@@ -65,6 +66,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       duelActive: false,
       duelPlayer1Id: null,
       duelPlayer2Id: null,
+      doublePlatinumActive: false,
     });
   },
 
@@ -330,6 +332,18 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   clearDuel: () => {
     set({ duelActive: false, duelPlayer1Id: null, duelPlayer2Id: null });
   },
+
+  activateDoublePlatinum: () => {
+    const { players } = get();
+    const holder = players.find((p: any) => p.powerCards?.some((pc: any) => pc.type === 'double_platinum' && pc.isActive));
+    console.log(`💿 DOUBLE PLATINUM activado${holder ? ` por ${holder.name}` : ''}`);
+    set({ doublePlatinumActive: true });
+  },
+
+  clearDoublePlatinum: () => {
+    set({ doublePlatinumActive: false });
+  },
+
   setGameDuration: (minutes: number) => {
     set({ gameDurationMinutes: minutes });
   },

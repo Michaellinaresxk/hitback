@@ -119,32 +119,47 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     powerCardId: string,
     targetPlayerId?: string,
   ) => {
+    // Capturamos el tipo de carta ANTES del set para usarlo en efectos de nivel global
+    const player = get().players.find((p) => p.id === playerId);
+    const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
+    const cardType = powerCard?.type?.toLowerCase() || '';
+
     set((state) => {
-      const player = state.players.find((p) => p.id === playerId);
-      const powerCard = player?.powerCards?.find((pc) => pc.id === powerCardId);
-      if (!player || !powerCard)
+      const localPlayer = state.players.find((p: any) => p.id === playerId);
+      const localCard = localPlayer?.powerCards?.find((pc: any) => pc.id === powerCardId);
+      if (!localPlayer || !localCard)
         return { ...state, error: 'Carta de poder no encontrada' };
-      if (powerCard.currentUses >= powerCard.usageLimit)
+      if (localCard.currentUses >= localCard.usageLimit)
         return { ...state, error: 'Carta ya usada' };
 
       let newPlayers = [...state.players];
-      const cardType = powerCard.type?.toLowerCase() || '';
 
       switch (cardType) {
         case 'replay':
         case 'boost':
-          newPlayers = newPlayers.map((p) =>
+          newPlayers = newPlayers.map((p: any) =>
             p.id === playerId
               ? {
                   ...p,
                   boostActive: true,
-                  powerCards: p.powerCards.map((pc) =>
+                  powerCards: p.powerCards.map((pc: any) =>
                     pc.id === powerCardId
-                      ? {
-                          ...pc,
-                          currentUses: pc.currentUses + 1,
-                          isActive: true,
-                        }
+                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: true }
+                      : pc,
+                  ),
+                }
+              : p,
+          );
+          break;
+        case 'double_platinum':
+          // Solo marca la carta como usada; el flag de ronda se activa fuera del set
+          newPlayers = newPlayers.map((p: any) =>
+            p.id === playerId
+              ? {
+                  ...p,
+                  powerCards: p.powerCards.map((pc: any) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: true }
                       : pc,
                   ),
                 }
@@ -153,16 +168,17 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
           break;
         case 'festival':
           // +1 a todos los jugadores; marcar carta como usada
-          newPlayers = newPlayers.map((p) => ({
+          newPlayers = newPlayers.map((p: any) => ({
             ...p,
             score: p.score + 1,
-            powerCards: p.id === playerId
-              ? p.powerCards.map((pc) =>
-                  pc.id === powerCardId
-                    ? { ...pc, currentUses: pc.currentUses + 1, isActive: false }
-                    : pc,
-                )
-              : p.powerCards,
+            powerCards:
+              p.id === playerId
+                ? p.powerCards.map((pc: any) =>
+                    pc.id === powerCardId
+                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: false }
+                      : pc,
+                  )
+                : p.powerCards,
           }));
           break;
         default:
@@ -171,6 +187,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
       return { ...state, players: newPlayers, error: null };
     });
+
+    // Efecto de nivel global: DOUBLE PLATINUM activa el modificador de la próxima ronda
+    if (cardType === 'double_platinum') {
+      get().activateDoublePlatinum();
+    }
   },
 
   activateBoost: (playerId: string) => {
@@ -190,12 +211,16 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   },
 
   awardPoints: (playerId: string, points?: number) => {
-    const { currentCard, players } = get();
+    const { currentCard, players, doublePlatinumActive } = get();
     const player = players.find((p) => p.id === playerId);
     if (!player || !currentCard) return;
 
     let basePoints = points || currentCard.question.points || 0;
     if (player.boostActive) basePoints = basePoints * 2;
+    if (doublePlatinumActive) {
+      basePoints = basePoints * 2;
+      console.log(`💿 DOUBLE PLATINUM: puntos duplicados (${basePoints / 2} → ${basePoints})`);
+    }
     const totalPoints = basePoints + (player.currentBet || 0);
 
     set((state) => ({
@@ -212,6 +237,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       }),
     }));
 
+    if (doublePlatinumActive) get().clearDoublePlatinum();
     get().nextTurn();
     const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) get().endGame();

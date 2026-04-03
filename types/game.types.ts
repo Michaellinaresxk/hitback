@@ -48,15 +48,14 @@ export interface PowerCard {
   type: PowerCardType;
   name: string;
   description: string;
-  icon: string;
+  emoji: string;
   currentUses: number;
   usageLimit: number;
   isActive: boolean;
 }
 
-export type PowerCardType =
-  | 'BOOST'
-  | 'FESTIVAL';
+// Valores en minúsculas — coinciden con el campo `type` del backend (powerCards.json)
+export type PowerCardType = 'replay' | 'festival' | 'double_platinum' | 'label_fee';
 
 export interface CurrentCard {
   qrCode: string;
