@@ -77,7 +77,13 @@ export interface GameStore extends GameState {
   applySoldOut: (holderId: string) => void;
   applyBadReview: (targetId: string) => void;
   applyManagementFee: (targetId: string) => void;
-  applyCharityShow: () => { leaderId: string; leaderName: string; recipientId: string; recipientName: string; tiedCount: number } | null;
+  applyCharityShow: () => {
+    leaderId: string;
+    leaderName: string;
+    recipientId: string;
+    recipientName: string;
+    tiedCount: number;
+  } | null;
 
   placeBet: (playerId: string, tokenValue: number) => void;
   clearBets: () => void;
