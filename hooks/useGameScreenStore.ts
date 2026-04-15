@@ -25,23 +25,13 @@ export function useGameScreenStore() {
   const featuringTargetId = useGameStore((state) => state.featuringTargetId);
 
   // Duel
-  const duelActive = useGameStore(
-    (state) => (state as any).duelActive as boolean,
-  );
-  const duelPlayer1Id = useGameStore(
-    (state) => (state as any).duelPlayer1Id as string | null,
-  );
-  const duelPlayer2Id = useGameStore(
-    (state) => (state as any).duelPlayer2Id as string | null,
-  );
+  const duelActive = useGameStore((state) => state.duelActive);
+  const duelPlayer1Id = useGameStore((state) => state.duelPlayer1Id);
+  const duelPlayer2Id = useGameStore((state) => state.duelPlayer2Id);
 
   // Stop Blast
-  const stopBlastActive = useGameStore(
-    (state) => (state as any).stopBlastActive as boolean,
-  );
-  const stopBlastHolderId = useGameStore(
-    (state) => (state as any).stopBlastHolderId as string | null,
-  );
+  const stopBlastActive = useGameStore((state) => state.stopBlastActive);
+  const stopBlastHolderId = useGameStore((state) => state.stopBlastHolderId);
 
   // ── Actions ───────────────────────────────────────────────────────────────
   const placeBetStore = useGameStore((state) => state.placeBet);
@@ -56,39 +46,22 @@ export function useGameScreenStore() {
   const awardAllianceBonus = useGameStore((state) => state.awardAllianceBonus);
   const toggleFreezePlayer = useGameStore((state) => state.toggleFreezePlayer);
   const applyRoyalties = useGameStore((state) => state.applyRoyalties);
-  const applyArtistHold = useGameStore(
-    (state) => (state as any).applyArtistHold as () => void,
-  );
+  const applyArtistHold = useGameStore((state) => state.applyArtistHold);
   const activateFeaturing = useGameStore((state) => state.activateFeaturing);
   const clearFeaturing = useGameStore((state) => state.clearFeaturing);
   const updateLossStreaks = useGameStore((state) => state.updateLossStreaks);
   const applyBSideBonus = useGameStore((state) => state.applyBSideBonus);
-  const activateDuel = useGameStore(
-    (state) => (state as any).activateDuel as (p1: string, p2: string) => void,
-  );
-  const activateStopBlast = useGameStore(
-    (state) => (state as any).activateStopBlast as (holderId: string) => void,
-  );
+  const activateDuel = useGameStore((state) => state.activateDuel);
+  const activateStopBlast = useGameStore((state) => state.activateStopBlast);
   const applyFeaturingBonus = useGameStore(
     (state) => state.applyFeaturingBonus,
   );
-  const applyCopyrights = useGameStore(
-    (state) =>
-      (state as any).applyCopyrights as (
-        playerId: string,
-        points: number,
-      ) => void,
-  );
-  const applySoldOut = useGameStore(
-    (state) => (state as any).applySoldOut as (holderId: string) => void,
-  );
-  const applyBadReview = useGameStore(
-    (state) => (state as any).applyBadReview as (targetId: string) => void,
-  );
+  const applyCopyrights = useGameStore((state) => state.applyCopyrights);
+  const applySoldOut = useGameStore((state) => state.applySoldOut);
+  const applyBadReview = useGameStore((state) => state.applyBadReview);
+  const applyManagementFee = useGameStore((state) => state.applyManagementFee);
+  const applyCharityShow = useGameStore((state) => state.applyCharityShow);
 
-  const applyManagementFee = useGameStore(
-    (state) => (state as any).applyManagementFee as (targetId: string) => void,
-  );
   return {
     // State
     players,
@@ -127,5 +100,6 @@ export function useGameScreenStore() {
     applySoldOut,
     applyBadReview,
     applyManagementFee,
+    applyCharityShow,
   };
 }

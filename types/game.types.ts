@@ -55,7 +55,11 @@ export interface PowerCard {
 }
 
 // Valores en minúsculas — coinciden con el campo `type` del backend (powerCards.json)
-export type PowerCardType = 'replay' | 'festival' | 'double_platinum' | 'label_fee';
+export type PowerCardType =
+  | 'replay'
+  | 'festival'
+  | 'double_platinum'
+  | 'label_fee';
 
 export interface CurrentCard {
   qrCode: string;

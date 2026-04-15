@@ -126,7 +126,9 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
     set((state) => {
       const localPlayer = state.players.find((p: any) => p.id === playerId);
-      const localCard = localPlayer?.powerCards?.find((pc: any) => pc.id === powerCardId);
+      const localCard = localPlayer?.powerCards?.find(
+        (pc: any) => pc.id === powerCardId,
+      );
       if (!localPlayer || !localCard)
         return { ...state, error: 'Carta de poder no encontrada' };
       if (localCard.currentUses >= localCard.usageLimit)
@@ -144,7 +146,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   boostActive: true,
                   powerCards: p.powerCards.map((pc: any) =>
                     pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: true }
+                      ? {
+                          ...pc,
+                          currentUses: pc.currentUses + 1,
+                          isActive: true,
+                        }
                       : pc,
                   ),
                 }
@@ -159,7 +165,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
                   ...p,
                   powerCards: p.powerCards.map((pc: any) =>
                     pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: true }
+                      ? {
+                          ...pc,
+                          currentUses: pc.currentUses + 1,
+                          isActive: true,
+                        }
                       : pc,
                   ),
                 }
@@ -175,7 +185,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
               p.id === playerId
                 ? p.powerCards.map((pc: any) =>
                     pc.id === powerCardId
-                      ? { ...pc, currentUses: pc.currentUses + 1, isActive: false }
+                      ? {
+                          ...pc,
+                          currentUses: pc.currentUses + 1,
+                          isActive: false,
+                        }
                       : pc,
                   )
                 : p.powerCards,
@@ -219,7 +233,9 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     if (player.boostActive) basePoints = basePoints * 2;
     if (doublePlatinumActive) {
       basePoints = basePoints * 2;
-      console.log(`💿 DOUBLE PLATINUM: puntos duplicados (${basePoints / 2} → ${basePoints})`);
+      console.log(
+        `💿 DOUBLE PLATINUM: puntos duplicados (${basePoints / 2} → ${basePoints})`,
+      );
     }
     const totalPoints = basePoints + (player.currentBet || 0);
 
@@ -238,7 +254,11 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     }));
 
     if (doublePlatinumActive) get().clearDoublePlatinum();
-    get().nextTurn();
+    // ⚠️ nextTurn() se gestiona desde usePointsActions.handleAwardPoints().
+    // NO llamar aquí para evitar doble avance de turno.
+
+    // Safety net: si el frontend detecta un ganador, cerrar el juego
+    // aunque el backend no haya respondido aún.
     const winner = get().players.find((p) => p.score >= SCORE_TO_WIN);
     if (winner) get().endGame();
   },
@@ -389,7 +409,13 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   // ─── CHARITY SHOW ───────────────────────────────────────────────────────────
   // El líder transfiere 1 pt a un jugador sorteado al azar entre los de menor puntaje.
   // Devuelve { leader, recipient, tiedCount } para mostrar toast, o null si no aplica.
-  applyCharityShow: (): { leaderName: string; recipientName: string; tiedCount: number } | null => {
+  applyCharityShow: (): {
+    leaderId: string;
+    leaderName: string;
+    recipientId: string;
+    recipientName: string;
+    tiedCount: number;
+  } | null => {
     const { players } = get();
     if (players.length < 2) return null;
 
@@ -397,25 +423,34 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     if (leader.score === 0) return null;
 
     const minScore = Math.min(...players.map((p) => p.score));
-    const tied = players.filter((p) => p.score === minScore && p.id !== leader.id);
+    const tied = players.filter(
+      (p) => p.score === minScore && p.id !== leader.id,
+    );
     if (tied.length === 0) return null;
 
     const recipient = tied[Math.floor(Math.random() * tied.length)];
 
     console.log(
       `🎸 CHARITY SHOW: ${leader.name} (-1) → ${recipient.name} (+1)` +
-      (tied.length > 1 ? ` (sorteado entre ${tied.length})` : ''),
+        (tied.length > 1 ? ` (sorteado entre ${tied.length})` : ''),
     );
 
     set((state: { players: any[] }) => ({
       players: state.players.map((p) => {
-        if (p.id === leader.id) return { ...p, score: Math.max(0, p.score - 1) };
+        if (p.id === leader.id)
+          return { ...p, score: Math.max(0, p.score - 1) };
         if (p.id === recipient.id) return { ...p, score: p.score + 1 };
         return p;
       }),
     }));
 
-    return { leaderId: leader.id, leaderName: leader.name, recipientId: recipient.id, recipientName: recipient.name, tiedCount: tied.length };
+    return {
+      leaderId: leader.id,
+      leaderName: leader.name,
+      recipientId: recipient.id,
+      recipientName: recipient.name,
+      tiedCount: tied.length,
+    };
   },
 
   // ─── B-SIDE: updateLossStreaks ─────────────────────────────────────────────
@@ -447,12 +482,12 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
         return {
           ...p,
-          lossStreak: nextStreak,
+          lossStreakStreak,
           // bSideActive se activa al threshold y se mantiene hasta que gane
           bSideActive: p.bSideActive || justHitThreshold,
         };
       }),
-    }));
+    }[]);
 
     return newlyActivated;
   },

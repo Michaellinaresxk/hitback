@@ -122,34 +122,6 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     set({ isActive: active });
   },
 
-  syncPlayersFromBackend: (
-    backendPlayers: Array<{
-      id: string;
-      name: string;
-      score: number;
-      availableTokens: number[];
-    }>,
-  ) => {
-    set((state: { players: any[] }) => {
-      const updatedPlayers = state.players.map((localPlayer, index) => {
-        const backendPlayer = backendPlayers[index];
-
-        if (backendPlayer) {
-          return {
-            ...localPlayer,
-            score: backendPlayer.score || localPlayer.score,
-            availableTokens:
-              backendPlayer.availableTokens || localPlayer.availableTokens,
-          };
-        }
-
-        return localPlayer;
-      });
-
-      return { players: updatedPlayers };
-    });
-  },
-
   endGame: async () => {
     await audioService.stopAudio();
     get().stopTimer();
@@ -182,19 +154,21 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     const { players, currentTurn } = get();
 
     let nextTurnIndex = (currentTurn + 1) % players.length;
-    let skippedPlayerId: string | null = null;
+    const skippedPlayerIds: string[] = [];
 
-    // ❄️ ¿El próximo jugador está congelado? Saltarlo una vez.
-    const candidatePlayer = players[nextTurnIndex];
-    if (candidatePlayer?.isFrozen) {
-      skippedPlayerId = candidatePlayer.id;
-      console.log(`❄️ ${candidatePlayer.name} está FROZEN — turno saltado`);
-      // Avanzar al siguiente jugador después del congelado
+    // ❄️ Saltar jugadores congelados consecutivos (con safety para evitar loop infinito)
+    let attempts = 0;
+    while (players[nextTurnIndex]?.isFrozen && attempts < players.length) {
+      skippedPlayerIds.push(players[nextTurnIndex].id);
+      console.log(
+        `❄️ ${players[nextTurnIndex].name} está FROZEN — turno saltado`,
+      );
       nextTurnIndex = (nextTurnIndex + 1) % players.length;
+      attempts++;
     }
 
     const updatedPlayers = players.map((player, index) => {
-      if (player.id === skippedPlayerId) {
+      if (skippedPlayerIds.includes(player.id)) {
         const roundsLeft = Math.max(0, (player.artistHoldRoundsLeft || 0) - 1);
         return {
           ...player,
@@ -227,10 +201,12 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
 
     const nextPlayer = updatedPlayers[nextTurnIndex];
-    if (skippedPlayerId) {
-      const skipped = players.find((p) => p.id === skippedPlayerId);
+    if (skippedPlayerIds.length > 0) {
+      const skippedNames = skippedPlayerIds
+        .map((id) => players.find((p) => p.id === id)?.name)
+        .join(', ');
       console.log(
-        `❄️ Turno saltado: ${skipped?.name} → ahora juega ${nextPlayer?.name}`,
+        `❄️ Turnos saltados: ${skippedNames} → ahora juega ${nextPlayer?.name}`,
       );
     } else {
       console.log(`➡️ Next turn: ${nextPlayer?.name}`);
@@ -335,8 +311,14 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
   activateDoublePlatinum: () => {
     const { players } = get();
-    const holder = players.find((p: any) => p.powerCards?.some((pc: any) => pc.type === 'double_platinum' && pc.isActive));
-    console.log(`💿 DOUBLE PLATINUM activado${holder ? ` por ${holder.name}` : ''}`);
+    const holder = players.find((p: any) =>
+      p.powerCards?.some(
+        (pc: any) => pc.type === 'double_platinum' && pc.isActive,
+      ),
+    );
+    console.log(
+      `💿 DOUBLE PLATINUM activado${holder ? ` por ${holder.name}` : ''}`,
+    );
     set({ doublePlatinumActive: true });
   },
 
