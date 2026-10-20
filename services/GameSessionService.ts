@@ -1,12 +1,18 @@
+import Constants from 'expo-constants';
+
 // ✅ Conecta con el nuevo API v2 (SIN QR)
 // ✅ Maneja sesiones de juego completas
 // ✅ Control 100% desde la app
 
 // 🔧 CONFIGURACIÓN
 const getBaseUrl = (): string => {
+  const configuredUrl = process.env.EXPO_PUBLIC_HITBACK_API_URL;
+  if (configuredUrl) return configuredUrl.replace(/\/$/, '');
+
   if (__DEV__) {
-    const LOCAL_IP = '192.168.1.10'; // ⚠️ CAMBIA POR TU IP
-    return `http://${LOCAL_IP}:3000`;
+    const host = Constants.expoConfig?.hostUri?.split(':')[0];
+    const localHost = host && host !== 'localhost' ? host : '192.168.1.10';
+    return `http://${localHost}:3000`;
   }
   return 'https://api.hitback.com';
 };
@@ -139,8 +145,8 @@ class GameSessionService {
   // ════════════════════════════════════════════════════════════
 
   setBaseUrl(url: string): void {
-    this.baseUrl = url;
-    console.log(`🔧 GameSessionService URL: ${url}`);
+    this.baseUrl = url.replace(/\/$/, '');
+    console.log(`🔧 GameSessionService URL: ${this.baseUrl}`);
   }
 
   getBaseUrl(): string {
@@ -166,26 +172,31 @@ class GameSessionService {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.timeout);
+      try {
+        const response = await fetch(url, {
+          ...options,
+          signal: controller.signal,
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...options.headers,
+          },
+        });
 
-      const response = await fetch(url, {
-        ...options,
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          ...options.headers,
-        },
-      });
+        const data = await response.json().catch(() => null);
 
-      clearTimeout(timeoutId);
+        if (!response.ok || !data?.success) {
+          const errorMessage =
+            typeof data?.error === 'string'
+              ? data.error
+              : data?.error?.message || data?.message || `HTTP ${response.status}`;
+          throw new Error(errorMessage || 'Error del servidor');
+        }
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Error del servidor');
+        return data;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      return data;
     } catch (error) {
       if ((error as Error).name === 'AbortError') {
         throw new Error('Timeout: El servidor no respondió');
@@ -450,7 +461,7 @@ class GameSessionService {
    */
   async usePowerCard(
     playerId: string,
-    cardType: string,
+    cardId: string,
     targetPlayerId?: string,
     sessionId?: string,
   ): Promise<{
@@ -463,12 +474,18 @@ class GameSessionService {
       throw new Error('No hay sesión activa');
     }
 
-    console.log(`⚡ Using power card: ${cardType} by ${playerId}`);
+    console.log(`⚡ Using power card: ${cardId} by ${playerId}`);
 
     return this.fetchAPI(`/session/${id}/power`, {
       method: 'POST',
-      body: JSON.stringify({ playerId, cardType, targetPlayerId }),
+      body: JSON.stringify({ playerId, cardId, targetPlayerId }),
     });
+  }
+
+  async activateDoublePlatinum(sessionId?: string): Promise<{ success: boolean }> {
+    const id = sessionId || this.currentSessionId;
+    if (!id) throw new Error('No hay sesión activa');
+    return this.fetchAPI(`/session/${id}/double-platinum`, { method: 'POST' });
   }
 
   /**

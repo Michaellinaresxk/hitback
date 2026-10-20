@@ -43,7 +43,10 @@ interface UseComboFlowParams {
   resetProcessingRefs: () => void;
   isPowerCardProcessingRef: MutableRefObject<boolean>;
   /** Aplica el efecto inmediato de cartas como LABEL FEE (-1 pt al que la toma) */
-  applyImmediateCardEffect: (playerId: string, scoreChange: number) => void;
+  applyImmediateCardEffect: (
+    playerId: string,
+    scoreChange: number,
+  ) => void | Promise<void>;
 }
 
 /**
@@ -150,7 +153,7 @@ export function useComboFlow({
             // Carta con efecto inmediato (ej: LABEL FEE) — no va al inventario
             const { scoreChange } = result.data.effectOnDraw;
             if (scoreChange && scoreChange !== 0) {
-              applyImmediateCardEffect(playerIdForScan, scoreChange);
+              await applyImmediateCardEffect(playerIdForScan, scoreChange);
             }
             showError(
               `${result.data.emoji} ${result.data.cardName}`,

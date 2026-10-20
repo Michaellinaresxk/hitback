@@ -1,24 +1,16 @@
-import { getPhaseLabel } from '@/utils/game/phaseStyler';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
 interface CurrentTurnProps {
-  currentPlayerName: string;
   round: number;
   currentPhase: string;
 }
 
-export const CurrentTurn: React.FC<CurrentTurnProps> = ({
-  currentPlayerName,
-  round,
-  currentPhase,
-}) => {
+export const CurrentTurn: React.FC<CurrentTurnProps> = ({ round }) => {
   return (
     <View style={styles.container}>
-      <Text style={styles.turnLabel}>Turno Actual</Text>
-      <Text style={styles.currentTurnName}>
-        {currentPlayerName || 'Nadie'} - Ronda {round}
-      </Text>
+      <Text style={styles.turnLabel}>Ronda</Text>
+      <Text style={styles.currentTurnName}>{round}</Text>
     </View>
   );
 };

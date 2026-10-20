@@ -6,13 +6,13 @@ export const useGamePhase = () => {
   const { flowState, getBettingStatus, getCurrentPhase, canStartNextRound } =
     useGameFlow();
 
-  const currentPlayer = players.find((p) => p.isCurrentTurn);
+  // No turn order: all players can answer every question.
+  // sortedPlayers is the canonical display order (by score).
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const bettingStatus = getBettingStatus();
   const currentPhase = getCurrentPhase();
 
   return {
-    currentPlayer,
     sortedPlayers,
     gamePot,
     bettingStatus,

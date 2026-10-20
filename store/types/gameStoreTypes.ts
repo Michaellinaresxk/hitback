@@ -1,4 +1,5 @@
 import { CurrentCard } from '@/types/game.types';
+import { BoardTile } from '@/types/worldTour.types';
 
 export interface Player {
   id: string;
@@ -15,6 +16,7 @@ export interface Player {
   cardTypeStreaks: Record<string, number>;
   difficultyStreaks: Record<string, number>;
   isFrozen: boolean; // ❄️ true = su próximo turno será saltado
+  boardPosition: number; // 🗺️ World Tour: 0-21
   frozenForRound: number | null;
   artistHoldRoundsLeft: number;
   lossStreak: number;
@@ -30,6 +32,7 @@ export type Card = CurrentCard;
 export interface GameState {
   id: string;
   players: Player[];
+  worldTourRoutes: Record<string, BoardTile[]> | null;
   currentTurn: number;
   gameMode: 'normal' | 'battle' | 'speed' | 'viral';
   timeLeft: number;
@@ -69,6 +72,7 @@ export interface GameStore extends GameState {
   addPlayer: (name: string) => void;
   removePlayer: (id: string) => void;
   toggleFreezePlayer: (playerId: string) => void;
+  advancePlayerBoard: (playerId: string) => BoardTile | null;
   applyRoyalties: (holderId: string) => void;
   updateLossStreaks: (winnerId: string | null) => string[];
   applyBSideBonus: (winnerId: string) => boolean;

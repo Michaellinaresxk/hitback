@@ -23,6 +23,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 
+import { SCORE_TO_WIN } from '@/constants/Points';
+
 // 🎵 Géneros disponibles
 const AVAILABLE_GENRES = [
   { id: 'ROCK', label: 'Rock', emoji: '🎸' },
@@ -94,6 +96,7 @@ export default function GameSetupScreen() {
     // Si no seleccionaron nada, usar ANY
     const genres = selectedGenres.length > 0 ? selectedGenres : ['ANY'];
     const decades = selectedDecades.length > 0 ? selectedDecades : ['ANY'];
+    let backendSessionId: string | null = null;
 
     setIsCreatingSession(true);
 
@@ -104,28 +107,45 @@ export default function GameSetupScreen() {
         genres,
         decades,
         difficulty: 'ANY',
-        targetScore: 15,
+        targetScore: SCORE_TO_WIN,
         timeLimit: gameDurationMinutes * 60,
-        tokensPerPlayer: 5,
-        powerCardsPerPlayer: 3,
       });
 
-      if (!result.success) {
+      if (!result.success || !result.session?.id) {
         throw new Error('No se pudo crear la sesión');
       }
+      backendSessionId = result.session.id;
 
       console.log(`✅ Session created: ${result.session.id}`);
 
       // 2. Iniciar el juego en el backend
-      await gameSessionService.startGame();
+      const started = await gameSessionService.startGame(result.session.id);
+      if (!started.success) {
+        throw new Error('No se pudo iniciar la sesión en el servidor');
+      }
 
       // 3. Iniciar juego local
-      startGame();
+      await startGame();
+      if (!useGameStore.getState().isActive) {
+        throw new Error(
+          useGameStore.getState().error || 'No se pudo iniciar el juego local',
+        );
+      }
 
       // 4. Navegar a la pantalla de juego
       router.replace('/game');
     } catch (error: any) {
       console.error('❌ Error creating session:', error);
+      if (backendSessionId) {
+        await gameSessionService
+          .deleteSession(backendSessionId)
+          .catch((cleanupError) => {
+            console.error(
+              '❌ Could not clean up failed session:',
+              cleanupError,
+            );
+          });
+      }
       Alert.alert(
         'Error de Conexión',
         'No se pudo conectar al servidor. ¿Está el backend corriendo?\n\n' +
