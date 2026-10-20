@@ -197,5 +197,306 @@
       "cancel": "Cancel",
       "multiplierSuffix": "{{value}}x"
     }
+  },
+  "tour": {
+    "gameName": "WORLD TOUR",
+    "gameSubtitle": "From Garage Band to Headliner",
+    "acts": {
+      "act1_underground": {
+        "name": "The Underground",
+        "subtitle": "Where it all begins",
+        "description": "Small legendary clubs. Nights of sweat, cheap beer, and audiences who don't know they're witnessing history."
+      },
+      "act2_theBuzz": {
+        "name": "The Buzz",
+        "subtitle": "The world starts talking",
+        "description": "Mid-size theaters, first interviews, fans who recognize you on the street. You're no longer a secret."
+      },
+      "act3_goingGlobal": {
+        "name": "Going Global",
+        "subtitle": "Your name crosses borders",
+        "description": "Big arenas, intercontinental tours, ridiculous riders, and fans who tattoo your logo."
+      },
+      "act4_headliner": {
+        "name": "HEADLINER",
+        "subtitle": "The sacred temples",
+        "description": "Madison Square Garden. Wembley. Maracanã. Only the greatest play here. You are one of them."
+      }
+    },
+    "tileTypes": {
+      "concert": {
+        "name": "Concert",
+        "description": "Regular show. Advance and hear the story."
+      },
+      "festival": {
+        "name": "Festival",
+        "description": "Festival! Advance and draw a Reaction Card."
+      },
+      "record_deal": {
+        "name": "Record Deal",
+        "description": "A record label appears. Roll the dice — your destiny changes."
+      },
+      "rival_band": {
+        "name": "Rival Band",
+        "description": "Another band challenges you. Automatic Duel!"
+      },
+      "sold_out": {
+        "name": "Sold Out",
+        "description": "Sold-out show. Maximum pressure. Double points!"
+      }
+    },
+    "cities": {
+      "start": {
+        "city": "Your Garage",
+        "country": "Home",
+        "venue": "The Garage",
+        "story": "Every legendary artist started somewhere small. Your band just formed. The amp is buzzing, the strings are old, but the dream is massive. Tonight we rehearse. Tomorrow, the world.",
+        "realFact": "The Ramones rehearsed in a 10x10 foot studio in Forest Hills, Queens. Metallica formed in a garage in Los Angeles in 1981. Daft Punk recorded their first demo in Thomas Bangalter's bedroom in Paris."
+      },
+      "finish": {
+        "city": "Rock & Roll Hall of Fame",
+        "country": "USA",
+        "venue": "Rock & Roll Hall of Fame",
+        "story": "You made it. Your name is etched alongside the greatest in history. From that garage to here — every show, every city, every note brought you to this moment. You are legend.",
+        "realFact": "The Rock & Roll Hall of Fame in Cleveland was designed by I.M. Pei. Only 0.06% of all artists who have ever recorded music have been inducted."
+      },
+      "cbgb": {
+        "city": "New York",
+        "country": "USA",
+        "venue": "CBGB",
+        "story": "Welcome to CBGB, the dirtiest and most important bar in rock. The walls are covered in stickers and the bathroom is a disaster, but this is where American punk was born. Your band plays for 30 people who don't clap — they nod. That's respect.",
+        "realFact": "CBGB opened in 1973 on Manhattan's Bowery. The Ramones, Blondie, Talking Heads, and Television played here before they were famous. The name stands for 'Country, BlueGrass, and Blues' — ironically, a country band never played there."
+      },
+      "cavern": {
+        "city": "Liverpool",
+        "country": "United Kingdom",
+        "venue": "The Cavern Club",
+        "story": "You walk down the stone stairs into a damp basement. The ceiling is so low you almost hit your head. But the sound down here is magical — the brick walls bounce every note.",
+        "realFact": "The Beatles played 292 times at The Cavern Club between 1961 and 1963. Brian Epstein saw them for the first time here on November 9, 1961, and decided to become their manager that very day."
+      },
+      "whisky": {
+        "city": "Los Angeles",
+        "country": "USA",
+        "venue": "Whisky a Go Go",
+        "story": "Sunset Strip, Los Angeles. The Whisky a Go Go glows in red neon. Here rock mixes with Hollywood glamour. Your band shares the bill with three bands nobody knows. Yet.",
+        "realFact": "The Doors were the Whisky's house band in 1966. Jim Morrison was fired after playing 'The End' and improvising the Oedipus section live. Mötley Crüe, Guns N' Roses, and Van Halen also started here."
+      },
+      "100club": {
+        "city": "London",
+        "country": "United Kingdom",
+        "venue": "100 Club",
+        "story": "Oxford Street, London. Upstairs, people shop for clothes. Downstairs, in the 100 Club basement, your band plays for an audience that invented British punk. If you survive tonight, you survive anything.",
+        "realFact": "The 100 Club Punk Special in September 1976 was the festival that launched punk in the UK. Sex Pistols, The Clash, Siouxsie and the Banshees, and The Damned played two nights that changed British music forever."
+      },
+      "molotow": {
+        "city": "Hamburg",
+        "country": "Germany",
+        "venue": "Molotow Club",
+        "story": "Reeperbahn, Hamburg. The wildest street in Europe. Your band plays 4 hours straight for drunk sailors and art students. It's not glamorous, but you're learning to be professional the hard way.",
+        "realFact": "In 1960, The Beatles played 8 hours a day at the Indra Club on Reeperbahn. John Lennon said: 'I wasn't born in Liverpool. I was born in Hamburg.' The city transformed four Liverpool kids into the biggest band in the world."
+      },
+      "barbaNegra": {
+        "city": "Budapest",
+        "country": "Hungary",
+        "venue": "Barba Negra Music Club",
+        "story": "On the banks of the Danube, an industrial club decorated with rusty boats. Budapest is Europe's best-kept underground secret. Your band plays between graffiti and red lights.",
+        "realFact": "Budapest became the European underground capital in the 2000s with its 'ruin bars' — bars in abandoned buildings. Sziget Festival, born in 1993 on a Danube island, attracts 500,000 people."
+      },
+      "blueNote": {
+        "city": "Tokyo",
+        "country": "Japan",
+        "venue": "Blue Note Tokyo",
+        "story": "Aoyama, Tokyo. An intimate jazz club where the audience listens in absolute silence. No screaming here — only reverence. Your band plays softer, more precise. Japan teaches you discipline.",
+        "realFact": "Japan has the second largest music industry in the world. Japanese audiences are famous for total silence during songs and explosive ovations at the end. When Queen played Japan in 1975, they discovered they were more famous there than in the UK."
+      },
+      "cemento": {
+        "city": "Buenos Aires",
+        "country": "Argentina",
+        "venue": "Cemento",
+        "story": "Avenida Estados Unidos, Buenos Aires. Cemento is an unventilated warehouse where body heat is part of the show. Here the audience doesn't watch — they participate. If you don't jump, you didn't get it.",
+        "realFact": "Cemento was THE place for Argentine rock from 1985 to 2004. Soda Stereo, Los Redonditos de Ricota, and Babasónicos played here. Capacity was 1,000 and 1,500 always showed up."
+      },
+      "fillmore": {
+        "city": "San Francisco",
+        "country": "USA",
+        "venue": "The Fillmore",
+        "story": "San Francisco, 1967 reborn. The Fillmore smells like incense and possibility. Psychedelic posters cover every wall. Your band experiments with new sounds — here nobody judges you for being weird.",
+        "realFact": "Bill Graham turned the Fillmore into the epicenter of psychedelic rock. Grateful Dead, Jefferson Airplane, and Jimi Hendrix played here. Graham had a tradition of giving a free apple to everyone who entered."
+      },
+      "paradiso": {
+        "city": "Amsterdam",
+        "country": "Netherlands",
+        "venue": "Paradiso",
+        "story": "A church converted into a temple of rock. The stained glass windows are still there, but now they filter colorful lights over an euphoric crowd. Amsterdam teaches you that music is freedom.",
+        "realFact": "Paradiso was a 19th-century church that was squatted in 1968 and turned into a cultural center. The Rolling Stones played a secret show here in 1995 for 1,500 people. Nirvana played in 1991 before Nevermind exploded."
+      },
+      "olympia": {
+        "city": "Paris",
+        "country": "France",
+        "venue": "L'Olympia",
+        "story": "Boulevard des Capucines, Paris. L'Olympia is pure elegance. The red curtain opens and 2,000 Parisians stare at you with that French mix of curiosity and skepticism. If you win them here, you won Europe.",
+        "realFact": "L'Olympia opened in 1893 and is the oldest active music hall in Paris. Édith Piaf gave 1,274 shows here. The Beatles played in 1964 alongside Sylvie Vartan."
+      },
+      "electricBallroom": {
+        "city": "London",
+        "country": "United Kingdom",
+        "venue": "Electric Ballroom",
+        "story": "Camden Town, London. Below the vintage clothing market and kebab shops, the Electric Ballroom pulses with bass you feel in your chest. Indie, punk, and electro coexist here without anyone's permission.",
+        "realFact": "The Electric Ballroom in Camden has hosted The Smiths, The Clash, Prince (secret show in 2014), and U2. Camden Town was Amy Winehouse's home — her statue stands 200 meters from the venue."
+      },
+      "troubadour": {
+        "city": "Los Angeles",
+        "country": "USA",
+        "venue": "The Troubadour",
+        "story": "West Hollywood. The Troubadour has only 400 seats but has launched more careers than any stadium. Your band plays an acoustic set. No hiding behind volume — here the song is what matters.",
+        "realFact": "Elton John played his first US show here in 1970 — he walked in unknown and left a star. Joni Mitchell, James Taylor, and Carole King practically lived at the Troubadour in the 70s. Tom Waits was discovered here playing for tips."
+      },
+      "circoVoador": {
+        "city": "Rio de Janeiro",
+        "country": "Brazil",
+        "venue": "Circo Voador",
+        "story": "Lapa, Rio de Janeiro. Under the Arcos da Lapa, Circo Voador is a circus tent turned into the place where Brazil discovers its next idols. The crowd dances to everything — rock, samba, funk, doesn't matter.",
+        "realFact": "Circo Voador opened in 1982 at Arpoador beach before moving to Lapa. Legião Urbana, Barão Vermelho, and Cazuza — the icons of 80s Brazilian rock — all played here."
+      },
+      "saintVitus": {
+        "city": "Brooklyn",
+        "country": "USA",
+        "venue": "Saint Vitus Bar",
+        "story": "Greenpoint, Brooklyn. A dark bar with 200-person capacity where doom metal, punk, and noise meet. The walls are black from fog machine smoke. Your band sounds heavier than ever.",
+        "realFact": "Brooklyn surpassed Manhattan as NYC's musical epicenter in the 2000s. Williamsburg and Greenpoint saw the birth of TV on the Radio, Yeah Yeah Yeahs, Grizzly Bear, and Animal Collective."
+      },
+      "tavastia": {
+        "city": "Helsinki",
+        "country": "Finland",
+        "venue": "Tavastia Club",
+        "story": "Helsinki, the metal capital. Tavastia is a 700-person club where Finland forged its scene. Outside there's snow. Inside, guitars melt the ice. A European record label is in the audience.",
+        "realFact": "Finland has more heavy metal bands per capita than any other country. HIM, Nightwish, Children of Bodom, and Apocalyptica started in Helsinki. Tavastia, open since 1970, is considered 'the Finnish CBGB'."
+      },
+      "brixton": {
+        "city": "London",
+        "country": "United Kingdom",
+        "venue": "Brixton Academy",
+        "story": "5,000 people at Brixton Academy. The floor has a 25-degree slope — the entire audience looks down at you like a human wave. Another famous band plays after you. It's a duel to see who leaves a bigger mark tonight.",
+        "realFact": "Brixton Academy has the steepest floor of any venue in the UK, inherited from its past as a cinema. The Smiths played their last show here in 1986. Bob Marley filmed his final UK show here."
+      },
+      "redRocks": {
+        "city": "Denver",
+        "country": "USA",
+        "venue": "Red Rocks Amphitheatre",
+        "story": "At 6,200 feet between two 400-foot red rocks. The most impressive natural amphitheater in the world. Your band plays under Colorado's stars. The rocks amplify the sound. 9,525 seats sold out.",
+        "realFact": "Red Rocks is a natural amphitheater formed 250 million years ago. U2 recorded 'Under a Blood Red Sky' here in 1983 during a torrential rainstorm — considered one of the best live albums in history."
+      },
+      "budokan": {
+        "city": "Tokyo",
+        "country": "Japan",
+        "venue": "Nippon Budokan",
+        "story": "The Budokan. In Japanese, 'hall of martial arts.' Built for Olympic judo, conquered by rock. When your band hits the stage, 14,471 people fall silent. Then, the explosion.",
+        "realFact": "The Beatles played 5 shows at the Budokan in 1966 — there were nationalist protests over a martial arts temple being used for rock. Cheap Trick recorded 'At Budokan' here in 1978, the live album that made them famous."
+      },
+      "movistarBog": {
+        "city": "Bogotá",
+        "country": "Colombia",
+        "venue": "Movistar Arena",
+        "story": "Bogotá at 8,500 feet altitude. The air is thin and vocal cords work double. But Colombia's energy makes up for everything — 14,000 Colombians singing your songs in Spanish and English.",
+        "realFact": "Bogotá became a mandatory stop for world tours in the 2010s. Rock al Parque, the largest free festival in Latin America, was born in Bogotá in 1995 and draws 300,000+ people."
+      },
+      "zenith": {
+        "city": "Paris",
+        "country": "France",
+        "venue": "Le Zénith",
+        "story": "La Villette, Paris. Le Zénith is the arena where France crowns its stars. Your band no longer plays L'Olympia — now it's 6,300 people. A multinational label wants to sign you for global distribution.",
+        "realFact": "Le Zénith was designed in 1984 specifically for rock concerts — the first arena in France built solely for music. Daft Punk chose Paris for the 'Alive' launch show in 2006."
+      },
+      "columbiahalle": {
+        "city": "Berlin",
+        "country": "Germany",
+        "venue": "Columbiahalle",
+        "story": "Berlin, the capital of reinvention. Columbiahalle, an industrial hangar for 3,500 people. Your band shares the lineup with a direct rival. The German press will decide tomorrow who won the night.",
+        "realFact": "Post-wall Berlin (1989+) became the global capital of electronic music and the alternative scene. David Bowie lived here from 1976-1978 and recorded the Berlin Trilogy (Low, Heroes, Lodger)."
+      },
+      "manchester": {
+        "city": "Manchester",
+        "country": "United Kingdom",
+        "venue": "Manchester Arena",
+        "story": "Manchester, the city that invented indie. 21,000 people under one roof. Manchester's worker bee is everywhere — symbol of a city that never stopped working, or making music.",
+        "realFact": "Manchester produced Joy Division, The Smiths, Oasis, The Stone Roses, The Chemical Brothers, and The 1975. Haçienda, New Order's club, invented rave culture."
+      },
+      "kspoDome": {
+        "city": "Seoul",
+        "country": "South Korea",
+        "venue": "KSPO Dome",
+        "story": "Seoul, the capital of K-pop and much more. The KSPO Dome has 15,000 seats and the most advanced production technology your band has ever seen. LED screens cover 360 degrees. Sold out in 8 minutes.",
+        "realFact": "The Korean music industry is the sixth largest in the world. Before K-pop, 90s Korean rock (Seo Taiji and Boys) broke the government's music censorship and freed an entire generation's artistic expression."
+      },
+      "msg": {
+        "city": "New York",
+        "country": "USA",
+        "venue": "Madison Square Garden",
+        "story": "The World's Most Famous Arena. 20,789 people. Your name is on the marquees on 8th Avenue next to Midtown Manhattan. From here you can see the Empire State. Tonight, New York is yours.",
+        "realFact": "MSG has had 4 locations since 1879. John Lennon played his last full concert here on November 28, 1974, with Elton John. Billy Joel holds the record: 150 consecutive shows."
+      },
+      "wembley": {
+        "city": "London",
+        "country": "United Kingdom",
+        "venue": "Wembley Stadium",
+        "story": "90,000 people. Wembley's arch lights up in your band's colors. From above, the stadium looks like an ocean of phone lights. Your band vs the legend of everyone who played here before. Can you top them?",
+        "realFact": "Live Aid in 1985: Queen delivered the most legendary 21 minutes in rock history at the old Wembley. Freddie Mercury made 72,000 people sing as one choir."
+      },
+      "maracana": {
+        "city": "Rio de Janeiro",
+        "country": "Brazil",
+        "venue": "Maracanã",
+        "story": "Maracanã. The temple of football converted into a temple of music for one night. 78,000 Brazilians. They don't sing your song — they SCREAM it. Brazil doesn't have fans. It has a force of nature.",
+        "realFact": "Rock in Rio was born here in 1985 with 1.4 million attendees over 10 days. Tina Turner closed her world tour here in 1988 before 180,000 people."
+      },
+      "glastonbury": {
+        "city": "Glastonbury",
+        "country": "United Kingdom",
+        "venue": "Worthy Farm (Glastonbury Festival)",
+        "story": "Worthy Farm, Somerset. 200,000 people on a 900-acre farm. Mud up to your knees, tents everywhere, and the Pyramid Stage glowing in the distance. Headlining Glastonbury means headlining the world.",
+        "realFact": "The first Glastonbury in 1970 cost £1 and included free milk from the farm. David Bowie in 2000 in the rain is considered the best set in the festival's history."
+      },
+      "coachella": {
+        "city": "Indio, California",
+        "country": "USA",
+        "venue": "Empire Polo Club (Coachella)",
+        "story": "The California desert burns at 104°F. 125,000 people. Coachella isn't just a festival — it's a global cultural event. Your headlining set is streaming live to 100 countries.",
+        "realFact": "Coachella started in 1999 as a one-day indie festival. Beyoncé in 2018 ('Beychella') redefined what it means to be a headliner."
+      },
+      "laPlata": {
+        "city": "La Plata",
+        "country": "Argentina",
+        "venue": "Estadio Único",
+        "story": "Estadio Único in La Plata. 53,000 Argentines who came from across the country. When the first chords hit, the stadium literally SHAKES. In Argentina, rock isn't entertainment — it's religion.",
+        "realFact": "Los Redonditos de Ricota gathered 150,000 people in La Plata in 2001 during Argentina's worst economic crisis. Argentine rock was forged under military dictatorship — music was the only form of resistance."
+      },
+      "fujiRock": {
+        "city": "Naeba",
+        "country": "Japan",
+        "venue": "Naeba Ski Resort (Fuji Rock)",
+        "story": "In the mountains of Niigata, surrounded by forests and streams, Fuji Rock is the most beautiful festival in the world. No trash on the ground — the Japanese pick up everything. Your sunset show, mountains behind you, is the photo that defines your career.",
+        "realFact": "Fuji Rock started in 1997 at the foot of Mount Fuji (a typhoon cancelled it on day one). It's famous for being spotlessly clean — attendees carry bags for their own trash."
+      },
+      "allianzSP": {
+        "city": "São Paulo",
+        "country": "Brazil",
+        "venue": "Allianz Parque",
+        "story": "São Paulo, South America's largest city. 45,000 people at Allianz Parque. The lineup has your direct rival closing the other stage at the same time. São Paulo must choose: your show or theirs?",
+        "realFact": "São Paulo is the concert capital of Latin America. It receives more international shows than any other city on the continent. Iron Maiden considers it their 'second home'."
+      }
+    },
+    "ui": {
+      "actTransition": "🎭 New Act!",
+      "actTransitionMessage": "Your band has reached {{actName}}",
+      "stopsRemaining": "{{count}} stops to glory",
+      "progress": "Tour Progress",
+      "reachedFinish": "🏆 YOU REACHED THE HALL OF FAME!",
+      "landingTitle": "📍 You've arrived at {{city}}",
+      "landingVenue": "🎤 {{venue}}",
+      "tileTypeLabel": "Type: {{type}}",
+      "factLabel": "📖 Did you know...?",
+      "continueButton": "Continue Tour",
+      "viewRouteButton": "View Full Route"
+    }
   }
 }

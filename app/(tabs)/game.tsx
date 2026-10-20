@@ -43,6 +43,8 @@ import { ReactionCardType } from '@/constants/ReactionCard';
 
 // Screens
 import GameSetupScreen from '../setup-game';
+import TourLandingModal from '@/components/modal/TourLandingModal';
+import { MechanicTrigger } from '@/types/worldTour.types';
 
 export default function GameScreen() {
   // ── Store ──────────────────────────────────────────────────────────────────
@@ -83,6 +85,8 @@ export default function GameScreen() {
     applyBadReview,
     applyManagementFee,
     applyCharityShow,
+    advancePlayerBoard,
+    activateDoublePlatinum,
   } = useGameScreenStore();
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
@@ -137,8 +141,14 @@ export default function GameScreen() {
     advanceToNextTurn,
     resetProcessingRefs,
     isPowerCardProcessingRef,
-    applyImmediateCardEffect: (playerId, _scoreChange) => {
+    applyImmediateCardEffect: async (playerId, scoreChange) => {
       applyBadReview(playerId); // LABEL FEE siempre es -1: reusa applyBadReview
+      const backendId = getBackendPlayerId(playerId, players, playerIdMap);
+      await gameSessionService.applyScoreDelta(
+        backendId,
+        scoreChange,
+        'LABEL_FEE',
+      );
     },
   });
 
@@ -190,10 +200,13 @@ export default function GameScreen() {
     lastAwardedPointsRef,
     handleAwardPoints,
     handleWrongAnswer,
+    landingEvent,
+    setLandingEvent,
   } = usePointsActions({
     flowState,
     players,
     playerIdMap,
+    advancePlayerBoard,
     revealAnswer,
     awardAllianceBonus,
     applyFeaturingBonus,
@@ -204,6 +217,7 @@ export default function GameScreen() {
     setShowGameEndModal,
     featuringPlayerId,
     featuringTargetId,
+
     advanceToNextTurn,
     activateCombo,
     showSuccess,
@@ -213,11 +227,6 @@ export default function GameScreen() {
   });
 
   // ── Derived State ──────────────────────────────────────────────────────────
-  const currentPlayer = useMemo(
-    () => players.find((p) => p.isCurrentTurn),
-    [players],
-  );
-
   const sortedPlayers = useMemo(
     () => [...players].sort((a, b) => b.score - a.score),
     [players],
@@ -275,7 +284,7 @@ export default function GameScreen() {
     if (flowState.phase === 'question' && flowState.currentRound) {
       setShowPointsModal(true);
     }
-  }, [flowState.phase, flowState.currentRound]);
+  }, [flowState.phase, flowState.currentRound, setShowPointsModal]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
   const initializeGame = useCallback(async () => {
@@ -381,6 +390,54 @@ export default function GameScreen() {
       }
     },
     [players, playerIdMap, showSuccess, showError],
+  );
+
+  const handleTourLandingContinue = useCallback(
+    async (mechanicTrigger: MechanicTrigger | null) => {
+      setLandingEvent(null);
+
+      if (!mechanicTrigger) {
+        advanceToNextTurn();
+        return;
+      }
+
+      switch (mechanicTrigger) {
+        case 'reaction_card':
+          advanceToNextTurn();
+          break;
+        case 'duel':
+          if (landingEvent) openDuelModal(landingEvent.playerId);
+          else advanceToNextTurn();
+          break;
+        case 'double_points':
+          try {
+            await gameSessionService.activateDoublePlatinum();
+            activateDoublePlatinum();
+            advanceToNextTurn();
+          } catch (error) {
+            showError(
+              'Error',
+              error instanceof Error
+                ? error.message
+                : 'No se pudo activar Double Platinum en el servidor',
+            );
+          }
+          break;
+        case 'split_dice':
+          advanceToNextTurn();
+          break;
+        default:
+          advanceToNextTurn();
+      }
+    },
+    [
+      setLandingEvent,
+      advanceToNextTurn,
+      landingEvent,
+      activateDoublePlatinum,
+      openDuelModal,
+      showError,
+    ],
   );
 
   const handleReactionCard = useCallback(
@@ -539,16 +596,17 @@ export default function GameScreen() {
       activateStopBlast,
       openDuelModal,
       handleFeaturingPlayer,
-      applyRoyalties,
       applyArtistHold,
-      applyCopyrights,
+      players,
+      applyRoyalties,
+      playerIdMap,
       lastAwardedPointsRef,
+      applyCopyrights,
       applySoldOut,
       applyBadReview,
       applyManagementFee,
       applyCharityShow,
-      players,
-      playerIdMap,
+      showSuccess,
     ],
   );
 
@@ -601,11 +659,7 @@ export default function GameScreen() {
             />
           )}
 
-        <CurrentTurn
-          currentPlayerName={currentPlayer?.name || ''}
-          round={round}
-          currentPhase={flowState.phase}
-        />
+        <CurrentTurn round={round} currentPhase={flowState.phase} />
 
         <MainAction
           isLoading={flowState.isLoading}
@@ -741,6 +795,12 @@ export default function GameScreen() {
         disabledCards={reactionDisabledCards}
         onSelect={handleReactionCard}
         onClose={() => setReactionTarget(null)}
+      />
+
+      <TourLandingModal
+        visible={landingEvent !== null}
+        event={landingEvent}
+        onContinue={handleTourLandingContinue}
       />
     </View>
   );

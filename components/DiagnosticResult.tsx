@@ -248,7 +248,7 @@ export default function ConnectionDiagnostics({
   const runTest = async (
     testResults: DiagnosticResult[],
     index: number,
-    testFunction: () => Promise<Partial<DiagnosticResult>>
+    testFunction: () => Promise<Partial<DiagnosticResult>>,
   ) => {
     try {
       const result = await testFunction();

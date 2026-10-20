@@ -4,6 +4,10 @@ import type { Player } from '@/store/types/gameStoreTypes';
 import type { ComboActivationData } from '@/hooks/useComboFlow';
 import { soundEffects } from '@/services/SoundEffectsService';
 import { getBackendPlayerId } from '@/utils/game/gameHelpers';
+import { useGameStore } from '@/store/gameStore';
+import { BoardTile } from '@/types/worldTour.types';
+import { TourLandingEvent } from '@/components/modal/TourLandingModal';
+import { getActForPosition } from '@/utils/worldtourUtils';
 
 interface BSideNotification {
   visible: boolean;
@@ -14,6 +18,7 @@ interface UsePointsActionsParams {
   flowState: GameFlow;
   players: Player[];
   playerIdMap: Record<string, string>;
+  advancePlayerBoard: (playerId: string) => BoardTile | null;
   revealAnswer: (winnerId: string | null) => Promise<any>;
   awardAllianceBonus: (winnerId: string, pts: number) => void;
   applyFeaturingBonus: (partnerId: string, pts: number) => void;
@@ -43,6 +48,7 @@ export function usePointsActions({
   players,
   playerIdMap,
   revealAnswer,
+  advancePlayerBoard,
   awardAllianceBonus,
   applyFeaturingBonus,
   applyBSideBonus,
@@ -60,9 +66,15 @@ export function usePointsActions({
   showWarning,
 }: UsePointsActionsParams) {
   const [showPointsModal, setShowPointsModal] = useState(false);
-  const [bSideNotification, setBSideNotification] = useState<BSideNotification | null>(null);
+  const [bSideNotification, setBSideNotification] =
+    useState<BSideNotification | null>(null);
   /** Puntos ganados en la última ronda — usado por COPYRIGHTS para calcular la deducción. */
   const lastAwardedPointsRef = useRef<number>(0);
+  /** Guard: evita que dos taps simultáneos lancen dos revealAnswer en paralelo. */
+  const isAwardingRef = useRef(false);
+  const [landingEvent, setLandingEvent] = useState<TourLandingEvent | null>(
+    null,
+  );
 
   const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
@@ -75,9 +87,14 @@ export function usePointsActions({
       );
     }
 
-    const playersWithBets = players.filter((p) => p.currentBet && p.currentBet > 0);
+    const playersWithBets = players.filter(
+      (p) => p.currentBet && p.currentBet > 0,
+    );
     if (playersWithBets.length > 0) {
-      const totalLost = playersWithBets.reduce((sum, p) => sum + (p.currentBet || 0), 0);
+      const totalLost = playersWithBets.reduce(
+        (sum, p) => sum + (p.currentBet || 0),
+        0,
+      );
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
 
@@ -93,6 +110,7 @@ export function usePointsActions({
     clearFeaturing();
     clearBets();
     setShowPointsModal(false);
+
     setTimeout(() => advanceToNextTurn(), 2000);
   }, [
     revealAnswer,
@@ -108,89 +126,178 @@ export function usePointsActions({
   const handleAwardPoints = useCallback(
     async (playerId: string) => {
       if (!flowState.currentRound) return;
+      // Guard: prevent double-tap from launching two parallel revealAnswer calls
+      if (isAwardingRef.current) return;
+      isAwardingRef.current = true;
 
       const player = players.find((p) => p.id === playerId);
-      if (!player) return;
-
-      soundEffects.playCorrect();
-      const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-      const result = await revealAnswer(backendPlayerId);
-
-      if (result) {
-        const pts = result.pointsAwarded as number;
-        lastAwardedPointsRef.current = pts;
-
-        showSuccess(
-          '🎉 ¡Correcto!',
-          `${player.name} gana ${pts} pts\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
-        );
-
-        // 1️⃣ Alliance 50/50
-        if (pts) awardAllianceBonus(playerId, pts);
-
-        // 2️⃣ Featuring 100/100
-        if (pts && featuringPlayerId && featuringTargetId) {
-          const isInFeaturing =
-            playerId === featuringPlayerId || playerId === featuringTargetId;
-
-          if (isInFeaturing) {
-            const partnerId =
-              playerId === featuringPlayerId ? featuringTargetId : featuringPlayerId;
-
-            applyFeaturingBonus(partnerId, pts);
-
-            const partner = players.find((p) => p.id === partnerId);
-            showSuccess(
-              '🎤 ¡Featuring!',
-              `${partner?.name ?? 'Partner'} también recibe ${pts} pts`,
-            );
-            clearFeaturing();
-          }
-        }
-
-        // 3️⃣ B-SIDE comeback +1
-        const bSideApplied = applyBSideBonus(playerId);
-        if (bSideApplied) {
-          showSuccess('🎶 ¡B-SIDE!', `${player.name} recupera con +1 bonus`);
-        }
-
-        // 4️⃣ Actualizar lossStreaks — ganador resetea, resto suma
-        const newlyActivated = updateLossStreaks(playerId);
-        if (newlyActivated.length > 0) {
-          const names = newlyActivated
-            .map((id) => players.find((p) => p.id === id)?.name)
-            .filter((name): name is string => !!name);
-          setBSideNotification({ visible: true, playerNames: names });
-        }
-
-        // 5️⃣ Combo flow — toma control del flujo (return early)
-        if (result.comboStatus) {
-          activateCombo({
-            playerId,
-            playerName: player.name,
-            comboName: result.comboStatus.type.replace('_', ' '),
-            comboEmoji: '🔥',
-            comboDescription: result.comboStatus.message,
-          });
-          setShowPointsModal(false);
-          return;
-        }
-
-        // 6️⃣ Game over
-        if (result.gameOver && result.gameWinner) {
-          setTimeout(() => setShowGameEndModal(true), 1500);
-          setShowPointsModal(false);
-          return;
-        }
+      if (!player) {
+        isAwardingRef.current = false;
+        return;
       }
 
+      // Close modal immediately — before the async call — so the GM can't
+      // tap a second player while the backend round is being revealed.
       setShowPointsModal(false);
-      setTimeout(() => advanceToNextTurn(), 2000);
+
+      try {
+        soundEffects.playCorrect();
+        const backendPlayerId = getBackendPlayerId(
+          playerId,
+          players,
+          playerIdMap,
+        );
+        const result = await revealAnswer(backendPlayerId);
+
+        if (result) {
+          const pts = result.pointsAwarded as number;
+          lastAwardedPointsRef.current = pts;
+
+          showSuccess(
+            '🎉 ¡Correcto!',
+            `${player.name} gana ${pts} pts\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+          );
+
+          // 1️⃣ Alliance 50/50
+          if (pts) {
+            const alliance = useGameStore.getState().getPlayerAlliance(playerId);
+            if (alliance) {
+              const partnerId =
+                alliance.player1Id === playerId
+                  ? alliance.player2Id
+                  : alliance.player1Id;
+              const share = Math.floor(pts / 2);
+              awardAllianceBonus(playerId, pts);
+              const winnerBackendId = getBackendPlayerId(
+                playerId,
+                players,
+                playerIdMap,
+              );
+              const partnerBackendId = getBackendPlayerId(
+                partnerId,
+                players,
+                playerIdMap,
+              );
+              await Promise.all([
+                gameSessionService.applyScoreDelta(
+                  winnerBackendId,
+                  -share,
+                  'ALLIANCE',
+                ),
+                gameSessionService.applyScoreDelta(
+                  partnerBackendId,
+                  share,
+                  'ALLIANCE',
+                ),
+              ]);
+            }
+          }
+
+          // 2️⃣ Featuring 100/100
+          if (pts && featuringPlayerId && featuringTargetId) {
+            const isInFeaturing =
+              playerId === featuringPlayerId || playerId === featuringTargetId;
+
+            if (isInFeaturing) {
+              const partnerId =
+                playerId === featuringPlayerId
+                  ? featuringTargetId
+                  : featuringPlayerId;
+
+              applyFeaturingBonus(partnerId, pts);
+              const partnerBackendId = getBackendPlayerId(
+                partnerId,
+                players,
+                playerIdMap,
+              );
+              await gameSessionService.applyScoreDelta(
+                partnerBackendId,
+                pts,
+                'FEATURING',
+              );
+
+              const partner = players.find((p) => p.id === partnerId);
+              showSuccess(
+                '🎤 ¡Featuring!',
+                `${partner?.name ?? 'Partner'} también recibe ${pts} pts`,
+              );
+              clearFeaturing();
+            }
+          }
+
+          // 3️⃣ B-SIDE comeback +1
+          const bSideApplied = applyBSideBonus(playerId);
+          if (bSideApplied) {
+            const backendId = getBackendPlayerId(
+              playerId,
+              players,
+              playerIdMap,
+            );
+            await gameSessionService.applyScoreDelta(backendId, +1, 'B_SIDE');
+            showSuccess('🎶 ¡B-SIDE!', `${player.name} recupera con +1 bonus`);
+          }
+
+          // 4️⃣ Actualizar lossStreaks — ganador resetea, resto suma
+          const newlyActivated = updateLossStreaks(playerId);
+          if (newlyActivated.length > 0) {
+            const names = newlyActivated
+              .map((id) => players.find((p) => p.id === id)?.name)
+              .filter((name): name is string => !!name);
+            setBSideNotification({ visible: true, playerNames: names });
+          }
+
+          // 5️⃣ World Tour: always advance the correct player's board tile
+          const tile = advancePlayerBoard(playerId);
+
+          // 6️⃣ Combo flow — board already advanced, combo takes UI control
+          if (result.comboStatus) {
+            activateCombo({
+              playerId,
+              playerName: player.name,
+              comboName: result.comboStatus.type.replace('_', ' '),
+              comboEmoji: '🔥',
+              comboDescription: result.comboStatus.message,
+            });
+            return;
+          }
+
+          // 7️⃣ Game over — board already advanced
+          if (result.gameOver && result.gameWinner) {
+            setTimeout(() => setShowGameEndModal(true), 1500);
+            return;
+          }
+
+          // 8️⃣ Normal flow: show landing modal or go to next turn
+          if (tile) {
+            const previousAct = getActForPosition(tile.position - 1);
+            const currentAct = getActForPosition(tile.position);
+            const isActTransition =
+              currentAct !== previousAct && currentAct !== 'start';
+
+            setLandingEvent({
+              tile,
+              playerId,
+              playerName: player.name,
+              isActTransition,
+              newActId:
+                isActTransition && currentAct !== 'finish'
+                  ? currentAct
+                  : undefined,
+            });
+          } else {
+            // Fallback: no route active, go to next turn directly
+            setTimeout(() => advanceToNextTurn(), 2000);
+          }
+        }
+      } finally {
+        isAwardingRef.current = false;
+      }
     },
     [
       flowState.currentRound,
       players,
       playerIdMap,
+      advancePlayerBoard,
       revealAnswer,
       showSuccess,
       setShowGameEndModal,
@@ -212,6 +319,8 @@ export function usePointsActions({
     bSideNotification,
     setBSideNotification,
     lastAwardedPointsRef,
+    landingEvent,
+    setLandingEvent,
     handleAwardPoints,
     handleWrongAnswer,
   };

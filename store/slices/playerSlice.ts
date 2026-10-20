@@ -25,6 +25,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       score: 0,
       isCurrentTurn: false,
       availableTokens: [1, 2, 3],
+      boardPosition: 0,
       powerCards: [],
       currentBet: 0,
       isImmune: false,
@@ -222,6 +223,29 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
         p.id === playerId ? { ...p, boostActive: false } : p,
       ),
     }));
+  },
+
+  advancePlayerBoard: (playerId: string) => {
+    const { worldTourRoutes } = get();
+    if (!worldTourRoutes) return null;
+
+    const playerRoute = worldTourRoutes[playerId];
+    if (!playerRoute) return null;
+
+    const player = get().players.find((p) => p.id === playerId);
+    if (!player) return null;
+
+    const newPosition = Math.min(player.boardPosition + 1, 21);
+    const tile = playerRoute[newPosition];
+
+    // ✅ CALLBACK set — reads LATEST state, only touches boardPosition
+    set((state) => ({
+      players: state.players.map((p) =>
+        p.id === playerId ? { ...p, boardPosition: newPosition } : p,
+      ),
+    }));
+
+    return tile;
   },
 
   awardPoints: (playerId: string, points?: number) => {
@@ -457,8 +481,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   // Llama al final de cada ronda (handleAwardPoints / handleWrongAnswer).
   // winnerId = quien ganó (null = nadie ganó).
   // Retorna IDs de jugadores que RECIÉN alcanzaron el threshold → para notificación.
-  updateLossStreaks: (winnerId: string | null): string[] => {
-    const { players } = get();
+  updateLossStreaks: (winnerId: string | null) => {
     const newlyActivated: string[] = [];
 
     set((state: { players: any[] }) => ({
@@ -482,16 +505,14 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
 
         return {
           ...p,
-          lossStreakStreak,
-          // bSideActive se activa al threshold y se mantiene hasta que gane
+          lossStreak: nextStreak,
           bSideActive: p.bSideActive || justHitThreshold,
         };
       }),
-    }[]);
+    }));
 
     return newlyActivated;
   },
-
   // ─── B-SIDE: applyBSideBonus ───────────────────────────────────────────────
   // Llama DESPUÉS de syncPlayersFromBackend cuando el ganador tenía bSideActive.
   // Suma +1 y limpia el flag. Retorna true si aplicó el bonus.
@@ -513,12 +534,12 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
   },
 
   syncPlayersFromBackend: (
-    backendPlayers: Array<{
+    backendPlayers: {
       id: string;
       name: string;
       score: number;
       availableTokens: number[];
-    }>,
+    }[],
   ) => {
     set((state) => {
       const updatedPlayers = state.players.map((localPlayer, index) => {

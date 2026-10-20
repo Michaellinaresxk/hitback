@@ -4,7 +4,9 @@ import type { Player as StorePlayer } from '@/store/gameStore';
  * Construye el mapa frontend-id → backend-id al inicio del juego.
  * El backend usa ids secuenciales (player_1, player_2, …).
  */
-export const buildPlayerIdMap = (players: StorePlayer[]): Record<string, string> => {
+export const buildPlayerIdMap = (
+  players: StorePlayer[],
+): Record<string, string> => {
   const idMap: Record<string, string> = {};
   players.forEach((player, index) => {
     idMap[player.id] = `player_${index + 1}`;
@@ -15,7 +17,7 @@ export const buildPlayerIdMap = (players: StorePlayer[]): Record<string, string>
 export const getBackendPlayerId = (
   frontendId: string,
   players: StorePlayer[],
-  playerIdMap: Record<string, string>
+  playerIdMap: Record<string, string>,
 ): string => {
   if (playerIdMap[frontendId]) {
     return playerIdMap[frontendId];
@@ -31,7 +33,7 @@ export const getBackendPlayerId = (
 
 export const validateBet = (
   player: StorePlayer | undefined,
-  amount: number
+  amount: number,
 ): { valid: boolean; error?: string } => {
   if (!player) {
     return { valid: false, error: 'Jugador no encontrado' };

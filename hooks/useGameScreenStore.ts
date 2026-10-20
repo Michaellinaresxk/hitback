@@ -62,6 +62,13 @@ export function useGameScreenStore() {
   const applyManagementFee = useGameStore((state) => state.applyManagementFee);
   const applyCharityShow = useGameStore((state) => state.applyCharityShow);
 
+  const advancePlayerBoard = useGameStore(
+    (state) => (state as any).advancePlayerBoard as (playerId: string) => any,
+  );
+  const activateDoublePlatinum = useGameStore(
+    (state) => (state as any).activateDoublePlatinum as () => void,
+  );
+
   return {
     // State
     players,
@@ -101,5 +108,7 @@ export function useGameScreenStore() {
     applyBadReview,
     applyManagementFee,
     applyCharityShow,
+    advancePlayerBoard,
+    activateDoublePlatinum,
   };
 }

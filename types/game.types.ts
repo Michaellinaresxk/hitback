@@ -33,6 +33,7 @@ export interface Player {
   name: string;
   score: number;
   tokens: number;
+  boardPosition: number;
   powerCards: PowerCard[];
   streak: number;
   correctAnswers: number;

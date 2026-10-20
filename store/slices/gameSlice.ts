@@ -6,10 +6,13 @@ import {
   CURRENT_SPEED_ROUND_INDEX,
 } from '@/constants/SpeedRound';
 import { GAME_DURATION } from '@/constants/Game';
+import { generateRoute } from '@/utils/worldtourUtils';
+import { BoardTile } from '@/types/worldTour.types';
 
 export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   id: '',
   currentTurn: 0,
+  worldTourRoutes: null as Record<string, BoardTile[]> | null,
   gameMode: 'normal',
   timeLeft: 0,
   isActive: false,
@@ -42,6 +45,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     set({
       id: `game_${Date.now()}`,
       players: [],
+      worldTourRoutes: null,
       currentTurn: 0,
       gameMode: 'normal',
       timeLeft: 0,
@@ -86,11 +90,12 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       await audioService.initializeAudio();
       const durationSeconds = get().gameDurationMinutes * 60;
 
-      const updatedPlayers = players.map((player, index) => ({
+      const updatedPlayers = players.map((player) => ({
         ...player,
-        isCurrentTurn: index === 0,
+        isCurrentTurn: false, // No turn order — all players can answer every question
         score: 0,
         availableTokens: [1, 2, 3],
+        boardPosition: 0,
         powerCards: [],
         currentBet: 0,
         consecutiveWins: 0,
@@ -100,8 +105,14 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
         frozenForRound: null,
       }));
 
+      const route: Record<string, BoardTile[]> = {};
+      for (const player of updatedPlayers) {
+        route[player.id] = generateRoute();
+      }
+
       set({
         players: updatedPlayers,
+        worldTourRoutes: route,
         isActive: true,
         currentTurn: 0,
         timeLeft: durationSeconds,
@@ -114,7 +125,8 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       get().startTimer(durationSeconds);
     } catch (error) {
       console.error('❌ Error starting game:', error);
-      set({ error: 'No se pudo iniciar el juego' });
+      set({ error: 'No se pudo iniciar el juego', isActive: false });
+      throw error;
     }
   },
 
@@ -145,54 +157,38 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
     });
   },
 
-  // ─── nextTurn ──────────────────────────────────────────────────────────────
-  // FIX FREEZE: ya no se resetea isFrozen de todos en cada turno.
-  // Si el siguiente jugador está congelado → se le salta el turno y se consume
-  // su freeze (isFrozen: false). El ❄️ visual se mantendrá hasta que el set()
-  // lo quite al consumirlo.
+  // ─── nextTurn (advanceRound) ──────────────────────────────────────────────
+  // No hay orden de turnos: todos los jugadores pueden responder cada pregunta.
+  // Solo avanza el tablero quien responde correctamente.
+  // Aquí solo decrementamos el freeze de TODOS los jugadores congelados y
+  // limpiamos el estado de ronda.
   nextTurn: () => {
-    const { players, currentTurn } = get();
+    const { players } = get();
 
-    let nextTurnIndex = (currentTurn + 1) % players.length;
-    const skippedPlayerIds: string[] = [];
+    const updatedPlayers = players.map((player) => {
+      const basePatch = { peekUsed: false as const, currentBet: 0 };
+      if (!player.isFrozen) return { ...player, ...basePatch };
 
-    // ❄️ Saltar jugadores congelados consecutivos (con safety para evitar loop infinito)
-    let attempts = 0;
-    while (players[nextTurnIndex]?.isFrozen && attempts < players.length) {
-      skippedPlayerIds.push(players[nextTurnIndex].id);
-      console.log(
-        `❄️ ${players[nextTurnIndex].name} está FROZEN — turno saltado`,
-      );
-      nextTurnIndex = (nextTurnIndex + 1) % players.length;
-      attempts++;
-    }
-
-    const updatedPlayers = players.map((player, index) => {
-      if (skippedPlayerIds.includes(player.id)) {
-        const roundsLeft = Math.max(0, (player.artistHoldRoundsLeft || 0) - 1);
-        return {
-          ...player,
-          isCurrentTurn: index === nextTurnIndex,
-          artistHoldRoundsLeft: roundsLeft,
-          isFrozen: roundsLeft > 0,
-          frozenForRound: roundsLeft > 0 ? player.frozenForRound : null,
-          isImmune: player.isImmune && Math.random() > 0.5,
-          peekUsed: false,
-          currentBet: 0,
-        };
+      // Decrement freeze counter for every frozen player each round
+      const roundsLeft = Math.max(0, (player.artistHoldRoundsLeft || 0) - 1);
+      if (roundsLeft > 0) {
+        console.log(
+          `❄️ ${player.name} FROZEN — ${roundsLeft} ronda(s) restante(s)`,
+        );
+      } else {
+        console.log(`▶️ ${player.name} descongelado`);
       }
       return {
         ...player,
-        isCurrentTurn: index === nextTurnIndex,
-        isImmune: player.isImmune && Math.random() > 0.5,
-        peekUsed: false,
-        currentBet: 0,
+        ...basePatch,
+        artistHoldRoundsLeft: roundsLeft,
+        isFrozen: roundsLeft > 0,
+        frozenForRound: roundsLeft > 0 ? player.frozenForRound : null,
       };
     });
 
     set({
       players: updatedPlayers,
-      currentTurn: nextTurnIndex,
       currentCard: null,
       round: get().round + 1,
       audioFinished: false,
@@ -200,21 +196,11 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
       showAnswer: false,
     });
 
-    const nextPlayer = updatedPlayers[nextTurnIndex];
-    if (skippedPlayerIds.length > 0) {
-      const skippedNames = skippedPlayerIds
-        .map((id) => players.find((p) => p.id === id)?.name)
-        .join(', ');
-      console.log(
-        `❄️ Turnos saltados: ${skippedNames} → ahora juega ${nextPlayer?.name}`,
-      );
-    } else {
-      console.log(`➡️ Next turn: ${nextPlayer?.name}`);
-    }
-
     get().decrementAllianceRounds();
     get().clearStopBlast();
     get().clearDuel();
+
+    console.log(`➡️ Round advanced — todos los jugadores pueden responder`);
   },
 
   startTimer: (duration: number) => {

@@ -127,7 +127,11 @@ class PowerCardService {
     console.log(`   Player: ${playerId}`);
 
     try {
-      const response = await get<any>(`${this.cardsUrl}/inventory/${playerId}`);
+      const sessionId = gameSessionService.getCurrentSessionId();
+      const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
+      const response = await get<any>(
+        `${this.cardsUrl}/inventory/${playerId}${query}`,
+      );
 
       if (!response.success) {
         throw new Error(response.error || 'Error obteniendo inventario');
@@ -163,7 +167,12 @@ class PowerCardService {
     console.log(`   Card: ${cardId}`);
 
     try {
-      const response = await post<any>(`${this.cardsUrl}/use`, { playerId, cardId, targetPlayerId });
+      const response = await post<any>(`${this.cardsUrl}/use`, {
+        playerId,
+        cardId,
+        targetPlayerId,
+        sessionId: gameSessionService.getCurrentSessionId(),
+      });
 
       if (!response.success) {
         throw new Error(response.error || 'Error usando PowerCard');

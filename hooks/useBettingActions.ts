@@ -54,12 +54,17 @@ export function useBettingActions({
         return;
       }
 
-      placeBetStore(playerId, tokenValue);
-
       const backendPlayerId = getBackendPlayerId(playerId, players, playerIdMap);
-      const result = await placeBetBackend(backendPlayerId, tokenValue);
+      let result: { success: boolean };
+      try {
+        result = await placeBetBackend(backendPlayerId, tokenValue);
+      } catch {
+        showError('Error', 'No se pudo registrar en el servidor');
+        return;
+      }
 
       if (result.success) {
+        placeBetStore(playerId, tokenValue);
         showSuccess('Token Usado', `${player.name} usó token +${tokenValue} puntos`);
       } else {
         showError('Error', 'No se pudo registrar en el servidor');
