@@ -1,9 +1,13 @@
 import { ThemedView } from '@/components/ThemedView';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { gameSessionService } from '@/services/GameSessionService';
+import { useGameStore } from '@/store/gameStore';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
+  Alert,
   Platform,
   ScrollView,
   StatusBar,
@@ -12,10 +16,62 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import type { GameSession } from '@/services/GameSessionService';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { t } = useTranslation();
+  const [savedSession, setSavedSession] = useState<GameSession | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [resumeError, setResumeError] = useState(false);
+
+  const findSavedSession = async () => {
+    setCheckingSession(true);
+    setResumeError(false);
+    try {
+      const result = await gameSessionService.restoreCurrentSession();
+      setSavedSession(result.success ? result.session ?? null : null);
+      setResumeError(Boolean(result.error));
+    } catch (error) {
+      console.error('Unable to check for a saved World Tour:', error);
+      setResumeError(true);
+    } finally {
+      setCheckingSession(false);
+    }
+  };
+
+  useEffect(() => {
+    void findSavedSession();
+  }, []);
+
+  const handleResumeTour = async () => {
+    try {
+      const result = savedSession
+        ? { success: true, session: savedSession }
+        : await gameSessionService.restoreCurrentSession();
+      if (!result.success || !result.session) {
+        setResumeError(Boolean(result.error));
+        if (result.error) Alert.alert(t('common.error'), t('home.resume_error'));
+        else Alert.alert(t('common.error'), t('home.resume_unavailable'));
+        return;
+      }
+
+      let session = result.session;
+      if (session.status === 'created') {
+        const started = await gameSessionService.startGame(session.id);
+        if (!started.success) {
+          throw new Error('Unable to start the saved session');
+        }
+        session = started.session;
+      }
+
+      await useGameStore.getState().restoreGame(session);
+      router.push('/game');
+    } catch (error) {
+      console.error('Unable to resume the saved World Tour:', error);
+      Alert.alert(t('common.error'), t('home.resume_error'));
+    }
+  };
 
   return (
     <ThemedView style={styles.container}>
@@ -31,6 +87,44 @@ export default function HomeScreen() {
 
         {/* Main Content */}
         <View style={styles.mainContent}>
+          {checkingSession ? (
+            <ActivityIndicator
+              color='#38BDF8'
+              style={styles.resumeLoading}
+            />
+          ) : savedSession ? (
+            <TouchableOpacity
+              style={styles.resumeButton}
+              onPress={handleResumeTour}
+              activeOpacity={0.9}
+            >
+              <View style={styles.buttonContent}>
+                <IconSymbol name='arrow.clockwise' size={30} color='#FFFFFF' />
+                <View style={styles.buttonText}>
+                  <Text style={styles.buttonTitle}>
+                    {t('home.resume_tour.title')}
+                  </Text>
+                  <Text style={styles.buttonSubtitle}>
+                    {t('home.resume_tour.subtitle')}
+                  </Text>
+                </View>
+                <IconSymbol
+                  name='chevron.right'
+                  size={24}
+                  color='rgba(255,255,255,0.7)'
+                />
+              </View>
+            </TouchableOpacity>
+          ) : resumeError ? (
+            <TouchableOpacity
+              style={styles.retryResumeButton}
+              onPress={findSavedSession}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.retryResumeText}>{t('home.resume_error')}</Text>
+            </TouchableOpacity>
+          ) : null}
+
           {/* Primary Action - The ONLY thing that matters */}
           <TouchableOpacity
             style={styles.newGameButton}
@@ -185,6 +279,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 24,
     elevation: 12,
+  },
+
+  resumeButton: {
+    backgroundColor: '#0F766E',
+    borderRadius: 20,
+    marginBottom: 20,
+    shadowColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
+    elevation: 8,
+  },
+
+  resumeLoading: {
+    marginBottom: 20,
+  },
+
+  retryResumeButton: {
+    backgroundColor: 'rgba(248, 113, 113, 0.12)',
+    borderRadius: 12,
+    marginBottom: 20,
+    padding: 14,
+  },
+
+  retryResumeText: {
+    color: '#FCA5A5',
+    fontSize: 13,
+    textAlign: 'center',
   },
 
   buttonContent: {

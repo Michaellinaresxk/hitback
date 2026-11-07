@@ -10,10 +10,14 @@ import {
   Animated,
   ScrollView,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { Player } from '@/types/game.types';
 
 const { width, height } = Dimensions.get('window');
+
+const comparePlayersByTourResult = (left: Player, right: Player) =>
+  right.score - left.score || right.boardPosition - left.boardPosition;
 
 interface GameEndModalProps {
   visible: boolean;
@@ -42,6 +46,7 @@ export default function GameEndModal({
   onNewGame,
   onBackToMenu,
 }: GameEndModalProps) {
+  const { t } = useTranslation();
   const [currentView, setCurrentView] = useState<
     'winner' | 'stats' | 'achievements'
   >('winner');
@@ -49,9 +54,7 @@ export default function GameEndModal({
 
   // Calculate game statistics
   const gameStats: GameStats = {
-    winner: players.reduce((max, player) =>
-      player.score > max.score ? player : max,
-    ),
+    winner: [...players].sort(comparePlayersByTourResult)[0],
     mvpTokens: players.reduce((max, player) =>
       (player.tokens || 0) > (max.tokens || 0) ? player : max,
     ),
@@ -123,30 +126,38 @@ export default function GameEndModal({
       </View>
 
       {/* Winner Info */}
-      <Text style={styles.winnerTitle}>¡GANADOR!</Text>
+      <Text style={styles.winnerTitle}>{t('gameEnd.winnerTitle')}</Text>
       <Text style={styles.winnerName}>{gameStats.winner.name}</Text>
-      <Text style={styles.winnerScore}>{gameStats.winner.score} puntos</Text>
+      <Text style={styles.winnerScore}>
+        {t('gameEnd.winnerScore', { score: gameStats.winner.score })}
+      </Text>
 
       {/* Winner Achievements */}
       <View style={styles.winnerAchievements}>
         {gameStats.fastestWin && (
           <View style={styles.achievementBadge}>
             <IconSymbol name='bolt.fill' size={16} color='#F59E0B' />
-            <Text style={styles.achievementText}>Victoria Rápida</Text>
+            <Text style={styles.achievementText}>
+              {t('gameEnd.achievements.fastestWin')}
+            </Text>
           </View>
         )}
 
         {gameStats.perfectGame && (
           <View style={styles.achievementBadge}>
             <IconSymbol name='star.fill' size={16} color='#F59E0B' />
-            <Text style={styles.achievementText}>Juego Perfecto</Text>
+            <Text style={styles.achievementText}>
+              {t('gameEnd.achievements.perfectGame')}
+            </Text>
           </View>
         )}
 
         {gameStats.winner.score >= 20 && (
           <View style={styles.achievementBadge}>
             <IconSymbol name='flame.fill' size={16} color='#EF4444' />
-            <Text style={styles.achievementText}>Dominación</Text>
+            <Text style={styles.achievementText}>
+              {t('gameEnd.achievements.domination')}
+            </Text>
           </View>
         )}
       </View>
@@ -154,15 +165,19 @@ export default function GameEndModal({
       {/* Game Summary */}
       <View style={styles.gameSummary}>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Duración</Text>
+          <Text style={styles.summaryLabel}>
+            {t('gameEnd.summary.duration')}
+          </Text>
           <Text style={styles.summaryValue}>{formatTime(gameTimeElapsed)}</Text>
         </View>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Rondas</Text>
+          <Text style={styles.summaryLabel}>{t('gameEnd.summary.rounds')}</Text>
           <Text style={styles.summaryValue}>{totalRounds}</Text>
         </View>
         <View style={styles.summaryItem}>
-          <Text style={styles.summaryLabel}>Jugadores</Text>
+          <Text style={styles.summaryLabel}>
+            {t('gameEnd.summary.players')}
+          </Text>
           <Text style={styles.summaryValue}>{players.length}</Text>
         </View>
       </View>
@@ -174,13 +189,13 @@ export default function GameEndModal({
       style={styles.statsContainer}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={styles.statsTitle}>📊 ESTADÍSTICAS FINALES</Text>
+      <Text style={styles.statsTitle}>{t('gameEnd.statsTitle')}</Text>
 
       {/* Player Rankings */}
       <View style={styles.rankingsSection}>
-        <Text style={styles.sectionTitle}>🏆 RANKING FINAL</Text>
-        {players
-          .sort((a, b) => b.score - a.score)
+        <Text style={styles.sectionTitle}>{t('gameEnd.finalRanking')}</Text>
+        {[...players]
+          .sort(comparePlayersByTourResult)
           .map((player, index) => (
             <View
               key={player.id}
@@ -197,7 +212,7 @@ export default function GameEndModal({
                       ? '🥈'
                       : index === 2
                         ? '🥉'
-                        : `${index + 1}°`}
+                        : t('gameEnd.rankPosition', { position: index + 1 })}
                 </Text>
               </View>
 
@@ -211,18 +226,24 @@ export default function GameEndModal({
                   {player.name}
                 </Text>
                 <View style={styles.rankStats}>
-                  <Text style={styles.rankStatText}>{player.score} pts</Text>
-                  <Text style={styles.rankStatText}>•</Text>
                   <Text style={styles.rankStatText}>
-                    {player.tokens || 0} tokens
+                    {t('gameEnd.pointsShort', { count: player.score })}
                   </Text>
                   <Text style={styles.rankStatText}>•</Text>
                   <Text style={styles.rankStatText}>
-                    {player.powerCards?.length || 0} poderes
+                    {t('game.tokens_count', { count: player.tokens || 0 })}
                   </Text>
                   <Text style={styles.rankStatText}>•</Text>
                   <Text style={styles.rankStatText}>
-                    {player.correctAnswers || 0} respuestas correctas
+                    {t('gameEnd.powerCardsCount', {
+                      count: player.powerCards?.length || 0,
+                    })}
+                  </Text>
+                  <Text style={styles.rankStatText}>•</Text>
+                  <Text style={styles.rankStatText}>
+                    {t('gameEnd.correctAnswersCount', {
+                      count: player.correctAnswers || 0,
+                    })}
                   </Text>
                 </View>
               </View>
@@ -232,7 +253,7 @@ export default function GameEndModal({
 
       {/* MVP Awards */}
       <View style={styles.mvpSection}>
-        <Text style={styles.sectionTitle}>🌟 MVP AWARDS</Text>
+        <Text style={styles.sectionTitle}>{t('gameEnd.mvpAwards')}</Text>
 
         <View style={styles.mvpItem}>
           <View style={styles.mvpIcon}>
@@ -243,10 +264,12 @@ export default function GameEndModal({
             />
           </View>
           <View style={styles.mvpInfo}>
-            <Text style={styles.mvpTitle}>Rey de los Tokens</Text>
+            <Text style={styles.mvpTitle}>{t('gameEnd.tokenKing')}</Text>
             <Text style={styles.mvpPlayer}>
-              {gameStats.mvpTokens.name} • {gameStats.mvpTokens.tokens || 0}{' '}
-              tokens
+              {gameStats.mvpTokens.name} •{' '}
+              {t('game.tokens_count', {
+                count: gameStats.mvpTokens.tokens || 0,
+              })}
             </Text>
           </View>
         </View>
@@ -256,10 +279,12 @@ export default function GameEndModal({
             <IconSymbol name='sparkles' size={24} color='#8B5CF6' />
           </View>
           <View style={styles.mvpInfo}>
-            <Text style={styles.mvpTitle}>Maestro de Poderes</Text>
+            <Text style={styles.mvpTitle}>{t('gameEnd.powerMaster')}</Text>
             <Text style={styles.mvpPlayer}>
               {gameStats.mvpPowerCards.name} •{' '}
-              {gameStats.mvpPowerCards.powerCards?.length || 0} poderes
+              {t('gameEnd.powerCardsCount', {
+                count: gameStats.mvpPowerCards.powerCards?.length || 0,
+              })}
             </Text>
           </View>
         </View>
@@ -269,9 +294,10 @@ export default function GameEndModal({
             <IconSymbol name='chart.bar.fill' size={24} color='#10B981' />
           </View>
           <View style={styles.mvpInfo}>
-            <Text style={styles.mvpTitle}>Puntuación Máxima</Text>
+            <Text style={styles.mvpTitle}>{t('gameEnd.highestScore')}</Text>
             <Text style={styles.mvpPlayer}>
-              {gameStats.winner.name} • {gameStats.highestScore} puntos
+              {gameStats.winner.name} •{' '}
+              {t('gameEnd.winnerScore', { score: gameStats.highestScore })}
             </Text>
           </View>
         </View>
@@ -279,31 +305,35 @@ export default function GameEndModal({
 
       {/* Game Metrics */}
       <View style={styles.metricsSection}>
-        <Text style={styles.sectionTitle}>📈 MÉTRICAS DEL JUEGO</Text>
+        <Text style={styles.sectionTitle}>{t('gameEnd.metricsTitle')}</Text>
 
         <View style={styles.metricGrid}>
           <View style={styles.metricItem}>
             <Text style={styles.metricValue}>
               {formatTime(gameTimeElapsed)}
             </Text>
-            <Text style={styles.metricLabel}>Duración</Text>
+            <Text style={styles.metricLabel}>
+              {t('gameEnd.summary.duration')}
+            </Text>
           </View>
 
           <View style={styles.metricItem}>
             <Text style={styles.metricValue}>{totalRounds}</Text>
-            <Text style={styles.metricLabel}>Rondas</Text>
+            <Text style={styles.metricLabel}>
+              {t('gameEnd.summary.rounds')}
+            </Text>
           </View>
 
           <View style={styles.metricItem}>
             <Text style={styles.metricValue}>{gameStats.totalTokensSpent}</Text>
-            <Text style={styles.metricLabel}>Tokens Gastados</Text>
+            <Text style={styles.metricLabel}>{t('gameEnd.tokensSpent')}</Text>
           </View>
 
           <View style={styles.metricItem}>
             <Text style={styles.metricValue}>
               {Math.round((gameStats.highestScore / totalRounds) * 10) / 10}
             </Text>
-            <Text style={styles.metricLabel}>Pts/Ronda</Text>
+            <Text style={styles.metricLabel}>{t('gameEnd.pointsPerRound')}</Text>
           </View>
         </View>
       </View>
@@ -314,43 +344,43 @@ export default function GameEndModal({
     const achievements = [
       {
         id: 'first_win',
-        name: 'Primera Victoria',
-        description: '¡Tu primera partida ganada!',
+        name: t('gameEnd.achievement.firstWin.name'),
+        description: t('gameEnd.achievement.firstWin.description'),
         emoji: '🎉',
         unlocked: true,
       },
       {
         id: 'speed_demon',
-        name: 'Demonio de Velocidad',
-        description: 'Ganar en menos de 10 minutos',
+        name: t('gameEnd.achievement.speedDemon.name'),
+        description: t('gameEnd.achievement.speedDemon.description'),
         emoji: '⚡',
         unlocked: gameStats.fastestWin,
       },
       {
         id: 'perfect_game',
-        name: 'Juego Perfecto',
-        description: 'Ganar sin perder tokens',
+        name: t('gameEnd.achievement.perfectGame.name'),
+        description: t('gameEnd.achievement.perfectGame.description'),
         emoji: '⭐',
         unlocked: gameStats.perfectGame,
       },
       {
         id: 'domination',
-        name: 'Dominación Total',
-        description: 'Conseguir 20+ puntos',
+        name: t('gameEnd.achievement.domination.name'),
+        description: t('gameEnd.achievement.domination.description'),
         emoji: '🔥',
         unlocked: gameStats.highestScore >= 20,
       },
       {
         id: 'token_master',
-        name: 'Maestro de Tokens',
-        description: 'Terminar con 5+ tokens',
+        name: t('gameEnd.achievement.tokenMaster.name'),
+        description: t('gameEnd.achievement.tokenMaster.description'),
         emoji: '🪙',
         unlocked: gameStats.mvpTokens.tokens >= 5,
       },
       {
         id: 'power_collector',
-        name: 'Coleccionista de Poderes',
-        description: 'Conseguir 5+ cartas de poder',
+        name: t('gameEnd.achievement.powerCollector.name'),
+        description: t('gameEnd.achievement.powerCollector.description'),
         emoji: '✨',
         unlocked: (gameStats.mvpPowerCards.powerCards?.length || 0) >= 5,
       },
@@ -361,7 +391,9 @@ export default function GameEndModal({
         style={styles.achievementsContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.achievementsTitle}>🏅 LOGROS DESBLOQUEADOS</Text>
+        <Text style={styles.achievementsTitle}>
+          {t('gameEnd.achievementsTitle')}
+        </Text>
 
         {achievements.map((achievement) => (
           <View
@@ -437,7 +469,7 @@ export default function GameEndModal({
                 currentView === 'winner' && styles.activeTabText,
               ]}
             >
-              Ganador
+              {t('gameEnd.tabs.winner')}
             </Text>
           </TouchableOpacity>
 
@@ -456,7 +488,7 @@ export default function GameEndModal({
                 currentView === 'stats' && styles.activeTabText,
               ]}
             >
-              Estadísticas
+              {t('gameEnd.tabs.stats')}
             </Text>
           </TouchableOpacity>
 
@@ -478,7 +510,7 @@ export default function GameEndModal({
                 currentView === 'achievements' && styles.activeTabText,
               ]}
             >
-              Logros
+              {t('gameEnd.tabs.achievements')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -498,7 +530,9 @@ export default function GameEndModal({
             activeOpacity={0.8}
           >
             <IconSymbol name='arrow.clockwise' size={20} color='#FFFFFF' />
-            <Text style={styles.newGameText}>Nueva Partida</Text>
+            <Text style={styles.newGameText}>
+              {t('gameEnd.newGame')}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -507,7 +541,7 @@ export default function GameEndModal({
             activeOpacity={0.8}
           >
             <IconSymbol name='house.fill' size={20} color='#64748B' />
-            <Text style={styles.menuText}>Menú Principal</Text>
+            <Text style={styles.menuText}>{t('gameEnd.mainMenu')}</Text>
           </TouchableOpacity>
         </View>
       </View>

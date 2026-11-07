@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface FeaturingModalProps {
   visible: boolean;
@@ -28,6 +29,7 @@ export default function FeaturingModal({
   onSelectPartner,
   onClose,
 }: FeaturingModalProps) {
+  const { t } = useTranslation();
   const candidates = players.filter((p) => p.id !== portadorId);
 
   return (
@@ -42,13 +44,13 @@ export default function FeaturingModal({
           <Text style={styles.emoji}>🎤</Text>
           <Text style={styles.title}>FEATURING</Text>
           <Text style={styles.subtitle}>
-            <Text style={styles.portadorName}>{portadorName}</Text> elige su
-            compañero
+            <Text style={styles.portadorName}>{portadorName}</Text>{' '}
+            {t('featuringModal.choosePartner')}
           </Text>
 
           <View style={styles.ruleBox}>
             <Text style={styles.ruleText}>
-              Si cualquiera de los dos acierta, ¡ambos ganan los puntos!
+              {t('featuringModal.rule')}
             </Text>
           </View>
 
@@ -77,7 +79,9 @@ export default function FeaturingModal({
                     🎵 {item.name}
                   </Text>
                   {isCommitted && (
-                    <Text style={styles.committedLabel}>🎤 En featuring</Text>
+                    <Text style={styles.committedLabel}>
+                      {t('featuringModal.committed')}
+                    </Text>
                   )}
                 </TouchableOpacity>
               );
@@ -85,7 +89,9 @@ export default function FeaturingModal({
           />
 
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancelar</Text>
+            <Text style={styles.cancelText}>
+              {t('bettingModal.buttons.cancel')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

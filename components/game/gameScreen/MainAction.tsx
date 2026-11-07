@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   View,
   TouchableOpacity,
@@ -34,13 +35,14 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
     onSkipBetting,
     showBettingButton,
   }) => {
+    const { t } = useTranslation();
     // ✅ NO console.log here - it was causing the freeze!
 
     if (isLoading) {
       return (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size='large' color='#3B82F6' />
-          <Text style={styles.loadingText}>Cargando ronda...</Text>
+          <Text style={styles.loadingText}>{t('game.flow.loading_round')}</Text>
         </View>
       );
     }
@@ -55,7 +57,7 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
             activeOpacity={0.8}
           >
             <Text style={styles.bettingOpportunityText}>
-              🎰 USAR TOKEN (+1, +2, +3)
+              {t('game.flow.use_token')}
             </Text>
           </TouchableOpacity>
 
@@ -64,13 +66,15 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
             onPress={onSkipBetting}
           >
             <Text style={styles.skipBettingText}>
-              ⭕ Saltar apuesta y escuchar audio
+              {t('game.flow.skip_bet')}
             </Text>
           </TouchableOpacity>
 
           <Text style={styles.bettingRoundInfo}>
-            Ronda {currentRound?.number || '?'} -{' '}
-            {currentRound?.question?.type?.toUpperCase() || ''}
+            {t('game.flow.round_question', {
+              round: currentRound?.number || '?',
+              type: currentRound?.question?.type?.toUpperCase() || '',
+            })}
           </Text>
         </View>
       );
@@ -92,13 +96,17 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
           >
             <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
             <Text style={styles.nextRoundText}>
-              {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
+              {currentRound
+                ? t('game.flow.next_round')
+                : t('game.flow.start_first_round')}
             </Text>
           </TouchableOpacity>
           <Text style={styles.nextRoundSubtext}>
             {currentRound
-              ? `Ronda ${currentRound.number} completada`
-              : 'Preparado para empezar'}
+              ? t('game.flow.round_completed', {
+                  round: currentRound.number,
+                })
+              : t('game.flow.ready')}
           </Text>
         </View>
       );
@@ -108,9 +116,11 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
     if (currentPhase === 'audio') {
       return (
         <View style={styles.activeRoundContainer}>
-          <Text style={styles.activeRoundText}>🎵 Escuchando audio...</Text>
+          <Text style={styles.activeRoundText}>
+            {t('game.flow.listening')}
+          </Text>
           <Text style={styles.activeRoundSubtext}>
-            Prepárate para responder
+            {t('game.flow.prepare_to_answer')}
           </Text>
         </View>
       );
@@ -120,9 +130,11 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
     if (currentPhase === 'question' && questionVisible) {
       return (
         <View style={styles.answerContainer}>
-          <Text style={styles.answerText}>❓ Esperando respuesta...</Text>
+          <Text style={styles.answerText}>
+            {t('game.flow.waiting_for_answer')}
+          </Text>
           <Text style={styles.answerSubtext}>
-            Selecciona quién respondió correctamente
+            {t('game.flow.select_correct_player')}
           </Text>
         </View>
       );
@@ -139,13 +151,17 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
           >
             <IconSymbol name='play.circle' size={28} color='#FFFFFF' />
             <Text style={styles.nextRoundText}>
-              {currentRound ? 'SIGUIENTE RONDA' : 'EMPEZAR PRIMERA RONDA'}
+              {currentRound
+                ? t('game.flow.next_round')
+                : t('game.flow.start_first_round')}
             </Text>
           </TouchableOpacity>
           <Text style={styles.nextRoundSubtext}>
             {currentRound
-              ? `Ronda ${currentRound.number} completada`
-              : 'Preparado para empezar'}
+              ? t('game.flow.round_completed', {
+                  round: currentRound.number,
+                })
+              : t('game.flow.ready')}
           </Text>
         </View>
       );
@@ -155,9 +171,11 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
     if (currentPhase === 'answer') {
       return (
         <View style={styles.answerContainer}>
-          <Text style={styles.answerText}>✅ Respuesta revelada</Text>
+          <Text style={styles.answerText}>
+            {t('game.flow.answer_revealed')}
+          </Text>
           <Text style={styles.answerSubtext}>
-            Preparando siguiente ronda...
+            {t('game.flow.preparing_next_round')}
           </Text>
         </View>
       );
@@ -171,7 +189,7 @@ export const MainAction: React.FC<MainActionProps> = React.memo(
           onPress={onNextRound}
           activeOpacity={0.8}
         >
-          <Text style={styles.nextRoundText}>CONTINUAR</Text>
+          <Text style={styles.nextRoundText}>{t('tour.ui.continueButton')}</Text>
         </TouchableOpacity>
       </View>
     );

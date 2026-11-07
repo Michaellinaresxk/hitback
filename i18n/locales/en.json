@@ -11,6 +11,12 @@
       "title": "New Game",
       "subtitle": "2-8 players • 20 min"
     },
+    "resume_tour": {
+      "title": "Resume Tour",
+      "subtitle": "Continue your saved World Tour"
+    },
+    "resume_error": "Could not recover the saved tour. Check your connection and try again.",
+    "resume_unavailable": "This saved tour is no longer available.",
     "rules": "Rules",
     "settings": "Settings",
     "how_works": {
@@ -32,7 +38,40 @@
     "rule_3": "First player to reach 15 points wins",
     "rule_4": "Each game lasts 20 minutes max",
     "start_game": "START GAME",
-    "min_players_warning": "You need at least 2 players"
+    "min_players_warning": "You need at least 2 players",
+    "genre_section_title": "Music genres",
+    "genre_section_hint": "Choose the genres you want to hear (or leave all unselected to include every genre)",
+    "decade_section_title": "Decades",
+    "decade_section_hint": "Choose your preferred decades (or leave all unselected to include every decade)",
+    "selection_title": "Your selection:",
+    "all_genres": "All genres",
+    "all_decades": "All decades",
+    "connecting": "Connecting...",
+    "genres": {
+      "ROCK": "Rock",
+      "POP": "Pop",
+      "LATIN": "Latin",
+      "HIP_HOP": "Hip hop",
+      "ELECTRONIC": "Electronic",
+      "R&B": "R&B",
+      "COUNTRY": "Country",
+      "JAZZ": "Jazz"
+    },
+    "current_rules": {
+      "next_song": "Press “Next Song” to start each round",
+      "listen_and_bet": "Listen to the audio and bet tokens if you think you know the answer",
+      "game_master_selects": "The Game Master chooses who answered correctly",
+      "winning_score": "The first player to reach {{score}} points wins!"
+    },
+    "errors": {
+      "invalid_name": "Enter a valid name.",
+      "add_player": "Could not add the player: {{details}}",
+      "session_create_failed": "Could not create the session.",
+      "session_start_failed": "Could not start the session on the server.",
+      "local_start_failed": "Could not start the game on this device.",
+      "connection_title": "Connection error",
+      "connection_message": "Could not connect to the server. Check that it is available.\n\n{{details}}"
+    }
   },
   "settingPage": {
     "sections": {
@@ -79,7 +118,8 @@
     "export": {
       "title": "Export Settings",
       "desc": "Share settings with others"
-    }
+    },
+    "language_save_error": "The selected language could not be saved."
   },
   "help": {
     "objective": {
@@ -113,11 +153,36 @@
     "pot_subtext": "Tokens lost in bets",
     "tokens_count": "{{count}} tokens",
     "current_turn": "Current Turn",
+    "round_label": "Round",
     "no_one": "No one",
     "round_info": "Round {{round}}",
     "phase_prefix": "Phase: ",
     "scanning": "Scanning...",
     "scan_button": "Scan Card",
+    "phaseLabels": {
+      "idle": "READY",
+      "loading": "LOADING",
+      "audio": "AUDIO",
+      "betting": "BETTING",
+      "question": "QUESTION",
+      "answer": "ANSWER"
+    },
+    "flow": {
+      "loading_round": "Loading round...",
+      "use_token": "🎰 USE TOKEN (+1, +2, +3)",
+      "skip_bet": "⭕ Skip betting and listen to the audio",
+      "round_question": "Round {{round}} - {{type}}",
+      "next_round": "NEXT ROUND",
+      "start_first_round": "START FIRST ROUND",
+      "round_completed": "Round {{round}} completed",
+      "ready": "Ready to start",
+      "listening": "🎵 Listening to audio...",
+      "prepare_to_answer": "Get ready to answer",
+      "waiting_for_answer": "❓ Waiting for an answer...",
+      "select_correct_player": "Select who answered correctly",
+      "answer_revealed": "✅ Answer revealed",
+      "preparing_next_round": "Preparing the next round..."
+    },
     "betting": {
       "title": "🎲 BETTING TIME",
       "instructions": "Players can place their tokens on the table",
@@ -131,6 +196,11 @@
       "answer_correct": "✅ {{answer}}",
       "player_bet": "Bet: {{amount}} → {{mult}}x",
       "no_winner": "No one correct"
+    },
+    "special": {
+      "stopBlastOnlyWinner": "🛑 STOP-BLAST — only one player can win",
+      "duelOnlyWinners": "⚔️ DUEL — only the duelists can win",
+      "pausedRound": "paused this round"
     },
     "phases": {
       "normal": "Normal",
@@ -193,10 +263,120 @@
       "tokenCount": "{{count}} tokens",
       "alreadyBet": "Already bet {{amount}} tokens"
     },
+    "noneYet": "No bets yet",
+    "alreadyBet": "✅ Token bet placed",
+    "availableTokens": "Available: {{tokens}}",
+    "noTokens": "No tokens",
+    "noTokensAvailable": "😅 No tokens available",
+    "info": {
+      "oneTokenPerRound": "Each player can bet 1 token per round",
+      "bonusPoints": "Bet tokens are added to your score if you answer correctly"
+    },
     "buttons": {
       "cancel": "Cancel",
-      "multiplierSuffix": "{{value}}x"
+      "multiplierSuffix": "{{value}}x",
+      "bet": "Bet",
+      "used": "Used",
+      "confirmAndContinue": "CONFIRM BETS AND CONTINUE"
     }
+  },
+  "allianceModal": {
+    "inAlliance": "🤝 In an alliance",
+    "playerOne": "Player 1",
+    "playerTwo": "Player 2",
+    "oneRoundRemaining": "{{count}} round remaining",
+    "multipleRoundsRemaining": "{{count}} rounds remaining",
+    "dissolve": "Dissolve",
+    "selectFirst": "Select the first player",
+    "selectSecond": "Select the second player",
+    "subtitle": "Temporary alliances",
+    "declareTab": "Declare",
+    "activeTab": "Active",
+    "rules": "If your ally answers correctly, you receive 50% of their points. The alliance lasts 3 rounds.",
+    "declareButton": "🤝 Declare alliance",
+    "selectTwo": "Select 2 players",
+    "empty": "There are no active alliances",
+    "emptyAction": "Declare one →"
+  },
+  "featuringModal": {
+    "choosePartner": "chooses a partner",
+    "rule": "If either player answers correctly, both earn the points!",
+    "committed": "🎤 Featuring"
+  },
+  "duelModal": {
+    "chooseOpponent": "choose a rival",
+    "rule": "Only the two duelists can answer this round"
+  },
+  "lossStreakModal": {
+    "title": "B-SIDE ACTIVATED",
+    "multiplePlayers": "{{count}} players have gone 4 rounds without scoring",
+    "singlePlayer": "This player has gone 4 rounds without scoring",
+    "bonus": "+1 next point",
+    "multipleInstruction": "Give each player a Reaction Card 🃏",
+    "singleInstruction": "Give them a Reaction Card from the physical deck 🃏",
+    "multipleDelivered": "Cards delivered ✓",
+    "singleDelivered": "Card delivered ✓"
+  },
+  "gameEnd": {
+    "winnerTitle": "WINNER!",
+    "winnerScore": "{{score}} points",
+    "achievements": {
+      "fastestWin": "Fast victory",
+      "perfectGame": "Perfect game",
+      "domination": "Domination"
+    },
+    "summary": {
+      "duration": "Duration",
+      "rounds": "Rounds",
+      "players": "Players"
+    },
+    "statsTitle": "📊 FINAL STATS",
+    "finalRanking": "🏆 FINAL RANKING",
+    "rankPosition": "#{{position}}",
+    "pointsShort": "{{count}} pts",
+    "powerCardsCount": "{{count}} powers",
+    "correctAnswersCount": "{{count}} correct answers",
+    "mvpAwards": "🌟 MVP AWARDS",
+    "tokenKing": "Token king",
+    "powerMaster": "Power master",
+    "highestScore": "Highest score",
+    "metricsTitle": "📈 GAME METRICS",
+    "tokensSpent": "Tokens spent",
+    "pointsPerRound": "Pts/round",
+    "achievementsTitle": "🏅 UNLOCKED ACHIEVEMENTS",
+    "achievement": {
+      "firstWin": {
+        "name": "First victory",
+        "description": "Your first game won!"
+      },
+      "speedDemon": {
+        "name": "Speed demon",
+        "description": "Win in under 10 minutes"
+      },
+      "perfectGame": {
+        "name": "Perfect game",
+        "description": "Win without losing tokens"
+      },
+      "domination": {
+        "name": "Total domination",
+        "description": "Score 20 or more points"
+      },
+      "tokenMaster": {
+        "name": "Token master",
+        "description": "Finish with 5 or more tokens"
+      },
+      "powerCollector": {
+        "name": "Power collector",
+        "description": "Earn 5 or more Power Cards"
+      }
+    },
+    "tabs": {
+      "winner": "Winner",
+      "stats": "Statistics",
+      "achievements": "Achievements"
+    },
+    "newGame": "New game",
+    "mainMenu": "Main menu"
   },
   "tour": {
     "gameName": "WORLD TOUR",
@@ -493,6 +673,7 @@
       "reachedFinish": "🏆 YOU REACHED THE HALL OF FAME!",
       "landingTitle": "📍 You've arrived at {{city}}",
       "landingVenue": "🎤 {{venue}}",
+      "playerArrival": "{{player}} lands here",
       "tileTypeLabel": "Type: {{type}}",
       "factLabel": "📖 Did you know...?",
       "continueButton": "Continue Tour",

@@ -535,6 +535,7 @@ export const createPlayerSlice = ((set, get, ..._rest) => ({
       id: string;
       name: string;
       score: number;
+      boardPosition?: number;
       availableTokens: number[];
       stats?: {
         correctAnswers?: number;
@@ -557,6 +558,8 @@ export const createPlayerSlice = ((set, get, ..._rest) => ({
           return {
             ...localPlayer,
             score: backendPlayer.score,
+            boardPosition:
+              backendPlayer.boardPosition ?? localPlayer.boardPosition,
             correctAnswers:
               backendPlayer.stats?.correctAnswers ?? localPlayer.correctAnswers,
             availableTokens:

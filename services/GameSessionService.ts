@@ -1,5 +1,7 @@
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import type { PowerCard } from '@/types/game.types';
+import type { BoardTile } from '@/types/worldTour.types';
 
 // ✅ Conecta con el nuevo API v2 (SIN QR)
 // ✅ Maneja sesiones de juego completas
@@ -28,12 +30,14 @@ export interface SessionConfig {
   timeLimit: number;
   tokensPerPlayer: number;
   powerCardsPerPlayer: number;
+  worldTourRoutes: Record<string, BoardTile[]>;
 }
 
 export interface SessionPlayer {
   id: string;
   name: string;
   score: number;
+  boardPosition: number;
   availableTokens: number[];
   tokens?: number;
   powerCards: PowerCard[];
@@ -51,6 +55,7 @@ export interface GameSession {
   createdAt: string;
   config: SessionConfig;
   players: SessionPlayer[];
+  worldTourRoutes: Record<string, BoardTile[]> | null;
   currentPlayerIndex: number;
   round: number;
   usedTrackIds: string[];
@@ -129,11 +134,11 @@ export interface RoundResult {
   };
   tokensLost: Record<string, number>;
   tokensWon: number;
-  scoreModifiers?: Array<{
+  scoreModifiers?: {
     type: 'ALLIANCE' | 'FEATURING' | 'B_SIDE';
     playerId: string;
     points: number;
-  }>;
+  }[];
   players?: SessionPlayer[];
   gameOver?: boolean;
   gameWinner?: {
@@ -154,6 +159,7 @@ class GameSessionService {
   private timeout: number = 15000;
   private currentSessionId: string | null = null;
   private currentSessionToken: string | null = null;
+  private readonly credentialsStorageKey = 'hitback.session-credentials';
 
   constructor() {
     this.baseUrl = getBaseUrl();
@@ -257,6 +263,24 @@ class GameSessionService {
     if (result.success && result.session) {
       this.currentSessionId = result.session.id;
       this.currentSessionToken = result.capabilityToken;
+      try {
+        await SecureStore.setItemAsync(
+          this.credentialsStorageKey,
+          JSON.stringify({
+            sessionId: this.currentSessionId,
+            capabilityToken: this.currentSessionToken,
+          }),
+        );
+      } catch (error) {
+        console.error('Could not securely store the session credentials:', error);
+        await this.deleteSession(this.currentSessionId).catch((cleanupError) => {
+          console.error(
+            'Could not clean up session after secure storage failure:',
+            cleanupError,
+          );
+        });
+        throw new Error('No se pudo guardar de forma segura la sesión');
+      }
       console.log(`✅ Session created: ${this.currentSessionId}`);
     }
 
@@ -409,19 +433,60 @@ class GameSessionService {
     });
   }
 
+  async restoreCurrentSession(): Promise<{
+    success: boolean;
+    session?: GameSession;
+    error?: string;
+  }> {
+    const storedCredentials = await SecureStore.getItemAsync(
+      this.credentialsStorageKey,
+    );
+    if (!storedCredentials) return { success: false };
+
+    let credentials: { sessionId?: string; capabilityToken?: string };
+    try {
+      credentials = JSON.parse(storedCredentials);
+    } catch (error) {
+      console.error('Stored game session credentials are invalid:', error);
+      await SecureStore.deleteItemAsync(this.credentialsStorageKey);
+      return { success: false };
+    }
+
+    if (!credentials.sessionId || !credentials.capabilityToken) {
+      await SecureStore.deleteItemAsync(this.credentialsStorageKey);
+      return { success: false };
+    }
+
+    this.currentSessionId = credentials.sessionId;
+    this.currentSessionToken = credentials.capabilityToken;
+    try {
+      const result = await this.getStatus();
+      if (!result.success || !result.session) {
+        throw new Error('El servidor no devolvió el estado de la sesión');
+      }
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : 'No se pudo recuperar el tour',
+      };
+    }
+  }
+
   /**
    * Lista todas las sesiones activas
    */
   async getAllSessions(): Promise<{
     success: boolean;
     count: number;
-    sessions: Array<{
+    sessions: {
       id: string;
       status: string;
       players: number;
       round: number;
       createdAt: string;
-    }>;
+    }[];
   }> {
     return this.fetchAPI('/sessions', {
       method: 'GET',
@@ -592,6 +657,7 @@ class GameSessionService {
     if (result.success && id === this.currentSessionId) {
       this.currentSessionId = null;
       this.currentSessionToken = null;
+      await SecureStore.deleteItemAsync(this.credentialsStorageKey);
     }
 
     return result;
@@ -600,9 +666,10 @@ class GameSessionService {
   /**
    * Limpiar sesión actual (sin eliminar en backend)
    */
-  clearCurrentSession(): void {
+  async clearCurrentSession(): Promise<void> {
     this.currentSessionId = null;
     this.currentSessionToken = null;
+    await SecureStore.deleteItemAsync(this.credentialsStorageKey);
     console.log(`🧹 Current session cleared`);
   }
 

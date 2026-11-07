@@ -34,7 +34,7 @@ const initialState: GameFlow = {
 
 export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
-  const { clearBets, syncPlayersFromBackend, setShowGameEndModal } = useGameStore();
+  const { clearBets, syncPlayersFromBackend, endGame } = useGameStore();
 
   // SIGUIENTE RONDA
   const nextRound = useCallback(async (): Promise<boolean> => {
@@ -66,7 +66,7 @@ export const useGameFlow = () => {
           phase: 'idle',
           isLoading: false,
         });
-        setShowGameEndModal(true);
+        await endGame();
         return true;
       }
 
@@ -133,7 +133,7 @@ export const useGameFlow = () => {
       setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
       return false;
     }
-  }, [clearBets, setShowGameEndModal]);
+  }, [clearBets, endGame]);
 
   // MANEJAR FIN DE AUDIO
   const handleAudioFinished = useCallback(() => {

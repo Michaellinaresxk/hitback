@@ -1,0 +1,184 @@
+{
+  "theRoxy": {
+    "city": "Los Ángeles",
+    "country": "Estados Unidos",
+    "venue": "The Roxy",
+    "story": "Inaugurado con un concierto privado de Neil Young, The Roxy se convirtió en el hermano mayor del Whisky a Go Go. Bruce Springsteen hizo aquí el show que convenció a Rolling Stone de llamarlo «el futuro del rock».",
+    "realFact": "En su noche de apertura de 1973, la lista de invitados incluía a Elton John, David Bowie y Carole King. Cualquier noche en The Roxy podía convertirse en historia de la música."
+  },
+  "bataclan": {
+    "city": "París",
+    "country": "Francia",
+    "venue": "Bataclan",
+    "story": "Construido en 1864 con inspiración oriental, el Bataclan sobrevivió a dos guerras mundiales y se convirtió en uno de los venues de rock más queridos de París. The Eagles of Death Metal y U2 forman parte de su historia reciente.",
+    "realFact": "El Bataclan es tan antiguo que Napoleón III todavía era emperador de Francia cuando se construyó. En sus 160 años ha visto operetas, circos, cine mudo y metal."
+  },
+  "koko": {
+    "city": "Londres",
+    "country": "Reino Unido",
+    "venue": "KOKO",
+    "story": "Construido como teatro en 1900, KOKO, en Camden Town, es un templo de la escena alternativa londinense. Madonna hizo aquí una actuación sorpresa en los años 2000, y Prince ofreció tres conciertos secretos seguidos en 2014.",
+    "realFact": "El edificio es tan histórico que está protegido por el gobierno británico. Cuando intentaron demolerlo en los años 90, miles de fans de Camden se encadenaron a sus puertas."
+  },
+  "tempodrom": {
+    "city": "Berlín",
+    "country": "Alemania",
+    "venue": "Tempodrom",
+    "story": "Nacido como carpa de circo en Berlín Occidental durante la época del Muro, el Tempodrom se reinventó tras la reunificación como el venue más versátil de la ciudad. David Bowie e Iggy Pop celebraron aquí el fin del Muro con conciertos legendarios.",
+    "realFact": "El Tempodrom comenzó literalmente como una tienda de campaña en 1980. Su dueño no tenía dinero para construir un edificio, así que compró una carpa de circo. El espíritu bohemio nunca desapareció."
+  },
+  "clashClub": {
+    "city": "São Paulo",
+    "country": "Brasil",
+    "venue": "Clash Club",
+    "story": "São Paulo tiene la escena electrónica más grande de Latinoamérica, y Clash Club es su corazón. Artistas como Skrillex y Deadmau5 hicieron aquí sus debuts brasileños antes de llenar estadios.",
+    "realFact": "São Paulo tiene más habitantes de origen japonés que cualquier otra ciudad fuera de Japón. Esa mezcla cultural única creó géneros musicales que no existen en ningún otro lugar."
+  },
+  "viejaUsina": {
+    "city": "Buenos Aires",
+    "country": "Argentina",
+    "venue": "La Vieja Usina",
+    "story": "Una antigua usina eléctrica reconvertida en espacio cultural en San Telmo, donde el tango y el rock argentino comparten paredes de ladrillo visto. Los Fabulosos Cadillacs grabaron aquí varios temas de su época dorada.",
+    "realFact": "San Telmo fue el primer barrio de Buenos Aires en tener electricidad, en 1888. La misma usina que iluminó la ciudad ahora amplifica la música de sus herederos culturales."
+  },
+  "theGarage": {
+    "city": "Glasgow",
+    "country": "Escocia",
+    "venue": "The Garage",
+    "story": "Glasgow tiene una de las escenas de música en vivo más vibrantes del Reino Unido por habitante. The Garage es donde Franz Ferdinand, Frightened Rabbit y Biffy Clyro dieron sus primeros conciertos antes de conquistar el mundo.",
+    "realFact": "Glasgow tiene más salas de música por habitante que cualquier otra ciudad de Europa. En los años 90 tuvo más locales de indie rock que Manchester, Liverpool y Londres juntas."
+  },
+  "scala": {
+    "city": "Londres",
+    "country": "Reino Unido",
+    "venue": "Scala",
+    "story": "Un antiguo cine de King's Cross convertido en sala de conciertos, donde Radiohead dio su primer show «secreto» después de OK Computer. La acústica del teatro original hace que cada concierto suene como una experiencia de otro mundo.",
+    "realFact": "La primera proyección en Scala fue en 1920. Antes de convertirse en venue musical, fue cine para adultos, sala de culto y centro de artes. Cada época dejó algo en sus paredes."
+  },
+  "pointEphemere": {
+    "city": "París",
+    "country": "Francia",
+    "venue": "Point Éphémère",
+    "story": "A orillas del Canal Saint-Martin, este centro cultural tiene una política radical: todos los géneros son bienvenidos la misma noche. Electrónica, punk, jazz y hip-hop comparten el espacio sin jerarquías.",
+    "realFact": "El edificio fue un almacén de carga fluvial durante más de 100 años. Las marcas de la crecida del Sena de 1910 todavía se ven en las paredes: la historia del lugar es literalmente visible."
+  },
+  "rockpalast": {
+    "city": "Colonia",
+    "country": "Alemania",
+    "venue": "Rockpalast",
+    "story": "Más que un venue, Rockpalast es un programa de televisión alemán que transmite en directo los conciertos de rock más importantes desde 1974. Bruce Springsteen, Elvis Costello y Dire Straits deben parte de su fama europea a estas emisiones.",
+    "realFact": "El concierto de Springsteen en Rockpalast de 1975 se televisó para 20 millones de europeos. Fue entonces cuando Europa descubrió a «The Boss». El video todavía se usa en escuelas de música."
+  },
+  "astoria": {
+    "city": "Londres",
+    "country": "Reino Unido",
+    "venue": "London Astoria",
+    "story": "El Astoria de Londres fue el venue donde Nirvana grabó su primer álbum en directo y Radiohead presentó The Bends. Una sala art déco para 2.000 personas, con una acústica perfecta y 80 años de historia.",
+    "realFact": "El Astoria fue demolido en 2009 para construir una estación de metro. 50.000 fans firmaron una petición para salvarlo. No lo consiguieron, pero su espíritu vive en los discos grabados allí."
+  },
+  "maFoi": {
+    "city": "Singapur",
+    "country": "Singapur",
+    "venue": "Esplanade Theatres",
+    "story": "En una de las ciudades más modernas de Asia, el Esplanade de Singapur es una de las salas de conciertos con mayor tecnología del mundo. Artistas de indie y ópera actúan aquí con la misma excelencia técnica, en una ciudad-Estado que se toma la cultura muy en serio.",
+    "realFact": "Singapur prohibió los chicles hasta 2004. El mismo país construyó uno de los complejos culturales más costosos del mundo: costó 600 millones de dólares en 2002."
+  },
+  "lindenpark": {
+    "city": "Potsdam",
+    "country": "Alemania",
+    "venue": "Lindenpark",
+    "story": "En la Alemania Oriental, Lindenpark era uno de los pocos lugares donde podía sonar rock occidental, siempre bajo supervisión del gobierno. Las bandas aprendieron a expresar ideas prohibidas con metáforas que la Stasi no siempre entendía.",
+    "realFact": "Durante la RDA, tocar rock en alemán se consideraba subversivo. Las bandas que cantaban en inglés eran más toleradas porque el gobierno suponía que menos gente entendía las letras."
+  },
+  "palauSantJordi": {
+    "city": "Barcelona",
+    "country": "España",
+    "venue": "Palau Sant Jordi",
+    "story": "Diseñado por el arquitecto Arata Isozaki para los Juegos Olímpicos de Barcelona 1992, el Palau Sant Jordi tiene una acústica que rivaliza con los mejores venues del mundo. U2, The Rolling Stones y Madonna lo eligen cuando quieren que Barcelona sea especial.",
+    "realFact": "La cubierta del Palau se ensambló en el suelo y luego se elevó hidráulicamente en una sola operación, en 1990. Setecientas toneladas de acero subieron 45 metros en cuatro horas y fueron noticia mundial."
+  },
+  "bercy": {
+    "city": "París",
+    "country": "Francia",
+    "venue": "Accor Arena (Bercy)",
+    "story": "El «Bercy», como lo llaman en París, es el rito de paso definitivo para un artista: si llegas aquí, ya llegaste. Michael Jackson llenó el recinto seis noches seguidas en 1988, un récord que tardó 15 años en romperse.",
+    "realFact": "El nombre oficial del Accor Arena ha cambiado seis veces por patrocinios desde 1984. Los parisinos todavía lo llaman «Bercy», por el barrio. En París, la geografía siempre gana a los patrocinadores."
+  },
+  "morumbiSP": {
+    "city": "São Paulo",
+    "country": "Brasil",
+    "venue": "Estádio Morumbi",
+    "story": "El estadio del São Paulo Futebol Clube fue escenario del concierto más multitudinario de la historia de Brasil en 1991, cuando The Rolling Stones tocaron ante 140.000 personas. São Paulo tiene el público rockero más grande de Sudamérica.",
+    "realFact": "El público de São Paulo es conocido por cantar de memoria las canciones completas en inglés, incluso para artistas que nunca esperaron que sus letras fueran conocidas tan al sur del ecuador."
+  },
+  "nurburgring": {
+    "city": "Nürburgring",
+    "country": "Alemania",
+    "venue": "Rock am Ring",
+    "story": "En el mítico circuito de Fórmula 1, uno de los festivales de rock más grandes de Europa cobra vida cada junio. Metallica, Rammstein y Guns N' Roses han actuado sobre el mismo asfalto donde murieron pilotos de carreras.",
+    "realFact": "El Nürburgring tiene 170 curvas en 25 kilómetros y Jackie Stewart lo llamó «el Infierno Verde». Cada año, el circuito que intimida a los mejores pilotos del mundo recibe a 80.000 fans del metal."
+  },
+  "velezSarsfield": {
+    "city": "Buenos Aires",
+    "country": "Argentina",
+    "venue": "Estadio Vélez Sársfield",
+    "story": "Los Redonditos de Ricota llenaron este estadio de fútbol en 1998 con 70.000 personas: el show más grande de la historia del rock argentino. El Indio Solari no habló con la prensa antes ni después. Solo tocó.",
+    "realFact": "Los Redonditos nunca hicieron videoclips, nunca dieron entrevistas en televisión y nunca tocaron fuera de Argentina. Construyeron una de las comunidades de fans más leales del mundo desafiando todas las reglas del negocio musical."
+  },
+  "johannesburgDome": {
+    "city": "Johannesburgo",
+    "country": "Sudáfrica",
+    "venue": "Dome Northgate",
+    "story": "En una de las ciudades más desiguales del mundo, el Dome es donde la Sudáfrica posterior al apartheid celebra que la música puede unir lo que la política separó. Allí se celebraron algunos de los primeros conciertos racialmente integrados del país, en 1994.",
+    "realFact": "Durante el apartheid, la ley prohibía que personas blancas y negras asistieran al mismo concierto. La colaboración de artistas como Paul Simon con músicos negros sudafricanos fue criticada, pero ayudó a cambiar el mundo."
+  },
+  "tokyoDome": {
+    "city": "Tokio",
+    "country": "Japón",
+    "venue": "Tokyo Dome",
+    "story": "La «Cúpula del Huevo» de Tokio es el Wembley de Asia. En 1987, Michael Jackson fue el primer artista occidental en llenar un estadio en Japón. El país que perfeccionó la imitación descubrió que podía amar al original más que nadie.",
+    "realFact": "El Tokyo Dome fue el primer estadio del mundo con techo inflable. El techo se sostiene literalmente con aire a presión: si se apagan los ventiladores, cae. Aquí los conciertos nunca se suspenden por lluvia."
+  },
+  "o2London": {
+    "city": "Londres",
+    "country": "Reino Unido",
+    "venue": "The O2 Arena",
+    "story": "Construida como Millennium Dome para el año 2000, nadie sabía qué hacer con ella. En 2007 se convirtió en la arena más concurrida del mundo. Prince ofreció 21 conciertos seguidos allí en 2007: cada noche diferente y todas con entradas agotadas.",
+    "realFact": "Prince puso a la venta las 21 noches del O2 a 31,21 libras por entrada, invirtiendo el año 1921. Sin comunicado de prensa ni video: solo envió un mensaje de texto a sus fans. Se agotaron en horas."
+  },
+  "lollapalooza": {
+    "city": "Chicago",
+    "country": "Estados Unidos",
+    "venue": "Lollapalooza",
+    "story": "Perry Farrell, de Jane's Addiction, inventó Lollapalooza en 1991 como una gira itinerante para bandas que no encajaban en ningún género. Chicago lo adoptó como festival permanente y hoy es el modelo que imitan los festivales urbanos.",
+    "realFact": "En 2006, Lollapalooza Chicago reunió a 270.000 personas durante un fin de semana. La ciudad calcula que el festival genera 700 millones de dólares al año en turismo. El rock no es solo cultura: también es economía."
+  },
+  "estadioNacional": {
+    "city": "Santiago",
+    "country": "Chile",
+    "venue": "Estadio Nacional",
+    "story": "En 1973, durante la dictadura de Pinochet, este estadio fue un centro de detención. Desde entonces, los chilenos han recuperado el espacio usando la música como acto de resistencia. Sting y Peter Gabriel tocaron allí en los años 90, cuando Chile volvía a la democracia.",
+    "realFact": "El Estadio Nacional de Chile fue el primer estadio del mundo declarado Monumento Histórico precisamente por haber sido un lugar de horror. Usar ese mismo espacio para conciertos es un acto político consciente."
+  },
+  "lanxessArena": {
+    "city": "Colonia",
+    "country": "Alemania",
+    "venue": "LANXESS Arena",
+    "story": "La arena más visitada de Europa tiene una regla no oficial: el público de Colonia es el más ruidoso de Alemania. Depeche Mode, Beyoncé y Roger Waters han dicho que el concierto de Colonia siempre es el mejor de su gira europea.",
+    "realFact": "Colonia tiene la catedral gótica más grande del mundo, el carnaval más salvaje de Europa y la arena más concurrida del continente. Es la ciudad alemana que más en serio se toma el placer."
+  },
+  "riverbend": {
+    "city": "Cincinnati",
+    "country": "Estados Unidos",
+    "venue": "Riverbend Music Center",
+    "story": "A orillas del río Ohio, este anfiteatro al aire libre es donde el verano estadounidense encuentra su banda sonora. Dave Matthews Band, Phish y Tom Petty han convertido el lugar en una peregrinación anual para sus fans más devotos.",
+    "realFact": "Cincinnati es considerada una de las ciudades donde nació el country rock estadounidense. La mezcla entre el Sur y el Norte a orillas del río Ohio creó un sonido que no existía en ningún otro lugar del país."
+  },
+  "commonwealthStadium": {
+    "city": "Sídney",
+    "country": "Australia",
+    "venue": "Accor Stadium (antes ANZ Stadium)",
+    "story": "Construido para los Juegos Olímpicos de Sídney 2000, este estadio acogió el concierto más multitudinario de AC/DC: 110.000 personas durante el Black Ice World Tour, en 2010. Australia produce bandas de hard rock con una intensidad que desafía el calor del continente.",
+    "realFact": "AC/DC es la banda australiana de mayor éxito de la historia, pero ninguno de sus miembros nació en Australia: Bon Scott y los hermanos Young eran escoceses. Se formaron en Melbourne y adoptaron el continente como identidad."
+  }
+}

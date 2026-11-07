@@ -31,7 +31,6 @@ interface UsePointsActionsParams {
   updateLossStreaks: (winnerId: string | null) => string[];
   clearFeaturing: () => void;
   clearBets: () => void;
-  setShowGameEndModal: (show: boolean) => void;
   featuringPlayerId: string | null;
   featuringTargetId: string | null;
   advanceToNextTurn: () => void;
@@ -60,7 +59,6 @@ export function usePointsActions({
   updateLossStreaks,
   clearFeaturing,
   clearBets,
-  setShowGameEndModal,
   featuringPlayerId,
   featuringTargetId,
   advanceToNextTurn,
@@ -256,16 +254,25 @@ export function usePointsActions({
             setBSideNotification({ visible: true, playerNames: names });
           }
 
+          // 5️⃣ World Tour: always advance the correct player's board tile
+          const tile = advancePlayerBoard(playerId);
           if (Array.isArray(result.players)) {
             useGameStore.getState().syncPlayersFromBackend(result.players);
           }
 
-          // 5️⃣ World Tour: always advance the correct player's board tile
-          const tile = advancePlayerBoard(playerId);
-
           // 6️⃣ Game over takes precedence over combo/scanner UI.
           if (result.gameOver && result.gameWinner) {
-            setTimeout(() => setShowGameEndModal(true), 1500);
+            setTimeout(() => {
+              void useGameStore.getState().endGame().catch((error) => {
+                console.error('Could not finalize the World Tour:', error);
+                showError(
+                  'Error',
+                  error instanceof Error
+                    ? error.message
+                    : 'No se pudo finalizar el tour.',
+                );
+              });
+            }, 1500);
             return;
           }
 
@@ -326,7 +333,6 @@ export function usePointsActions({
       advancePlayerBoard,
       revealAnswer,
       showSuccess,
-      setShowGameEndModal,
       advanceToNextTurn,
       awardAllianceBonus,
       applyFeaturingBonus,

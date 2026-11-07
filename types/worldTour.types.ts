@@ -74,6 +74,7 @@ export interface TourUILocale {
   reachedFinish: string;
   landingTitle: string; // uses {{city}}
   landingVenue: string; // uses {{venue}}
+  playerArrival: string; // uses {{player}}
   tileTypeLabel: string; // uses {{type}}
   factLabel: string;
   continueButton: string;

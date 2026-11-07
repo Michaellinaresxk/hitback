@@ -5,9 +5,11 @@ import {
   TouchableOpacity,
   StyleSheet,
   useColorScheme,
+  Alert,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
+import { changeAppLanguage, SUPPORTED_LANGUAGES } from '@/i18n';
 
 interface Language {
   code: string;
@@ -28,10 +30,17 @@ export default function LanguageSelector() {
 
   const handleLanguageChange = async (languageCode: string) => {
     try {
-      await i18n.changeLanguage(languageCode);
+      if (!SUPPORTED_LANGUAGES.includes(languageCode)) {
+        throw new Error(`Unsupported language: ${languageCode}`);
+      }
+      await changeAppLanguage(languageCode);
       console.log(`✅ Language changed to: ${languageCode}`);
     } catch (error) {
       console.error('❌ Error changing language:', error);
+      Alert.alert(
+        t('common.error'),
+        t('settingPage.language_save_error'),
+      );
     }
   };
 
@@ -39,7 +48,9 @@ export default function LanguageSelector() {
     <View style={styles.container}>
       <View style={styles.languageList}>
         {LANGUAGES.map((language) => {
-          const isSelected = i18n.language === language.code;
+          const isSelected =
+            (i18n.resolvedLanguage ?? i18n.language).split('-')[0] ===
+            language.code;
 
           return (
             <TouchableOpacity

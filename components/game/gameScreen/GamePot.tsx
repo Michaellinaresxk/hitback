@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 interface GamePotProps {
@@ -7,14 +8,15 @@ interface GamePotProps {
 }
 
 export const GamePot: React.FC<GamePotProps> = ({ tokens }) => {
+  const { t } = useTranslation();
   if (tokens <= 0) return null;
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>POT DEL JUEGO</Text>
+      <Text style={styles.label}>{t('game.pot_label')}</Text>
       <View style={styles.value}>
         <IconSymbol name='bitcoinsign.circle.fill' size={20} color='#F59E0B' />
-        <Text style={styles.count}>{tokens} tokens</Text>
+        <Text style={styles.count}>{t('game.tokens_count', { count: tokens })}</Text>
       </View>
     </View>
   );

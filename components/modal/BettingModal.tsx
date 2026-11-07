@@ -62,7 +62,7 @@ export default function BettingModal({
 
   const getBetsSummary = () => {
     const playersWithBets = players.filter((p) => p.currentBet > 0);
-    if (playersWithBets.length === 0) return 'Ninguna apuesta aún';
+    if (playersWithBets.length === 0) return t('bettingModal.noneYet');
 
     return playersWithBets.map((p) => `${p.name}: +${p.currentBet}`).join(', ');
   };
@@ -79,7 +79,9 @@ export default function BettingModal({
             </View>
           </View>
           <View style={styles.betPlacedContainer}>
-            <Text style={styles.alreadyBet}>✅ Token apostado</Text>
+            <Text style={styles.alreadyBet}>
+              {t('bettingModal.alreadyBet')}
+            </Text>
           </View>
         </View>
       );
@@ -95,15 +97,17 @@ export default function BettingModal({
           <Text style={styles.playerTokens}>
             🪙{' '}
             {availableTokens.length > 0
-              ? `Disponibles: ${availableTokens.join(', ')}`
-              : 'Sin tokens'}
+              ? t('bettingModal.availableTokens', {
+                  tokens: availableTokens.join(', '),
+                })
+              : t('bettingModal.noTokens')}
           </Text>
         </View>
 
         {hasNoTokens ? (
           <View style={styles.noTokensContainer}>
             <Text style={styles.noTokensText}>
-              😅 No tiene tokens disponibles
+              {t('bettingModal.noTokensAvailable')}
             </Text>
           </View>
         ) : (
@@ -137,7 +141,9 @@ export default function BettingModal({
                       !isAvailable && styles.betLabelUsed,
                     ]}
                   >
-                    {isAvailable ? 'Apostar' : 'Usado'}
+                    {isAvailable
+                      ? t('bettingModal.buttons.bet')
+                      : t('bettingModal.buttons.used')}
                   </Text>
                 </TouchableOpacity>
               );
@@ -160,8 +166,12 @@ export default function BettingModal({
           {/* Header */}
           <View style={styles.header}>
             <View style={styles.headerLeft}>
-              <Text style={styles.roundBadge}>Ronda {roundNumber}</Text>
-              <Text style={styles.title}>🎲 Apuestas de Tokens</Text>
+              <Text style={styles.roundBadge}>
+                {t('game.round_info', { round: roundNumber })}
+              </Text>
+              <Text style={styles.title}>
+                {t('bettingModal.header.title')}
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <IconSymbol name='xmark' size={24} color='#64748B' />
@@ -171,16 +181,17 @@ export default function BettingModal({
           {/* Mensaje informativo */}
           <View style={styles.infoContainer}>
             <Text style={styles.infoText}>
-              Cada jugador puede apostar{' '}
-              <Text style={styles.highlight}>1 token por ronda</Text>
+              {t('bettingModal.info.oneTokenPerRound')}
             </Text>
             <Text style={styles.infoSubtext}>
-              Los tokens apostados se sumarán a tus puntos si aciertas
+              {t('bettingModal.info.bonusPoints')}
             </Text>
           </View>
 
           {/* Players Title */}
-          <Text style={styles.playersTitle}>👥 Jugadores</Text>
+          <Text style={styles.playersTitle}>
+            {t('bettingModal.players.selectionTitle')}
+          </Text>
 
           {/* Players List */}
           <FlatList
@@ -203,14 +214,16 @@ export default function BettingModal({
             >
               <IconSymbol               name='checkmark.circle.fill' size={22} color='#FFFFFF' />
               <Text style={styles.confirmText}>
-                CONFIRMAR APUESTAS Y CONTINUAR
+                {t('bettingModal.buttons.confirmAndContinue')}
               </Text>
             </TouchableOpacity>
           )}
 
           {/* Cancel Button */}
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cerrar</Text>
+            <Text style={styles.cancelText}>
+              {t('bettingModal.buttons.cancel')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

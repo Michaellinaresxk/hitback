@@ -1,5 +1,6 @@
 import { CurrentCard } from '@/types/game.types';
 import { BoardTile } from '@/types/worldTour.types';
+import type { GameSession } from '@/services/GameSessionService';
 
 export interface Player {
   id: string;
@@ -129,6 +130,7 @@ export interface GameStore extends GameState {
       id: string;
       name: string;
       score: number;
+      boardPosition?: number;
       availableTokens: number[];
       stats?: {
         correctAnswers?: number;
@@ -138,7 +140,10 @@ export interface GameStore extends GameState {
 
   // ── Game slice ────────────────────────────────────────────────────────────
   createNewGame: () => void;
-  startGame: () => Promise<void>;
+  startGame: (
+    routes?: Record<string, BoardTile[]>,
+  ) => Promise<void>;
+  restoreGame: (session: GameSession) => Promise<void>;
   setGameActive: (active: boolean) => void;
   endGame: () => Promise<void>;
   nextTurn: () => void;

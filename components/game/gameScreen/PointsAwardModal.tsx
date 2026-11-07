@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { gameSessionService } from '@/services/GameSessionService';
 import type { CurrentRound } from '@/services/GameSessionService';
 
@@ -48,6 +49,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
   duelPlayer1Id = null,
   duelPlayer2Id = null,
 }) => {
+  const { t } = useTranslation();
   const getBettingMultiplier = (amount: number): number => {
     return gameSessionService.getBettingMultiplier(amount);
   };
@@ -100,7 +102,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                   styles.mechanicBannerTextStopBlast,
                 ]}
               >
-                🛑 STOP-BLAST — solo un jugador puede ganar
+                {t('game.special.stopBlastOnlyWinner')}
               </Text>
             </View>
           )}
@@ -112,7 +114,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                   styles.mechanicBannerTextDuel,
                 ]}
               >
-                ⚔️ DUEL — solo los duelistas pueden ganar
+                {t('game.special.duelOnlyWinners')}
               </Text>
             </View>
           )}
@@ -122,7 +124,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
             <Text style={styles.answerText}>
               {flowState.correctAnswer ||
                 flowState.currentRound?.gameMasterAnswer?.correct ||
-                '(Cargando...)'}
+                t('common.loading')}
             </Text>
             {(flowState.trackInfo ||
               flowState.currentRound?.gameMasterAnswer) && (
@@ -135,7 +137,7 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
           </View>
 
           <Text style={styles.pointsLabel}>
-            ¿Quién respondió correctamente? ({question.points} pts)
+            {t('game.modal.question_label', { points: question.points })}
           </Text>
 
           <FlatList
@@ -170,12 +172,16 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
                   </Text>
                   {player.currentBet > 0 && !frozen && (
                     <Text style={styles.playerBetIndicator}>
-                      Apuesta: {player.currentBet} x
-                      {getBettingMultiplier(player.currentBet)}
+                      {t('game.modal.player_bet', {
+                        amount: player.currentBet,
+                        mult: getBettingMultiplier(player.currentBet),
+                      })}
                     </Text>
                   )}
                   {frozen && (
-                    <Text style={styles.frozenLabel}>en pausa esta ronda</Text>
+                    <Text style={styles.frozenLabel}>
+                      {t('game.special.pausedRound')}
+                    </Text>
                   )}
                 </TouchableOpacity>
               );
@@ -187,7 +193,9 @@ const PointsAwardModal: React.FC<PointsAwardModalProps> = ({
             onPress={onWrongAnswer}
             activeOpacity={0.8}
           >
-            <Text style={styles.noWinnerText}>Nadie acertó</Text>
+            <Text style={styles.noWinnerText}>
+              {t('game.modal.no_winner')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

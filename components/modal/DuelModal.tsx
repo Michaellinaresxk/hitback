@@ -7,6 +7,7 @@ import {
   FlatList,
   StyleSheet,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -33,6 +34,7 @@ export default function DuelModal({
   onSelectOpponent,
   onClose,
 }: DuelModalProps) {
+  const { t } = useTranslation();
   const candidates = players.filter((p) => p.id !== challengerId);
 
   return (
@@ -49,12 +51,13 @@ export default function DuelModal({
 
           <Text style={styles.subtitle}>
             <Text style={styles.challengerName}>{challengerName}</Text>
-            {'\n'}elige a su rival
+            {'\n'}
+            {t('duelModal.chooseOpponent')}
           </Text>
 
           <View style={styles.ruleBox}>
             <Text style={styles.ruleText}>
-              Solo los dos duelistas podrán responder esta ronda
+              {t('duelModal.rule')}
             </Text>
           </View>
 
@@ -74,7 +77,9 @@ export default function DuelModal({
           />
 
           <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
-            <Text style={styles.cancelText}>Cancelar</Text>
+            <Text style={styles.cancelText}>
+              {t('bettingModal.buttons.cancel')}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>

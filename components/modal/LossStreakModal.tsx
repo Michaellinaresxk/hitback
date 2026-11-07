@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -20,6 +21,7 @@ export default function LossStreakModal({
   playerNames,
   onClose,
 }: LossStreakModalProps) {
+  const { t } = useTranslation();
   const isMultiple = playerNames.length > 1;
 
   return (
@@ -33,12 +35,14 @@ export default function LossStreakModal({
         <View style={styles.card}>
           <Text style={styles.emoji}>🎶</Text>
 
-          <Text style={styles.title}>B-SIDE ACTIVADO</Text>
+          <Text style={styles.title}>{t('lossStreakModal.title')}</Text>
 
           <Text style={styles.subtitle}>
             {isMultiple
-              ? `${playerNames.length} jugadores llevan 4 rondas sin puntuar`
-              : 'Este jugador lleva 4 rondas sin puntuar'}
+              ? t('lossStreakModal.multiplePlayers', {
+                  count: playerNames.length,
+                })
+              : t('lossStreakModal.singlePlayer')}
           </Text>
 
           {/* Lista de jugadores */}
@@ -47,7 +51,9 @@ export default function LossStreakModal({
               <View key={name} style={styles.playerRow}>
                 <Text style={styles.playerName}>{name}</Text>
                 <View style={styles.bonusTag}>
-                  <Text style={styles.bonusTagText}>+1 próximo punto</Text>
+                  <Text style={styles.bonusTagText}>
+                    {t('lossStreakModal.bonus')}
+                  </Text>
                 </View>
               </View>
             ))}
@@ -55,8 +61,8 @@ export default function LossStreakModal({
 
           <Text style={styles.instruction}>
             {isMultiple
-              ? `Dale una Reaction Card a cada uno 🃏`
-              : `Dale una Reaction Card del mazo físico 🃏`}
+              ? t('lossStreakModal.multipleInstruction')
+              : t('lossStreakModal.singleInstruction')}
           </Text>
 
           <TouchableOpacity
@@ -65,7 +71,9 @@ export default function LossStreakModal({
             activeOpacity={0.85}
           >
             <Text style={styles.buttonText}>
-              {isMultiple ? `Cartas entregadas ✓` : `Carta entregada ✓`}
+              {isMultiple
+                ? t('lossStreakModal.multipleDelivered')
+                : t('lossStreakModal.singleDelivered')}
             </Text>
           </TouchableOpacity>
         </View>

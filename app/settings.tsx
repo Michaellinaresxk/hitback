@@ -47,7 +47,10 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          {renderSectionHeader('⏱ DURACIÓN DEL JUEGO', 'clock')}
+          {renderSectionHeader(
+            t('settingPage.duration.title').toUpperCase(),
+            'clock',
+          )}
 
           <View style={styles.durationSelector}>
             {GAME_DURATION_OPTIONS.map((minutes) => (
@@ -67,7 +70,7 @@ export default function SettingsScreen() {
                       styles.durationLabelSelected,
                   ]}
                 >
-                  {minutes} min
+                  {t('settingPage.units.min', { count: minutes })}
                 </Text>
               </TouchableOpacity>
             ))}

@@ -1,6 +1,6 @@
 # AGENTS.md — HITBACK Expo App
 
-> Fuente de instrucciones para agentes. Reconciliado con el código Expo el 2026-10-20; los contratos del servidor quedan pendientes de una auditoría separada. Para arquitectura funcional, consulta [`../documentation/HITBACK_SYSTEM_DOCS.md`](../documentation/HITBACK_SYSTEM_DOCS.md) y [`docs/WORLD_TOUR.md`](docs/WORLD_TOUR.md).
+> Fuente de instrucciones para agentes. Reconciliado con el flujo de sesión World Tour el 2026-11-07. Para el contrato de recuperación, consulta [`docs/specs/session-boardposition/SPEC.md`](docs/specs/session-boardposition/SPEC.md), [`docs/WORLD_TOUR.md`](docs/WORLD_TOUR.md) y [`../documentation/HITBACK_SYSTEM_DOCS.md`](../documentation/HITBACK_SYSTEM_DOCS.md).
 
 ## Proyecto y stack
 
@@ -43,7 +43,8 @@ El script `validate` todavía contiene comprobaciones heredadas de QR de cancion
 
 - `app/(tabs)/game.tsx` compone la pantalla de Game Master; el flujo de ronda y sus fases están en `hooks/useGameFlow.ts`.
 - `services/GameSessionService.ts` habla con `/api/v2/game/*`; las Power Cards usan `/api/cards/*`.
-- `store/slices/gameSlice.ts` y `playerSlice.ts` guardan estado local de UI/jugadores y las rutas World Tour. El backend maneja puntuación de ronda, apuestas y combos.
+- `store/slices/gameSlice.ts` y `playerSlice.ts` hidratan y presentan estado local de UI/jugadores y rutas World Tour. El backend es canónico para rutas, `boardPosition`, fans/score, apuestas y resolución de rondas; PostgreSQL conserva snapshots de sesión.
+- `services/GameSessionService.ts` guarda la capability en SecureStore y recupera la sesión autenticada. Nunca aceptes posición o score local como autoridad frente al servidor.
 - IDs locales de jugador y backend son distintos. Usa `buildPlayerIdMap()` / `getBackendPlayerId()` de `utils/game/gameHelpers.ts` para las llamadas del backend.
 - Los puntajes y efectos que sobreviven al reveal pertenecen al backend. Usa la liquidación canónica de `GameSessionService` y sincroniza los jugadores devueltos; no des por exitosa una sincronización que falle.
 - El backend se configura en `services/GameSessionService.ts` (`getBaseUrl`): primero lee `EXPO_PUBLIC_HITBACK_API_URL`; en desarrollo intenta usar el host de `Constants.expoConfig.hostUri` y recurre a `192.168.1.10` si no lo detecta; fuera de desarrollo devuelve `https://api.hitback.com`. La conectividad y disponibilidad del host de producción no se han verificado aquí. No describas ninguna URL como servicio disponible sin probarla.
@@ -56,6 +57,8 @@ El script `validate` todavía contiene comprobaciones heredadas de QR de cancion
 - Hooks de dominio: `useGameFlow`, `usePointsActions`, `useGameTurnActions`, `useComboFlow`, `useBettingActions` y `useFeaturingDuelActions`.
 - Tipos de juego: `types/game.types.ts`, `types/worldTour.types.ts` y `store/types/gameStoreTypes.ts`.
 - World Tour usa `constants/worldTour.ts`, `constants/worldTourCities.json`, `utils/worldtourUtils.ts` y `components/modal/TourLandingModal.tsx`.
+- Las rutas se crean en Expo y se envían al crear la sesión; el backend las valida y avanza solo al ganador del reveal. No dupliques Alliance, Featuring o B-SIDE, ya liquidados en el reveal.
+- Para sesiones persistentes, el servidor debe tener PostgreSQL configurado y la migración `002_game_session_snapshots.sql` aplicada (`cd ../server && npm run migrate:sessions`). Inventarios y rachas de Power Cards no forman parte del snapshot World Tour.
 
 ## Convenciones de código
 
@@ -86,7 +89,7 @@ El script `validate` todavía contiene comprobaciones heredadas de QR de cancion
 ## Mecánicas y estado conocido
 
 - Partida normal: todos pueden responder; el GM decide el ganador. Solo el ganador avanza una casilla de su ruta.
-- World Tour es estado local de Expo y no se sincroniza ni recupera desde el backend.
+- World Tour se sincroniza con el backend: este es canónico para rutas, `boardPosition`, fans y fin de partida; Expo conserva una copia de presentación y recupera la sesión autenticada desde SecureStore.
 - El aterrizaje `festival` permite gestionar una Reaction Card en el flujo existente; `rival_band` abre el duelo; `sold_out` activa Double Platinum para la próxima respuesta. `record_deal` / `split_dice` no tiene flujo implementado.
 - ARTIST HOLD dura `ARTIST_HOLD_ROUND = 1`; `nextTurn()` reduce el contador de congelación una vez por ronda.
 - La condición de victoria Expo está definida por `SCORE_TO_WIN = 22` y `setup-game.tsx` envía ese valor al crear la sesión. El backend conserva el `targetScore` recibido y usa 22 como default para otros clientes; mantener ambos lados y sus tests alineados al cambiar la regla.

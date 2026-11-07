@@ -8,7 +8,8 @@ import {
 import { GAME_DURATION } from '@/constants/Game';
 import { generateRoute } from '@/utils/worldtourUtils';
 import { BoardTile } from '@/types/worldTour.types';
-import type { GameStore } from '../types/gameStoreTypes';
+import type { GameSession } from '@/services/GameSessionService';
+import type { GameStore, Player } from '../types/gameStoreTypes';
 
 export const createGameSlice = ((set, get, ..._rest) => ({
   id: '',
@@ -75,7 +76,7 @@ export const createGameSlice = ((set, get, ..._rest) => ({
     });
   },
 
-  startGame: async () => {
+  startGame: async (initialRoutes?: Record<string, BoardTile[]>) => {
     const { players } = get();
 
     if (players.length < 2) {
@@ -106,10 +107,11 @@ export const createGameSlice = ((set, get, ..._rest) => ({
         frozenForRound: null,
       }));
 
-      const route: Record<string, BoardTile[]> = {};
-      for (const player of updatedPlayers) {
-        route[player.id] = generateRoute();
-      }
+      const route =
+        initialRoutes ??
+        Object.fromEntries(
+          updatedPlayers.map((player) => [player.id, generateRoute()]),
+        );
 
       set({
         players: updatedPlayers,
@@ -131,6 +133,81 @@ export const createGameSlice = ((set, get, ..._rest) => ({
     }
   },
 
+  restoreGame: async (session: GameSession) => {
+    if (!session.worldTourRoutes) {
+      throw new Error('La sesión no contiene rutas recuperables de World Tour');
+    }
+
+    await audioService.initializeAudio();
+    const restoredPlayers: Player[] = session.players.map(
+      (backendPlayer, index) => ({
+        id: `restored_${index + 1}`,
+        name: backendPlayer.name,
+        score: backendPlayer.score,
+        correctAnswers: backendPlayer.stats?.correctAnswers ?? 0,
+        isCurrentTurn: false,
+        availableTokens: [...backendPlayer.availableTokens],
+        powerCards: backendPlayer.powerCards ?? [],
+        currentBet: 0,
+        isImmune: false,
+        boostActive: false,
+        peekUsed: false,
+        consecutiveWins: 0,
+        cardTypeStreaks: {},
+        difficultyStreaks: {},
+        isFrozen: false,
+        boardPosition: backendPlayer.boardPosition,
+        frozenForRound: null,
+        artistHoldRoundsLeft: 0,
+        lossStreak: 0,
+        bSideActive: false,
+      }),
+    );
+    const restoredRoutes = Object.fromEntries(
+      session.players.map((backendPlayer, index) => {
+        const route = session.worldTourRoutes?.[backendPlayer.id];
+        if (!route || route.length !== 22) {
+          throw new Error(`La ruta de ${backendPlayer.name} está incompleta`);
+        }
+        return [`restored_${index + 1}`, route];
+      }),
+    );
+    const isPlaying = session.status === 'playing';
+    const configuredDuration =
+      session.config.timeLimit || session.timeRemaining || 0;
+    const elapsedSeconds = session.startedAt
+      ? Math.max(
+          0,
+          Math.floor((Date.now() - Date.parse(session.startedAt)) / 1000),
+        )
+      : 0;
+    const remainingSeconds = Math.max(0, configuredDuration - elapsedSeconds);
+
+    set({
+      id: session.id,
+      players: restoredPlayers,
+      worldTourRoutes: restoredRoutes,
+      isActive: isPlaying,
+      currentTurn: 0,
+      timeLeft: remainingSeconds,
+      round: Math.max(1, session.round),
+      gameMode: 'normal',
+      currentCard: null,
+      isScanning: false,
+      error: null,
+      showQuestion: false,
+      showAnswer: false,
+      showGameEndModal: session.status === 'finished',
+      backendConnected: true,
+    });
+
+    if (isPlaying && remainingSeconds > 0) {
+      get().startTimer(remainingSeconds);
+    } else if (isPlaying && configuredDuration > 0) {
+      await get().endGame();
+    }
+  },
+
   setGameActive: (active: boolean) => {
     set({ isActive: active });
   },
@@ -141,7 +218,10 @@ export const createGameSlice = ((set, get, ..._rest) => ({
 
     const { players } = get();
     const winner = players.reduce((max, player) =>
-      player.score > max.score ? player : max,
+      player.score > max.score ||
+      (player.score === max.score && player.boardPosition > max.boardPosition)
+        ? player
+        : max,
     );
 
     console.log(`🏆 Winner: ${winner.name} (${winner.score} pts)`);

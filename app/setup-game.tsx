@@ -7,6 +7,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import { GAME_DURATION } from '@/constants/Game';
 import { gameSessionService } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
+import { generateRoute } from '@/utils/worldtourUtils';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -27,14 +28,14 @@ import { SCORE_TO_WIN } from '@/constants/Points';
 
 // 🎵 Géneros disponibles
 const AVAILABLE_GENRES = [
-  { id: 'ROCK', label: 'Rock', emoji: '🎸' },
-  { id: 'POP', label: 'Pop', emoji: '🎤' },
-  { id: 'LATIN', label: 'Latin', emoji: '💃' },
-  { id: 'HIP_HOP', label: 'Hip Hop', emoji: '🎧' },
-  { id: 'ELECTRONIC', label: 'Electronic', emoji: '🎹' },
-  { id: 'R&B', label: 'R&B', emoji: '🎷' },
-  { id: 'COUNTRY', label: 'Country', emoji: '🤠' },
-  { id: 'JAZZ', label: 'Jazz', emoji: '🎺' },
+  { id: 'ROCK', emoji: '🎸' },
+  { id: 'POP', emoji: '🎤' },
+  { id: 'LATIN', emoji: '💃' },
+  { id: 'HIP_HOP', emoji: '🎧' },
+  { id: 'ELECTRONIC', emoji: '🎹' },
+  { id: 'R&B', emoji: '🎷' },
+  { id: 'COUNTRY', emoji: '🤠' },
+  { id: 'JAZZ', emoji: '🎺' },
 ];
 
 // 📅 Décadas disponibles
@@ -59,7 +60,7 @@ export default function GameSetupScreen() {
 
   const handleAddPlayer = () => {
     if (playerName.trim().length === 0) {
-      Alert.alert('Error', 'Ingresa un nombre válido');
+      Alert.alert(t('common.error'), t('setupGame.errors.invalid_name'));
       return;
     }
 
@@ -67,7 +68,10 @@ export default function GameSetupScreen() {
       addPlayer(playerName.trim());
       setPlayerName('');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      Alert.alert(
+        t('common.error'),
+        t('setupGame.errors.add_player', { details: error.message }),
+      );
     }
   };
 
@@ -89,7 +93,7 @@ export default function GameSetupScreen() {
 
   const handleStartGame = async () => {
     if (players.length < 2) {
-      Alert.alert('Error', 'Se necesitan al menos 2 jugadores');
+      Alert.alert(t('common.error'), t('setupGame.min_players_warning'));
       return;
     }
 
@@ -97,6 +101,15 @@ export default function GameSetupScreen() {
     const genres = selectedGenres.length > 0 ? selectedGenres : ['ANY'];
     const decades = selectedDecades.length > 0 ? selectedDecades : ['ANY'];
     let backendSessionId: string | null = null;
+    const worldTourRoutes = Object.fromEntries(
+      players.map((player) => [player.id, generateRoute()]),
+    );
+    const backendWorldTourRoutes = Object.fromEntries(
+      players.map((player, index) => [
+        `player_${index + 1}`,
+        worldTourRoutes[player.id],
+      ]),
+    );
 
     setIsCreatingSession(true);
 
@@ -109,10 +122,11 @@ export default function GameSetupScreen() {
         difficulty: 'ANY',
         targetScore: SCORE_TO_WIN,
         timeLimit: gameDurationMinutes * 60,
+        worldTourRoutes: backendWorldTourRoutes,
       });
 
       if (!result.success || !result.session?.id) {
-        throw new Error('No se pudo crear la sesión');
+        throw new Error(t('setupGame.errors.session_create_failed'));
       }
       backendSessionId = result.session.id;
 
@@ -121,14 +135,15 @@ export default function GameSetupScreen() {
       // 2. Iniciar el juego en el backend
       const started = await gameSessionService.startGame(result.session.id);
       if (!started.success) {
-        throw new Error('No se pudo iniciar la sesión en el servidor');
+        throw new Error(t('setupGame.errors.session_start_failed'));
       }
 
       // 3. Iniciar juego local
-      await startGame();
+      await startGame(worldTourRoutes);
       if (!useGameStore.getState().isActive) {
         throw new Error(
-          useGameStore.getState().error || 'No se pudo iniciar el juego local',
+          useGameStore.getState().error ||
+            t('setupGame.errors.local_start_failed'),
         );
       }
 
@@ -147,9 +162,8 @@ export default function GameSetupScreen() {
           });
       }
       Alert.alert(
-        'Error de Conexión',
-        'No se pudo conectar al servidor. ¿Está el backend corriendo?\n\n' +
-          error.message,
+        t('setupGame.errors.connection_title'),
+        t('setupGame.errors.connection_message', { details: error.message }),
       );
     } finally {
       setIsCreatingSession(false);
@@ -183,7 +197,7 @@ export default function GameSetupScreen() {
   const renderGenreItem = ({
     item,
   }: {
-    item: { id: string; label: string; emoji: string };
+    item: { id: string; emoji: string };
   }) => {
     const isSelected = selectedGenres.includes(item.id);
     return (
@@ -196,7 +210,7 @@ export default function GameSetupScreen() {
         <Text
           style={[styles.filterLabel, isSelected && styles.filterLabelSelected]}
         >
-          {item.label}
+          {t(`setupGame.genres.${item.id}`)}
         </Text>
       </TouchableOpacity>
     );
@@ -286,13 +300,13 @@ export default function GameSetupScreen() {
         <View style={styles.sectionHeader}>
           <IconSymbol name='music.note.list' size={20} color='#8B5CF6' />
           <Text style={styles.sectionTitle}>
-            Géneros Musicales{' '}
+            {t('setupGame.genre_section_title')}{' '}
             {selectedGenres.length > 0 && `(${selectedGenres.length})`}
           </Text>
         </View>
 
         <Text style={styles.sectionSubtitle}>
-          Selecciona los géneros que quieres escuchar (o deja vacío para todos)
+          {t('setupGame.genre_section_hint')}
         </Text>
 
         <FlatList
@@ -310,13 +324,13 @@ export default function GameSetupScreen() {
         <View style={styles.sectionHeader}>
           <IconSymbol name='calendar' size={20} color='#F59E0B' />
           <Text style={styles.sectionTitle}>
-            Décadas{' '}
+            {t('setupGame.decade_section_title')}{' '}
             {selectedDecades.length > 0 && `(${selectedDecades.length})`}
           </Text>
         </View>
 
         <Text style={styles.sectionSubtitle}>
-          Selecciona las décadas que prefieres (o deja vacío para todas)
+          {t('setupGame.decade_section_hint')}
         </Text>
 
         <FlatList
@@ -332,15 +346,19 @@ export default function GameSetupScreen() {
       {/* Selected Filters Summary */}
       {(selectedGenres.length > 0 || selectedDecades.length > 0) && (
         <View style={styles.filtersSummary}>
-          <Text style={styles.filtersSummaryTitle}>Tu selección:</Text>
+          <Text style={styles.filtersSummaryTitle}>
+            {t('setupGame.selection_title')}
+          </Text>
           <Text style={styles.filtersSummaryText}>
             {selectedGenres.length > 0
-              ? selectedGenres.join(', ')
-              : 'Todos los géneros'}
+              ? selectedGenres
+                  .map((genre) => t(`setupGame.genres.${genre}`))
+                  .join(', ')
+              : t('setupGame.all_genres')}
             {' • '}
             {selectedDecades.length > 0
               ? selectedDecades.join(', ')
-              : 'Todas las décadas'}
+              : t('setupGame.all_decades')}
           </Text>
         </View>
       )}
@@ -354,16 +372,17 @@ export default function GameSetupScreen() {
 
         <View style={styles.rulesContainer}>
           <Text style={styles.ruleText}>
-            • Presiona &quot;Siguiente Canción&quot; para empezar cada ronda
+            • {t('setupGame.current_rules.next_song')}
           </Text>
           <Text style={styles.ruleText}>
-            • Escucha el audio y apuesta tokens si crees saber la respuesta
+            • {t('setupGame.current_rules.listen_and_bet')}
           </Text>
           <Text style={styles.ruleText}>
-            • El Game Master selecciona quién respondió correctamente
+            • {t('setupGame.current_rules.game_master_selects')}
           </Text>
           <Text style={styles.ruleText}>
-            • ¡El primero en llegar a 15 puntos gana! 🏆
+            • {t('setupGame.current_rules.winning_score', { score: SCORE_TO_WIN })}{' '}
+            🏆
           </Text>
         </View>
       </View>
@@ -383,7 +402,9 @@ export default function GameSetupScreen() {
           {isCreatingSession ? (
             <>
               <ActivityIndicator size='small' color='#FFFFFF' />
-              <Text style={styles.startGameText}>Conectando...</Text>
+              <Text style={styles.startGameText}>
+                {t('setupGame.connecting')}
+              </Text>
             </>
           ) : (
             <>
