@@ -11,15 +11,21 @@ import {
   ScrollView,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Track, Difficulty } from '@/types/game.types';
-import { cardService } from '@/services/cardService';
+import type { CardType, Difficulty, QuestionData } from '@/types/game.types';
+import { cardService, type Track } from '@/services/cardService';
+
+interface ManagedTrack extends Track {
+  qrCode?: string;
+  lyrics?: string;
+  cardTypes?: Partial<Record<CardType, QuestionData>>;
+}
 
 export default function MusicManager() {
-  const [tracks, setTracks] = useState<Track[]>([]);
+  const [tracks, setTracks] = useState<ManagedTrack[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
-  const [filteredTracks, setFilteredTracks] = useState<Track[]>([]);
+  const [selectedTrack, setSelectedTrack] = useState<ManagedTrack | null>(null);
+  const [filteredTracks, setFilteredTracks] = useState<ManagedTrack[]>([]);
 
   // New track form state
   const [newTrack, setNewTrack] = useState({
@@ -37,17 +43,29 @@ export default function MusicManager() {
   }, []);
 
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredTracks(tracks);
-    } else {
-      setFilteredTracks(cardService.searchTracks(searchQuery));
-    }
+    let active = true;
+    const updateFilteredTracks = async () => {
+      if (searchQuery.trim() === '') {
+        setFilteredTracks(tracks);
+        return;
+      }
+      const results = await cardService.searchTracks(searchQuery);
+      if (active) setFilteredTracks(results);
+    };
+    void updateFilteredTracks();
+    return () => {
+      active = false;
+    };
   }, [searchQuery, tracks]);
 
-  const loadTracks = () => {
-    const allTracks = cardService.getAllTracks();
-    setTracks(allTracks);
-    setFilteredTracks(allTracks);
+  const loadTracks = async () => {
+    try {
+      const allTracks = await cardService.getAllTracks();
+      setTracks(allTracks);
+      setFilteredTracks(allTracks);
+    } catch (error) {
+      console.error('Unable to load tracks:', error);
+    }
   };
 
   const handleAddTrack = () => {
@@ -59,7 +77,7 @@ export default function MusicManager() {
     // Generate new track with QR codes
     const trackId = (tracks.length + 1).toString().padStart(3, '0');
 
-    const track: Track = {
+    const track: ManagedTrack = {
       id: trackId,
       qrCode: `HITBACK_${trackId}`,
       title: newTrack.title,
@@ -139,8 +157,8 @@ export default function MusicManager() {
 
   const getChallengeTypeByGenre = (
     genre: string
-  ): 'dance' | 'sing' | 'imitate' | 'performance' => {
-    const types = {
+  ): NonNullable<QuestionData['challengeType']> => {
+    const types: Record<string, NonNullable<QuestionData['challengeType']>> = {
       Rock: 'performance',
       Pop: 'sing',
       Reggaeton: 'dance',
@@ -149,10 +167,10 @@ export default function MusicManager() {
       Salsa: 'dance',
       Ballad: 'sing',
     };
-    return (types[genre as keyof typeof types] || 'imitate') as any;
+    return types[genre] || 'imitate';
   };
 
-  const renderTrack = ({ item: track }: { item: Track }) => (
+  const renderTrack = ({ item: track }: { item: ManagedTrack }) => (
     <TouchableOpacity
       style={styles.trackItem}
       onPress={() => setSelectedTrack(track)}
@@ -162,11 +180,15 @@ export default function MusicManager() {
         <View
           style={[
             styles.difficultyBadge,
-            { backgroundColor: getDifficultyColor(track.difficulty) },
+            {
+              backgroundColor: getDifficultyColor(
+                (track.difficulty as Difficulty | undefined) ?? 'medium',
+              ),
+            },
           ]}
         >
           <Text style={styles.difficultyText}>
-            {track.difficulty.toUpperCase()}
+            {(track.difficulty ?? 'medium').toUpperCase()}
           </Text>
         </View>
       </View>
@@ -177,7 +199,7 @@ export default function MusicManager() {
       </Text>
 
       <View style={styles.trackFooter}>
-        <Text style={styles.trackQR}>{track.qrCode}</Text>
+        <Text style={styles.trackQR}>{track.qrCode ?? track.id}</Text>
         <View style={styles.cardTypesIndicator}>
           <Text style={styles.cardTypeEmoji}>🎵🎤📅📝🔥</Text>
         </View>
@@ -390,11 +412,16 @@ export default function MusicManager() {
               </Text>
 
               <View style={styles.cardTypesGrid}>
-                {Object.entries(selectedTrack.cardTypes).map(
+                {(
+                  Object.entries(selectedTrack.cardTypes ?? {}) as [
+                    CardType,
+                    QuestionData,
+                  ][]
+                ).map(
                   ([type, details]) => (
                     <View key={type} style={styles.cardTypeCard}>
                       <Text style={styles.cardTypeHeader}>
-                        {cardService.getCardTypeEmoji(type as any)}{' '}
+                        {cardService.getCardTypeEmoji(type as CardType)}{' '}
                         {type.toUpperCase()}
                       </Text>
                       <Text style={styles.cardTypeQuestion}>
@@ -420,11 +447,7 @@ export default function MusicManager() {
                         {difficulty.toUpperCase()}:
                       </Text>
                       <Text style={styles.qrCodeValue}>
-                        {cardService.generateQRCode(
-                          selectedTrack.id,
-                          'song',
-                          difficulty
-                        )}
+                        {selectedTrack.qrCode ?? 'No song QR; rounds use the game API'}
                       </Text>
                     </View>
                   )

@@ -25,6 +25,9 @@ interface DiagnosticResult {
   duration?: number;
 }
 
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 export default function ConnectionDiagnostics({
   visible,
   onClose,
@@ -95,13 +98,10 @@ export default function ConnectionDiagnostics({
     // Test 1: Server Reachability
     await runTest(testResults, 0, async () => {
       const startTime = Date.now();
-      const serverUrl = audioService.getServerUrl();
+      const serverUrl = audioService.getBaseUrl();
 
       try {
-        const response = await fetch(serverUrl, {
-          method: 'GET',
-          timeout: 5000,
-        });
+        const response = await fetch(serverUrl, { method: 'GET' });
         const duration = Date.now() - startTime;
 
         if (response.ok) {
@@ -121,7 +121,7 @@ export default function ConnectionDiagnostics({
         return {
           status: 'error' as const,
           message: 'Cannot reach server',
-          details: `URL: ${serverUrl}\nError: ${error.message}`,
+          details: `URL: ${serverUrl}\nError: ${getErrorMessage(error)}`,
         };
       }
     });
@@ -150,35 +150,18 @@ export default function ConnectionDiagnostics({
         return {
           status: 'error' as const,
           message: 'Health endpoint error',
-          details: error.message,
+          details: getErrorMessage(error),
         };
       }
     });
 
-    // Test 3: QR Validation
+    // Song QR routes are legacy and are not used by the session-based game.
     await runTest(testResults, 2, async () => {
-      const startTime = Date.now();
-      try {
-        const testQR = 'HITBACK_001_SONG_EASY';
-        const isValid = await audioService.validateQRCode(testQR);
-        const duration = Date.now() - startTime;
-
-        return {
-          status: isValid ? ('success' as const) : ('warning' as const),
-          message: `QR validation ${
-            isValid ? 'passed' : 'failed'
-          } (${duration}ms)`,
-          details: `Test QR: ${testQR}\nResult: ${
-            isValid ? 'Valid' : 'Invalid'
-          }`,
-        };
-      } catch (error) {
-        return {
-          status: 'error' as const,
-          message: 'QR validation endpoint error',
-          details: error.message,
-        };
-      }
+      return {
+        status: 'warning',
+        message: 'Legacy song QR scanning is not used',
+        details: 'Game rounds use the session API; physical QR scanning is for Power Cards.',
+      };
     });
 
     // Test 4: Track Listing
@@ -205,41 +188,18 @@ export default function ConnectionDiagnostics({
         return {
           status: 'error' as const,
           message: 'Tracks endpoint error',
-          details: error.message,
+          details: getErrorMessage(error),
         };
       }
     });
 
-    // Test 5: Sample QR Scan
+    // Legacy song QR scan is deliberately not probed.
     await runTest(testResults, 4, async () => {
-      const startTime = Date.now();
-      try {
-        const testQR = 'HITBACK_001_SONG_EASY';
-        const result = await audioService.scanQRAndPlay(testQR);
-        const duration = Date.now() - startTime;
-
-        if (result.success) {
-          return {
-            status: 'success' as const,
-            message: `QR scan successful (${duration}ms)`,
-            details: `Track: ${result.data?.track?.title || 'Unknown'}\nType: ${
-              result.data?.scan?.cardType || 'Unknown'
-            }`,
-          };
-        } else {
-          return {
-            status: 'warning' as const,
-            message: 'QR scan failed',
-            details: result.error?.message || 'Unknown error',
-          };
-        }
-      } catch (error) {
-        return {
-          status: 'error' as const,
-          message: 'QR scan endpoint error',
-          details: error.message,
-        };
-      }
+      return {
+        status: 'warning',
+        message: 'Legacy song QR scanning is not used',
+        details: 'This diagnostic does not send an unsupported song QR request.',
+      };
     });
 
     setIsRunning(false);
@@ -262,7 +222,7 @@ export default function ConnectionDiagnostics({
         ...testResults[index],
         status: 'error',
         message: 'Test failed',
-        details: error.message,
+        details: getErrorMessage(error),
       };
     }
 

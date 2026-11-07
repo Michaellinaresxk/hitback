@@ -1,4 +1,4 @@
-import { Difficulty, ComboReward } from '@/types/game.types';
+import type { Combo, Difficulty } from '@/types/game.types';
 
 export const DIFFICULTY_VISUAL_CONFIG = {
   easy: { emoji: '🌟', color: '#27AE60' },
@@ -7,16 +7,16 @@ export const DIFFICULTY_VISUAL_CONFIG = {
   expert: { emoji: '👑', color: '#9B59B6' },
 };
 
-export const getComboDescription = (combo: ComboReward, t: any) => {
-  switch (combo.type) {
+export const getComboDescription = (combo: Combo, t: (key: string) => string) => {
+  switch (combo.reward.type) {
     case 'tokens':
-      return `+${combo.amount} ${t('rewards.token_unit_plural')}`;
+      return `+${combo.reward.amount} ${t('rewards.token_unit_plural')}`;
     case 'points':
-      return `+${combo.amount} puntos`;
+      return `+${combo.reward.amount} puntos`;
     case 'power_card':
       return t('rewards.extra_power_card');
     case 'multiplier':
-      return `${combo.amount}x ${t('rewards.next_round')}`;
+      return `${combo.reward.amount}x ${t('rewards.next_round')}`;
     default:
       return '';
   }

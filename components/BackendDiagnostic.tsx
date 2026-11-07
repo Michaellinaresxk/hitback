@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { audioService } from '../services/audioService';
 
+const getErrorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
 interface DiagnosticResult {
   test: string;
   status: 'pending' | 'success' | 'warning' | 'error';
@@ -34,9 +37,8 @@ export default function BackendDiagnostic() {
     const tests = [
       'Backend Health Check',
       'Tracks API Test',
-      'QR Validation Test',
+      'Legacy Song QR (not part of active game flow)',
       'Audio Endpoint Test',
-      'Full QR Scan Test',
     ];
 
     // Initialize all tests as pending
@@ -67,7 +69,7 @@ export default function BackendDiagnostic() {
         return {
           status: 'error' as const,
           message: 'Backend connection failed',
-          details: error.message,
+          details: getErrorMessage(error),
         };
       }
     });
@@ -96,35 +98,18 @@ export default function BackendDiagnostic() {
         return {
           status: 'error' as const,
           message: 'Tracks API failed',
-          details: error.message,
+          details: getErrorMessage(error),
         };
       }
     });
 
-    // Test 3: QR Validation
+    // Song QR routes are legacy and are not used by the session-based game.
     await runTest(testResults, 2, async () => {
-      const startTime = Date.now();
-      try {
-        const testQR = 'HITBACK_001_SONG_EASY';
-        const isValid = await audioService.validateQRCode(testQR);
-        const duration = Date.now() - startTime;
-
-        return {
-          status: isValid ? ('success' as const) : ('warning' as const),
-          message: `QR validation ${
-            isValid ? 'passed' : 'failed'
-          } (${duration}ms)`,
-          details: `Test QR: ${testQR} - ${
-            isValid ? 'Valid' : 'Invalid or track not found'
-          }`,
-        };
-      } catch (error) {
-        return {
-          status: 'error' as const,
-          message: 'QR validation endpoint failed',
-          details: error.message,
-        };
-      }
+      return {
+        status: 'warning',
+        message: 'Legacy song QR scanning is not used',
+        details: 'Game rounds use the session API; physical QR scanning is for Power Cards.',
+      };
     });
 
     // Test 4: Audio Endpoint
@@ -156,37 +141,7 @@ export default function BackendDiagnostic() {
         return {
           status: 'error' as const,
           message: 'Audio endpoint failed',
-          details: error.message,
-        };
-      }
-    });
-
-    // Test 5: Full QR Scan
-    await runTest(testResults, 4, async () => {
-      const startTime = Date.now();
-      try {
-        const testQR = 'HITBACK_001_SONG_EASY';
-        const scanResult = await audioService.scanQRAndPlay(testQR);
-        const duration = Date.now() - startTime;
-
-        if (scanResult.success && scanResult.data) {
-          return {
-            status: 'success' as const,
-            message: `Full QR scan successful (${duration}ms)`,
-            details: `Track: ${scanResult.data.track.title}\nQuestion: ${scanResult.data.question.question}`,
-          };
-        } else {
-          return {
-            status: 'warning' as const,
-            message: 'QR scan failed',
-            details: scanResult.error?.message || 'Unknown scan error',
-          };
-        }
-      } catch (error) {
-        return {
-          status: 'error' as const,
-          message: 'Full QR scan failed',
-          details: error.message,
+          details: getErrorMessage(error),
         };
       }
     });
@@ -197,7 +152,7 @@ export default function BackendDiagnostic() {
   const runTest = async (
     testResults: DiagnosticResult[],
     index: number,
-    testFunction: () => Promise<Partial<DiagnosticResult>>
+    testFunction: () => Promise<Partial<DiagnosticResult>>,
   ) => {
     try {
       const result = await testFunction();
@@ -210,7 +165,7 @@ export default function BackendDiagnostic() {
         ...testResults[index],
         status: 'error',
         message: 'Test failed',
-        details: error.message,
+        details: getErrorMessage(error),
       };
     }
 

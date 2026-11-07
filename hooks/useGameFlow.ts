@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { gameSessionService } from '@/services/GameSessionService';
+import type { ScoreModifiers } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
 
 export interface GameFlow {
@@ -33,7 +34,7 @@ const initialState: GameFlow = {
 
 export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
-  const { clearBets, syncPlayersFromBackend } = useGameStore();
+  const { clearBets, syncPlayersFromBackend, setShowGameEndModal } = useGameStore();
 
   // SIGUIENTE RONDA
   const nextRound = useCallback(async (): Promise<boolean> => {
@@ -55,6 +56,22 @@ export const useGameFlow = () => {
 
       if (!result.success) {
         console.error('❌ Error getting next round:', result.error);
+        setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
+        return false;
+      }
+
+      if (result.gameOver && !result.round) {
+        setFlowState({
+          ...initialState,
+          phase: 'idle',
+          isLoading: false,
+        });
+        setShowGameEndModal(true);
+        return true;
+      }
+
+      if (!result.round) {
+        console.error('❌ Successful next-round response did not contain a round');
         setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
         return false;
       }
@@ -90,7 +107,11 @@ export const useGameFlow = () => {
               }
             : null,
         });
-        console.log(hasAudio ? '🎵 Ronda 1: Audio directo' : '🎵 Ronda 1: Sin audio, mostrando pregunta');
+        console.log(
+          hasAudio
+            ? '🎵 Ronda 1: Audio directo'
+            : '🎵 Ronda 1: Sin audio, mostrando pregunta',
+        );
       } else {
         setFlowState({
           phase: 'betting',
@@ -112,7 +133,7 @@ export const useGameFlow = () => {
       setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
       return false;
     }
-  }, [clearBets]);
+  }, [clearBets, setShowGameEndModal]);
 
   // MANEJAR FIN DE AUDIO
   const handleAudioFinished = useCallback(() => {
@@ -169,11 +190,14 @@ export const useGameFlow = () => {
   // Por eso awardAllianceBonus NO va aquí — se llama desde handleAwardPoints
   // en game.tsx donde tenemos el playerId correcto del frontend.
   const revealAnswer = useCallback(
-    async (winnerId: string | null) => {
+    async (winnerId: string | null, scoreModifiers: ScoreModifiers = {}) => {
       console.log(`✅ Revealing answer, winner: ${winnerId || 'none'}`);
 
       try {
-        const result = await gameSessionService.revealAnswer(winnerId);
+        const result = await gameSessionService.revealAnswer(
+          winnerId,
+          scoreModifiers,
+        );
 
         if (result.success) {
           console.log('✅ Answer revealed successfully');
@@ -194,7 +218,7 @@ export const useGameFlow = () => {
             questionVisible: false,
           }));
 
-          return result.results;
+          return { ...result.results, players: result.players };
         } else {
           console.error('❌ Error revealing answer:', result.error);
           return null;
@@ -236,7 +260,9 @@ export const useGameFlow = () => {
     setFlowState((prev) => {
       const hasAudio = !!prev.audioUrl;
       if (!hasAudio) {
-        console.warn('⚠️ confirmBetsAndContinue: sin audio — saltando directo a pregunta');
+        console.warn(
+          '⚠️ confirmBetsAndContinue: sin audio — saltando directo a pregunta',
+        );
       }
       return {
         ...prev,

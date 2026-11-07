@@ -1,13 +1,10 @@
 import { StateCreator } from 'zustand';
-import { GameStore, Player } from '../types/gameTypes';
+import { GameStore, Player } from '../types/gameStoreTypes';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { BSIDE_LOSS_THRESHOLD } from '@/constants/LossStreak';
 import { ARTIST_HOLD_ROUND } from '@/constants/Game';
 
-export const createPlayerSlice: StateCreator<GameStore, [], []> = (
-  set,
-  get,
-) => ({
+export const createPlayerSlice = ((set, get, ..._rest) => ({
   players: [],
 
   addPlayer: (name: string) => {
@@ -23,6 +20,7 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       id: `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: name.trim(),
       score: 0,
+      correctAnswers: 0,
       isCurrentTurn: false,
       availableTokens: [1, 2, 3],
       boardPosition: 0,
@@ -370,9 +368,8 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
     const { players } = get();
     if (players.length < 2) return;
 
-    const leader = players.reduce(
-      (a: { score: number }, b: { score: number }) =>
-        a.score > b.score ? a : b,
+    const leader = players.reduce((a: Player, b: Player) =>
+      a.score > b.score ? a : b,
     );
     console.log(`🔒 ARTIST HOLD: ${leader.name} bloqueado por 2 rondas`);
 
@@ -539,29 +536,39 @@ export const createPlayerSlice: StateCreator<GameStore, [], []> = (
       name: string;
       score: number;
       availableTokens: number[];
+      stats?: {
+        correctAnswers?: number;
+      };
     }[],
   ) => {
     set((state) => {
-      const updatedPlayers = state.players.map((localPlayer, index) => {
-        const backendPlayer =
-          backendPlayers.find(
-            (bp) =>
-              bp.name === localPlayer.name ||
-              bp.id === localPlayer.id ||
-              backendPlayers[index]?.name === localPlayer.name,
-          ) || backendPlayers[index];
+      const playersByName = new Map(
+        backendPlayers.map((backendPlayer) => [
+          backendPlayer.name.trim().toLowerCase(),
+          backendPlayer,
+        ]),
+      );
 
+      const updatedPlayers = state.players.map((localPlayer) => {
+        const backendPlayer = playersByName.get(
+          localPlayer.name.trim().toLowerCase(),
+        );
         if (backendPlayer) {
           return {
             ...localPlayer,
             score: backendPlayer.score,
+            correctAnswers:
+              backendPlayer.stats?.correctAnswers ?? localPlayer.correctAnswers,
             availableTokens:
               backendPlayer.availableTokens || localPlayer.availableTokens,
           };
         }
+        console.error(
+          `No se pudo sincronizar ${localPlayer.name}: no coincide con ningún jugador del backend`,
+        );
         return localPlayer;
       });
       return { players: updatedPlayers };
     });
   },
-});
+})) satisfies StateCreator<GameStore, [], [], Partial<GameStore>>;

@@ -50,22 +50,22 @@ export default function GameEndModal({
   // Calculate game statistics
   const gameStats: GameStats = {
     winner: players.reduce((max, player) =>
-      player.score > max.score ? player : max
+      player.score > max.score ? player : max,
     ),
     mvpTokens: players.reduce((max, player) =>
-      (player.tokens || 0) > (max.tokens || 0) ? player : max
+      (player.tokens || 0) > (max.tokens || 0) ? player : max,
     ),
     mvpPowerCards: players.reduce((max, player) =>
       (player.powerCards?.length || 0) > (max.powerCards?.length || 0)
         ? player
-        : max
+        : max,
     ),
     fastestWin: gameTimeElapsed < 600, // Less than 10 minutes
     perfectGame: players.some((p) => p.score >= 15 && (p.tokens || 0) >= 5),
     highestScore: Math.max(...players.map((p) => p.score)),
     totalTokensSpent: players.reduce(
       (sum, p) => sum + (5 - (p.tokens || 0)),
-      0
+      0,
     ),
   };
 
@@ -84,7 +84,7 @@ export default function GameEndModal({
             duration: 2000,
             useNativeDriver: true,
           }),
-        ])
+        ]),
       ).start();
     }
   }, [visible]);
@@ -194,10 +194,10 @@ export default function GameEndModal({
                   {index === 0
                     ? '🥇'
                     : index === 1
-                    ? '🥈'
-                    : index === 2
-                    ? '🥉'
-                    : `${index + 1}°`}
+                      ? '🥈'
+                      : index === 2
+                        ? '🥉'
+                        : `${index + 1}°`}
                 </Text>
               </View>
 
@@ -219,6 +219,10 @@ export default function GameEndModal({
                   <Text style={styles.rankStatText}>•</Text>
                   <Text style={styles.rankStatText}>
                     {player.powerCards?.length || 0} poderes
+                  </Text>
+                  <Text style={styles.rankStatText}>•</Text>
+                  <Text style={styles.rankStatText}>
+                    {player.correctAnswers || 0} respuestas correctas
                   </Text>
                 </View>
               </View>

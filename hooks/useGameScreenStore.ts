@@ -1,18 +1,15 @@
 import { useGameStore } from '@/store/gameStore';
-import type { Player as StorePlayer } from '@/store/types/gameStoreTypes';
 
 /**
  * Consolida todos los selectores de useGameStore que necesita la pantalla del juego.
  * Elimina el boilerplate de 25+ llamadas individuales en game.tsx.
  *
- * Nota: casteamos `players` a StorePlayer[] porque el runtime store usa el tipo
- * completo de store/types/gameStoreTypes, mientras que GameStore expone el tipo
- * mínimo de types/game.types. Ambos son compatibles en runtime.
+ * The combined Zustand store and its slices share the canonical store types.
  */
 export function useGameScreenStore() {
   // ── State ─────────────────────────────────────────────────────────────────
   const players = useGameStore(
-    (state) => (state.players ?? []) as unknown as StorePlayer[],
+    (state) => state.players,
   );
   const isActive = useGameStore((state) => state.isActive);
   const timeLeft = useGameStore((state) => state.timeLeft);
@@ -63,10 +60,10 @@ export function useGameScreenStore() {
   const applyCharityShow = useGameStore((state) => state.applyCharityShow);
 
   const advancePlayerBoard = useGameStore(
-    (state) => (state as any).advancePlayerBoard as (playerId: string) => any,
+    (state) => state.advancePlayerBoard,
   );
   const activateDoublePlatinum = useGameStore(
-    (state) => (state as any).activateDoublePlatinum as () => void,
+    (state) => state.activateDoublePlatinum,
   );
 
   return {

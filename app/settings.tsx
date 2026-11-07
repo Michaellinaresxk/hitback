@@ -18,7 +18,10 @@ export default function SettingsScreen() {
   const { t } = useTranslation();
   const { gameDurationMinutes, setGameDuration } = useGameStore();
 
-  const renderSectionHeader = (title: string, icon: string) => (
+  const renderSectionHeader = (
+    title: string,
+    icon: React.ComponentProps<typeof IconSymbol>['name'],
+  ) => (
     <View style={styles.sectionHeader}>
       <IconSymbol name={icon} size={20} color='#F59E0B' />
       <Text style={styles.sectionTitle}>{title}</Text>

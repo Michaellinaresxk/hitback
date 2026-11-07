@@ -45,7 +45,7 @@ El script `validate` todavía contiene comprobaciones heredadas de QR de cancion
 - `services/GameSessionService.ts` habla con `/api/v2/game/*`; las Power Cards usan `/api/cards/*`.
 - `store/slices/gameSlice.ts` y `playerSlice.ts` guardan estado local de UI/jugadores y las rutas World Tour. El backend maneja puntuación de ronda, apuestas y combos.
 - IDs locales de jugador y backend son distintos. Usa `buildPlayerIdMap()` / `getBackendPlayerId()` de `utils/game/gameHelpers.ts` para las llamadas del backend.
-- Los puntajes locales de Reaction Cards deben sincronizarse con `applyScoreDelta()` en `GameSessionService`; de lo contrario, la siguiente respuesta del backend puede sobrescribirlos.
+- Los puntajes y efectos que sobreviven al reveal pertenecen al backend. Usa la liquidación canónica de `GameSessionService` y sincroniza los jugadores devueltos; no des por exitosa una sincronización que falle.
 - El backend se configura en `services/GameSessionService.ts` (`getBaseUrl`): primero lee `EXPO_PUBLIC_HITBACK_API_URL`; en desarrollo intenta usar el host de `Constants.expoConfig.hostUri` y recurre a `192.168.1.10` si no lo detecta; fuera de desarrollo devuelve `https://api.hitback.com`. La conectividad y disponibilidad del host de producción no se han verificado aquí. No describas ninguna URL como servicio disponible sin probarla.
 - El flujo normal obtiene una ronda desde el backend, no escanea un QR de canción. El escaneo QR está destinado a Power Cards (`HITBACK_PC_...`).
 

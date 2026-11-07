@@ -26,7 +26,7 @@ export default function AudioPlayer({
   const [timeLeft, setTimeLeft] = useState(Math.ceil(duration / 1000));
 
   const soundRef = useRef<Audio.Sound | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasFinishedRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 

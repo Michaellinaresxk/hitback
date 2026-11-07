@@ -41,11 +41,11 @@ export function BattleMode({
   const generateBattleQuestions = () => {
     if (!currentCard) return { q1: '', q2: '' };
 
-    const baseQuestion = currentCard.question;
+    const baseQuestion = currentCard.question.text;
     const track = currentCard.track;
 
     // Generate different questions based on card type
-    switch (currentCard.cardType) {
+    switch (currentCard.question.type) {
       case 'song':
         return {
           q1: '¿Cuál es el nombre de esta canción?',
@@ -82,7 +82,7 @@ export function BattleMode({
   const handleBattleResult = (player1Won: boolean, player2Won: boolean) => {
     if (!currentCard) return;
 
-    let battlePoints = currentCard.points;
+    const battlePoints = currentCard.question.points;
 
     // Battle mode bonus: +1 point for participating, +2 for winning
     if (player1Won && player2Won) {
@@ -154,7 +154,7 @@ export function BattleMode({
                 <View style={styles.battleVs}>
                   <Text style={styles.vsText}>VS</Text>
                   <Text style={styles.battlePointsText}>
-                    {currentCard.points + 1} pts
+                    {currentCard.question.points + 1} pts
                   </Text>
                 </View>
 
@@ -189,7 +189,7 @@ export function BattleMode({
                 >
                   <Text style={styles.battleOptionText}>Ambos Correctos</Text>
                   <Text style={styles.battleOptionSubtext}>
-                    {currentCard.points} pts c/u
+                    {currentCard.question.points} pts c/u
                   </Text>
                 </TouchableOpacity>
 
@@ -465,13 +465,13 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
 
     if (success) {
       // Viral success: Triple points + viral bonus
-      const viralPoints = currentCard.points * 3 + 2; // 3x + 2 bonus
+      const viralPoints = currentCard.question.points * 3 + 2; // 3x + 2 bonus
       awardPoints(playerId, viralPoints, 1000); // Very fast "answer"
 
       Alert.alert(
         '🔥 ¡SE VOLVIÓ VIRAL!',
         `${player?.name} gana ${viralPoints} puntos!\n` +
-          `(${currentCard.points}x3 + 2 bonus viral)`,
+          `(${currentCard.question.points}x3 + 2 bonus viral)`,
         [{ text: '¡Increíble!' }]
       );
     } else {
@@ -505,14 +505,14 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
             <Text style={styles.viralCardArtist}>
               {currentCard.track.artist}
             </Text>
-            <Text style={styles.viralChallenge}>{currentCard.question}</Text>
+            <Text style={styles.viralChallenge}>{currentCard.question.text}</Text>
           </View>
 
           <View style={styles.viralRewards}>
             <Text style={styles.viralRewardsTitle}>💰 RECOMPENSAS</Text>
             <View style={styles.viralRewardItem}>
               <Text style={styles.viralRewardText}>
-                🔥 Viral: {currentCard.points * 3 + 2} puntos
+                🔥 Viral: {currentCard.question.points * 3 + 2} puntos
               </Text>
             </View>
             <View style={styles.viralRewardItem}>
@@ -583,7 +583,7 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
               </Text>
 
               <Text style={styles.recordingChallenge}>
-                {currentCard.question}
+                {currentCard.question.text}
               </Text>
 
               <TouchableOpacity
@@ -616,7 +616,7 @@ export function ViralMoment({ visible, onClose }: ViralMomentProps) {
                     🔥 ¡SE VOLVIÓ VIRAL!
                   </Text>
                   <Text style={styles.viralResultSubtext}>
-                    {currentCard.points * 3 + 2} puntos
+                    {currentCard.question.points * 3 + 2} puntos
                   </Text>
                 </TouchableOpacity>
 

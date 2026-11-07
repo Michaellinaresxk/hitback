@@ -3,6 +3,7 @@ import { CurrentRound, RoundResult } from '@/services/GameSessionService';
 
 export type GamePhase =
   | 'idle'
+  | 'pre-round'
   | 'loading'
   | 'audio'
   | 'betting'
@@ -88,5 +89,6 @@ export interface PlayerSyncData {
   id: string;
   name: string;
   score: number;
-  tokens: number;
+  tokens?: number;
+  availableTokens?: number[];
 }

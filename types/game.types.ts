@@ -42,6 +42,9 @@ export interface Player {
   avatar?: string;
   color?: string;
   isActive: boolean;
+  boostActive?: boolean;
+  activePowers?: PowerCard[];
+  isImmune?: boolean;
 }
 
 export interface PowerCard {
@@ -60,7 +63,41 @@ export type PowerCardType =
   | 'replay'
   | 'festival'
   | 'double_platinum'
-  | 'label_fee';
+  | 'label_fee'
+  | 'robo'
+  | 'escudo'
+  | 'boost'
+  | 'refresh'
+  | 'peek'
+  | 'precision';
+
+export type ComboRewardType = 'tokens' | 'points' | 'power_card' | 'multiplier';
+
+export interface ComboReward {
+  type: ComboRewardType;
+  amount: number;
+  powerCardType?: PowerCardType;
+}
+
+export interface ComboCondition {
+  type:
+    | 'consecutive_wins'
+    | 'card_type_streak'
+    | 'difficulty_streak'
+    | 'time_bonus';
+  value: number;
+  cardType?: CardType;
+  difficulty?: Difficulty;
+}
+
+export interface Combo {
+  id: string;
+  name: string;
+  description: string;
+  conditions: ComboCondition[];
+  reward: ComboReward;
+  emoji: string;
+}
 
 export interface CurrentCard {
   qrCode: string;
@@ -185,6 +222,17 @@ export interface BackendSlice {
 }
 
 export interface PlayerSlice {
+  syncPlayersFromBackend: (
+    backendPlayers: {
+      id: string;
+      name: string;
+      score: number;
+      availableTokens: number[];
+      stats?: {
+        correctAnswers?: number;
+      };
+    }[],
+  ) => void;
   awardAllianceBonus: (winnerId: string, pointsAwarded: number) => void;
   applyFeaturingBonus: (partnerId: string, pointsAwarded: number) => void;
   toggleFreezePlayer: (playerId: string) => void;

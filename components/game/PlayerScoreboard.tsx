@@ -9,7 +9,7 @@ import {
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
 import { SCORE_TO_WIN } from '@/constants/Points';
-import type { Player } from '@/store/gameStore';
+import type { Player } from '@/store/types/gameStoreTypes';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TIPOS
@@ -383,6 +383,16 @@ export default function PlayerScoreboard({
                 {showDetailedStats && (
                   <View style={styles.detailedStats}>
                     <View style={styles.statItem}>
+                      <IconSymbol
+                        name='checkmark.circle.fill'
+                        size={12}
+                        color='#10B981'
+                      />
+                      <Text style={styles.statText}>
+                        {player.correctAnswers || 0} correctas
+                      </Text>
+                    </View>
+                    <View style={styles.statItem}>
                       <IconSymbol name='flame.fill' size={12} color='#F59E0B' />
                       <Text style={styles.statText}>
                         {player.consecutiveWins || 0} racha
@@ -488,7 +498,7 @@ export default function PlayerScoreboard({
                       isVisuallyBlocked && styles.tokensValueFrozen,
                     ]}
                   >
-                    {player.availableTokens?.length || player.tokens || 0}
+                    {player.availableTokens?.length || 0}
                   </Text>
                 </View>
               </View>

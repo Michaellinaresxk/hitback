@@ -53,7 +53,7 @@ interface Track {
 class AudioService {
   private sound: Audio.Sound | null = null;
   private baseUrl: string;
-  private playbackTimeout: NodeJS.Timeout | null = null;
+  private playbackTimeout: ReturnType<typeof setTimeout> | null = null;
   private onFinishCallback: (() => void) | null = null;
 
   private state: AudioState = {

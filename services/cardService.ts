@@ -1,10 +1,10 @@
 // services/cardService.ts - HITBACK Card Service
 // ✅ Siempre usa la API del backend
 // ✅ Formato nuevo escalable: HITBACK_TYPE:SONG_DIFF:EASY_GENRE:ROCK_DECADE:1980s
-// ✅ Usa CurrentCard de game_types (tipo unificado)
+// ✅ Usa CurrentCard de game.types (tipo unificado)
 
 import { Platform } from 'react-native';
-import type { CurrentCard, CardType } from '@/types/game_types';
+import type { CurrentCard, CardType } from '@/types/game.types';
 
 // ✅ Re-exportar CurrentCard como GameCard para compatibilidad
 export type GameCard = CurrentCard;

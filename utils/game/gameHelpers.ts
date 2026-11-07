@@ -1,4 +1,4 @@
-import type { Player as StorePlayer } from '@/store/gameStore';
+import type { Player as StorePlayer } from '@/store/types/gameStoreTypes';
 
 /**
  * Construye el mapa frontend-id → backend-id al inicio del juego.
@@ -39,7 +39,7 @@ export const validateBet = (
     return { valid: false, error: 'Jugador no encontrado' };
   }
 
-  if (player.tokens < 1) {
+  if (player.availableTokens.length < 1) {
     return { valid: false, error: 'No tienes tokens disponibles' };
   }
 

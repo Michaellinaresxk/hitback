@@ -24,13 +24,17 @@ export const createSyncHandler = () => {
 
         if (backendPlayer) {
           const scoreChanged = localPlayer.score !== backendPlayer.score;
-          const tokensChanged = localPlayer.tokens !== backendPlayer.tokens;
+          const backendTokenCount =
+            backendPlayer.tokens ?? backendPlayer.availableTokens?.length;
+          const tokensChanged =
+            backendTokenCount !== undefined &&
+            localPlayer.availableTokens.length !== backendTokenCount;
 
           if (scoreChanged || tokensChanged) {
             console.log(
               `   ✅ ${localPlayer.name} [${index}]: ` +
                 `score ${localPlayer.score}→${backendPlayer.score}, ` +
-                `tokens ${localPlayer.tokens}→${backendPlayer.tokens}`
+                `tokens ${localPlayer.availableTokens.length}→${backendTokenCount ?? '—'}`
             );
           } else {
             console.log(`   ℹ️ ${localPlayer.name} [${index}]: sin cambios`);
@@ -39,9 +43,9 @@ export const createSyncHandler = () => {
           return {
             ...localPlayer,
             score: backendPlayer.score,
-            tokens: backendPlayer.tokens,
-            // ✅ Asegurar que availableTokens se sincroniza
-            availableTokens: backendPlayer.availableTokens || [],
+            availableTokens:
+              backendPlayer.availableTokens ??
+              localPlayer.availableTokens.slice(0, backendTokenCount),
           };
         }
 

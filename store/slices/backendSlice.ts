@@ -1,14 +1,9 @@
 // store/slices/backendSlice.ts
 import { StateCreator } from 'zustand';
 import { audioService } from '@/services/audioService';
-import { BackendSlice, GameStore } from '@/types/game.types';
+import type { GameStore } from '@/store/types/gameStoreTypes';
 
-export const createBackendSlice: StateCreator<
-  GameStore,
-  [],
-  [],
-  BackendSlice
-> = (set) => ({
+export const createBackendSlice = ((set, ..._rest) => ({
   backendConnected: false,
   lastBackendCheck: null,
 
@@ -42,4 +37,9 @@ export const createBackendSlice: StateCreator<
       set({ backendConnected: false });
     }
   },
-});
+})) satisfies StateCreator<
+  GameStore,
+  [],
+  [],
+  Partial<GameStore>
+>;
