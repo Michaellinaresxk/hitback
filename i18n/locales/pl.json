@@ -1,8 +1,8 @@
 {
   "common": {
     "welcome": "Welcome to Hitback",
-    "loading": "Loading...",
-    "error": "An error occurred"
+    "loading": "Ładowanie...",
+    "error": "Wystąpił błąd"
   },
   "home": {
     "subtitle": "Edycja Game Master",
@@ -11,6 +11,12 @@
       "title": "Nowa gra",
       "subtitle": "2-8 graczy • 20 min"
     },
+    "resume_tour": {
+      "title": "Wznów trasę",
+      "subtitle": "Kontynuuj zapisaną trasę World Tour"
+    },
+    "resume_error": "Nie udało się odzyskać zapisanej trasy. Sprawdź połączenie i spróbuj ponownie.",
+    "resume_unavailable": "Ta zapisana trasa nie jest już dostępna.",
     "rules": "Zasady",
     "settings": "Ustawienia",
     "how_works": {
@@ -32,7 +38,40 @@
     "rule_3": "Pierwszy gracz, który zdobędzie 15 punktów, wygrywa",
     "rule_4": "Każda gra trwa maksymalnie 20 minut",
     "start_game": "ROZPOCZNIJ GRĘ",
-    "min_players_warning": "Potrzebujesz co najmniej 2 graczy"
+    "min_players_warning": "Potrzebujesz co najmniej 2 graczy",
+    "genre_section_title": "Gatunki muzyczne",
+    "genre_section_hint": "Wybierz gatunki, których chcesz słuchać (lub pozostaw wszystko niezaznaczone, aby uwzględnić wszystkie)",
+    "decade_section_title": "Dekady",
+    "decade_section_hint": "Wybierz ulubione dekady (lub pozostaw wszystko niezaznaczone, aby uwzględnić wszystkie)",
+    "selection_title": "Twój wybór:",
+    "all_genres": "Wszystkie gatunki",
+    "all_decades": "Wszystkie dekady",
+    "connecting": "Łączenie...",
+    "genres": {
+      "ROCK": "Rock",
+      "POP": "Pop",
+      "LATIN": "Latynoska",
+      "HIP_HOP": "Hip-hop",
+      "ELECTRONIC": "Elektroniczna",
+      "R&B": "R&B",
+      "COUNTRY": "Country",
+      "JAZZ": "Jazz"
+    },
+    "current_rules": {
+      "next_song": "Naciśnij „Następny utwór”, aby rozpocząć rundę",
+      "listen_and_bet": "Słuchaj nagrania i obstawiaj żetony, jeśli znasz odpowiedź",
+      "game_master_selects": "Game Master wybiera osobę, która odpowiedziała poprawnie",
+      "winning_score": "Wygrywa pierwszy gracz, który zdobędzie {{score}} punktów!"
+    },
+    "errors": {
+      "invalid_name": "Wpisz prawidłowe imię.",
+      "add_player": "Nie udało się dodać gracza: {{details}}",
+      "session_create_failed": "Nie udało się utworzyć sesji.",
+      "session_start_failed": "Nie udało się rozpocząć sesji na serwerze.",
+      "local_start_failed": "Nie udało się rozpocząć gry na tym urządzeniu.",
+      "connection_title": "Błąd połączenia",
+      "connection_message": "Nie można połączyć się z serwerem. Sprawdź, czy jest dostępny.\n\n{{details}}"
+    }
   },
   "settingPage": {
     "sections": {
@@ -91,7 +130,8 @@
     "export": {
       "title": "Eksportuj ustawienia",
       "desc": "Udostępnij ustawienia innym"
-    }
+    },
+    "language_save_error": "Nie udało się zapisać wybranego języka."
   },
   "help": {
     "objective": {
@@ -125,11 +165,36 @@
     "pot_subtext": "Żetony utracone w zakładach",
     "tokens_count": "{{count}} żetonów",
     "current_turn": "Obecna tura",
+    "round_label": "Runda",
     "no_one": "Nikt",
     "round_info": "Runda {{round}}",
     "phase_prefix": "Faza: ",
     "scanning": "Skanowanie...",
     "scan_button": "Skanuj kartę",
+    "phaseLabels": {
+      "idle": "GOTOWY",
+      "loading": "ŁADOWANIE",
+      "audio": "AUDIO",
+      "betting": "ZAKŁADY",
+      "question": "PYTANIE",
+      "answer": "ODPOWIEDŹ"
+    },
+    "flow": {
+      "loading_round": "Ładowanie rundy...",
+      "use_token": "🎰 UŻYJ ŻETONU (+1, +2, +3)",
+      "skip_bet": "⭕ Pomiń zakład i posłuchaj nagrania",
+      "round_question": "Runda {{round}} - {{type}}",
+      "next_round": "NASTĘPNA RUNDA",
+      "start_first_round": "ROZPOCZNIJ PIERWSZĄ RUNDĘ",
+      "round_completed": "Runda {{round}} zakończona",
+      "ready": "Gotowy do rozpoczęcia",
+      "listening": "🎵 Odtwarzanie nagrania...",
+      "prepare_to_answer": "Przygotuj się do odpowiedzi",
+      "waiting_for_answer": "❓ Oczekiwanie na odpowiedź...",
+      "select_correct_player": "Wybierz osobę, która odpowiedziała poprawnie",
+      "answer_revealed": "✅ Odpowiedź ujawniona",
+      "preparing_next_round": "Przygotowywanie następnej rundy..."
+    },
     "betting": {
       "title": "🎲 CZAS NA ZAKŁADY",
       "instructions": "Gracze mogą położyć swoje żetony na stole",
@@ -143,6 +208,11 @@
       "answer_correct": "✅ {{answer}}",
       "player_bet": "Zakład: {{amount}} → {{mult}}x",
       "no_winner": "Nikt nie zgadł"
+    },
+    "special": {
+      "stopBlastOnlyWinner": "🛑 STOP-BLAST — wygrać może tylko jeden gracz",
+      "duelOnlyWinners": "⚔️ POJEDYNEK — wygrać mogą tylko pojedynkujący się gracze",
+      "pausedRound": "wstrzymany w tej rundzie"
     },
     "phases": {
       "normal": "Normalna",
@@ -205,10 +275,120 @@
       "tokenCount": "{{count}} żetonów",
       "alreadyBet": "Już postawił {{amount}} żetonów"
     },
+    "noneYet": "Nie postawiono jeszcze zakładów",
+    "alreadyBet": "✅ Żeton postawiony",
+    "availableTokens": "Dostępne: {{tokens}}",
+    "noTokens": "Brak żetonów",
+    "noTokensAvailable": "😅 Brak dostępnych żetonów",
+    "info": {
+      "oneTokenPerRound": "Każdy gracz może postawić 1 żeton na rundę",
+      "bonusPoints": "Postawione żetony zwiększą wynik po poprawnej odpowiedzi"
+    },
     "buttons": {
       "cancel": "Anuluj",
-      "multiplierSuffix": "{{value}}x"
+      "multiplierSuffix": "{{value}}x",
+      "bet": "Postaw",
+      "used": "Użyto",
+      "confirmAndContinue": "POTWIERDŹ ZAKŁADY I KONTYNUUJ"
     }
+  },
+  "allianceModal": {
+    "inAlliance": "🤝 W sojuszu",
+    "playerOne": "Gracz 1",
+    "playerTwo": "Gracz 2",
+    "oneRoundRemaining": "Pozostała {{count}} runda",
+    "multipleRoundsRemaining": "Pozostały {{count}} rundy",
+    "dissolve": "Rozwiąż",
+    "selectFirst": "Wybierz pierwszego gracza",
+    "selectSecond": "Wybierz drugiego gracza",
+    "subtitle": "Tymczasowe sojusze",
+    "declareTab": "Zawrzyj",
+    "activeTab": "Aktywne",
+    "rules": "Jeśli twój sojusznik odpowie poprawnie, otrzymasz 50% jego punktów. Sojusz trwa 3 rundy.",
+    "declareButton": "🤝 Zawrzyj sojusz",
+    "selectTwo": "Wybierz 2 graczy",
+    "empty": "Brak aktywnych sojuszy",
+    "emptyAction": "Zawrzyj sojusz →"
+  },
+  "featuringModal": {
+    "choosePartner": "wybiera partnera",
+    "rule": "Jeśli którekolwiek z was odpowie poprawnie, oboje zdobędziecie punkty!",
+    "committed": "🎤 W duecie"
+  },
+  "duelModal": {
+    "chooseOpponent": "wybiera rywala",
+    "rule": "W tej rundzie odpowiadać może tylko dwoje pojedynkujących się graczy"
+  },
+  "lossStreakModal": {
+    "title": "B-SIDE AKTYWOWANY",
+    "multiplePlayers": "{{count}} graczy nie zdobywa punktów od 4 rund",
+    "singlePlayer": "Ten gracz nie zdobywa punktów od 4 rund",
+    "bonus": "+1 do następnego punktu",
+    "multipleInstruction": "Wręcz każdemu graczowi kartę Reaction Card 🃏",
+    "singleInstruction": "Wręcz kartę Reaction Card z fizycznej talii 🃏",
+    "multipleDelivered": "Karty przekazane ✓",
+    "singleDelivered": "Karta przekazana ✓"
+  },
+  "gameEnd": {
+    "winnerTitle": "ZWYCIĘZCA!",
+    "winnerScore": "{{score}} pkt",
+    "achievements": {
+      "fastestWin": "Szybkie zwycięstwo",
+      "perfectGame": "Perfekcyjna gra",
+      "domination": "Dominacja"
+    },
+    "summary": {
+      "duration": "Czas trwania",
+      "rounds": "Rundy",
+      "players": "Gracze"
+    },
+    "statsTitle": "📊 STATYSTYKI KOŃCOWE",
+    "finalRanking": "🏆 KOŃCOWY RANKING",
+    "rankPosition": "{{position}}.",
+    "pointsShort": "{{count}} pkt",
+    "powerCardsCount": "{{count}} mocy",
+    "correctAnswersCount": "{{count}} poprawnych odpowiedzi",
+    "mvpAwards": "🌟 NAGRODY MVP",
+    "tokenKing": "Mistrz żetonów",
+    "powerMaster": "Mistrz kart mocy",
+    "highestScore": "Najwyższy wynik",
+    "metricsTitle": "📈 WYNIKI GRY",
+    "tokensSpent": "Wydane żetony",
+    "pointsPerRound": "Pkt/runda",
+    "achievementsTitle": "🏅 ODBLOKOWANE OSIĄGNIĘCIA",
+    "achievement": {
+      "firstWin": {
+        "name": "Pierwsze zwycięstwo",
+        "description": "Twoja pierwsza wygrana!"
+      },
+      "speedDemon": {
+        "name": "Demon prędkości",
+        "description": "Wygrana w mniej niż 10 minut"
+      },
+      "perfectGame": {
+        "name": "Perfekcyjna gra",
+        "description": "Wygrana bez utraty żetonów"
+      },
+      "domination": {
+        "name": "Pełna dominacja",
+        "description": "Zdobycie co najmniej 20 punktów"
+      },
+      "tokenMaster": {
+        "name": "Mistrz żetonów",
+        "description": "Zakończenie z co najmniej 5 żetonami"
+      },
+      "powerCollector": {
+        "name": "Kolekcjoner kart mocy",
+        "description": "Zdobycie co najmniej 5 kart mocy"
+      }
+    },
+    "tabs": {
+      "winner": "Zwycięzca",
+      "stats": "Statystyki",
+      "achievements": "Osiągnięcia"
+    },
+    "newGame": "Nowa gra",
+    "mainMenu": "Menu główne"
   },
   "tour": {
     "gameName": "WORLD TOUR",
@@ -505,6 +685,7 @@
       "reachedFinish": "🏆 DOTARŁEŚ DO HALL OF FAME!",
       "landingTitle": "📍 Dotarłeś do {{city}}",
       "landingVenue": "🎤 {{venue}}",
+      "playerArrival": "{{player}} dociera tutaj",
       "tileTypeLabel": "Typ: {{type}}",
       "factLabel": "📖 Czy wiesz, że...?",
       "continueButton": "Kontynuuj trasę",

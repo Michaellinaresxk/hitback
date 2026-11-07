@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 interface CurrentTurnProps {
   round: number;
@@ -7,9 +8,10 @@ interface CurrentTurnProps {
 }
 
 export const CurrentTurn: React.FC<CurrentTurnProps> = ({ round }) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
-      <Text style={styles.turnLabel}>Ronda</Text>
+      <Text style={styles.turnLabel}>{t('game.round_label')}</Text>
       <Text style={styles.currentTurnName}>{round}</Text>
     </View>
   );

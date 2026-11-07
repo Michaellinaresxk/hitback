@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { getPhaseLabel, getPhaseStyle } from '@/utils/game/phaseStyler';
+import { getPhaseStyle } from '@/utils/game/phaseStyler';
 import { formatTime } from '@/utils/timeFormatter';
 
 interface GameHeaderProps {
@@ -15,8 +16,11 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   currentPhase,
   onOpenAlliances,
 }) => {
+  const { t } = useTranslation();
   const phaseStyle = getPhaseStyle(currentPhase);
-  const phaseLabel = getPhaseLabel(currentPhase);
+  const phaseLabel = t(`game.phaseLabels.${currentPhase}`, {
+    defaultValue: t('game.phaseLabels.idle'),
+  });
 
   return (
     <View style={styles.header}>

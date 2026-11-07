@@ -8,23 +8,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  useReducedMotion,
+} from 'react-native-reanimated';
 import { BoardTile, MechanicTrigger, TileType } from '@/types/worldTour.types';
 import { TILE_MECHANICS } from '@/constants/worldTour';
-import citiesData from '@/constants/worldTourCities.json';
-
-// Build a flat id→city lookup from the JSON at module load time
-const _allCities = (
-  Object.values(citiesData) as Array<
-    Array<{
-      id: string;
-      name: string;
-      venue: string;
-      story: string;
-      realFact: string;
-    }>
-  >
-).flat();
-const CITY_MAP = Object.fromEntries(_allCities.map((c) => [c.id, c]));
 
 export interface TourLandingEvent {
   tile: BoardTile;
@@ -85,17 +76,18 @@ export default function TourLandingModal({
   onContinue,
 }: TourLandingModalProps) {
   const { t } = useTranslation();
+  const reduceMotion = useReducedMotion();
 
   if (!event) return null;
 
   const { tile, playerName, isActTransition, newActId } = event;
   const { cityId, emoji, tileType, position } = tile;
 
-  const cityJson = CITY_MAP[cityId];
-  const cityName = cityJson?.name ?? t(`tour.cities.${cityId}.city`);
-  const venueName = cityJson?.venue ?? t(`tour.cities.${cityId}.venue`);
-  const story = cityJson?.story ?? t(`tour.cities.${cityId}.story`);
-  const realFact = cityJson?.realFact ?? t(`tour.cities.${cityId}.realFact`);
+  const cityName = t(`tour.cities.${cityId}.city`, { defaultValue: cityId });
+  const country = t(`tour.cities.${cityId}.country`, { defaultValue: '' });
+  const venueName = t(`tour.cities.${cityId}.venue`, { defaultValue: cityId });
+  const story = t(`tour.cities.${cityId}.story`, { defaultValue: '' });
+  const realFact = t(`tour.cities.${cityId}.realFact`, { defaultValue: '' });
   const tileTypeName = t(`tour.tileTypes.${tileType}.name`);
   const tileTypeDesc = t(`tour.tileTypes.${tileType}.description`);
 
@@ -110,11 +102,15 @@ export default function TourLandingModal({
     <Modal
       visible={visible}
       transparent
-      animationType='slide'
+      animationType='none'
       onRequestClose={handleContinue}
     >
       <View style={styles.overlay}>
-        <View style={styles.card}>
+        <Animated.View
+          key={`${cityId}-${position}`}
+          entering={reduceMotion ? undefined : FadeInDown.duration(420)}
+          style={styles.card}
+        >
           <ScrollView
             style={styles.scrollArea}
             contentContainerStyle={styles.scrollContent}
@@ -136,10 +132,27 @@ export default function TourLandingModal({
             )}
 
             {/* City Header */}
-            <Text style={styles.cityEmoji}>{emoji}</Text>
-            <Text style={styles.position}>📍 {position}/21</Text>
-            <Text style={styles.cityName}>{cityName}</Text>
-            <Text style={styles.venueName}>🎤 {venueName}</Text>
+            <LinearGradient
+              colors={['#312E81', '#6D28D9', '#BE185D']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.destinationHero}
+            >
+              <Animated.View
+                entering={reduceMotion ? undefined : FadeInUp.delay(80).duration(360)}
+                style={styles.heroContent}
+              >
+                <Text style={styles.position}>{position}/21</Text>
+                <Text style={styles.cityEmoji}>{emoji}</Text>
+                <Text style={styles.arrivalTitle}>
+                  {t('tour.ui.landingTitle', { city: cityName })}
+                </Text>
+                <Text style={styles.countryName}>{country}</Text>
+                <Text style={styles.venueName}>
+                  {t('tour.ui.landingVenue', { venue: venueName })}
+                </Text>
+              </Animated.View>
+            </LinearGradient>
 
             {/* Tile Type Badge */}
             <View
@@ -154,7 +167,9 @@ export default function TourLandingModal({
             </View>
 
             {/* Player indicator */}
-            <Text style={styles.playerLabel}>{playerName} avanza aquí</Text>
+            <Text style={styles.playerLabel}>
+              {t('tour.ui.playerArrival', { player: playerName })}
+            </Text>
 
             {/* Story */}
             <View style={styles.storyContainer}>
@@ -192,7 +207,7 @@ export default function TourLandingModal({
               {mechanicTrigger ? tileTypeDesc : t('tour.ui.continueButton')}
             </Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -222,7 +237,7 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   scrollContent: {
-    padding: 24,
+    padding: 16,
     alignItems: 'center',
     gap: 10,
   },
@@ -258,27 +273,47 @@ const styles = StyleSheet.create({
   },
 
   // ── City Header ───────────────────────────────────────────────────────
+  destinationHero: {
+    width: '100%',
+    minHeight: 230,
+    borderRadius: 18,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    paddingHorizontal: 18,
+    paddingVertical: 20,
+  },
+  heroContent: {
+    alignItems: 'center',
+    gap: 4,
+  },
   cityEmoji: {
-    fontSize: 64,
-    marginTop: 4,
+    fontSize: 54,
+    marginTop: 2,
   },
   position: {
     fontSize: 12,
-    color: '#64748B',
+    color: 'rgba(255,255,255,0.75)',
     fontWeight: '600',
   },
-  cityName: {
-    fontSize: 26,
+  arrivalTitle: {
+    fontSize: 23,
     fontWeight: '900',
-    color: '#F8FAFC',
+    color: '#FFFFFF',
     textAlign: 'center',
     letterSpacing: 0.5,
   },
-  venueName: {
-    fontSize: 15,
-    color: '#94A3B8',
+  countryName: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.78)',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  venueName: {
+    fontSize: 15,
+    color: '#FCE7F3',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
 
   // ── Tile Type Badge ───────────────────────────────────────────────────

@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Dimensions,
 } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useGameStore } from '@/store/gameStore';
 import { Alliance } from '@/types/game.types';
 
@@ -29,6 +30,7 @@ export default function AllianceModal({
   visible,
   onClose,
 }: AllianceModalProps) {
+  const { t } = useTranslation();
   const players = useGameStore((s) => s.players);
   const alliances = useGameStore((s) => s.alliances);
   const declareAlliance = useGameStore((s) => s.declareAlliance);
@@ -116,19 +118,25 @@ export default function AllianceModal({
 
           {inAlliance && (
             <View style={styles.alreadyAllianceBadge}>
-              <Text style={styles.alreadyAllianceText}>🤝 En alianza</Text>
+              <Text style={styles.alreadyAllianceText}>
+                {t('allianceModal.inAlliance')}
+              </Text>
             </View>
           )}
 
           {isSelected1 && (
             <View style={styles.selectedBadge1}>
-              <Text style={styles.selectedBadgeText}>Jugador 1</Text>
+              <Text style={styles.selectedBadgeText}>
+                {t('allianceModal.playerOne')}
+              </Text>
             </View>
           )}
 
           {isSelected2 && (
             <View style={styles.selectedBadge2}>
-              <Text style={styles.selectedBadgeText}>Jugador 2</Text>
+              <Text style={styles.selectedBadgeText}>
+                {t('allianceModal.playerTwo')}
+              </Text>
             </View>
           )}
         </View>
@@ -155,8 +163,12 @@ export default function AllianceModal({
             {p1Name} <Text style={styles.handshake}>🤝</Text> {p2Name}
           </Text>
           <Text style={[styles.allianceRounds, { color: roundsColor }]}>
-            {item.roundsLeft} {item.roundsLeft === 1 ? 'ronda' : 'rondas'}{' '}
-            restantes
+            {t(
+              item.roundsLeft === 1
+                ? 'allianceModal.oneRoundRemaining'
+                : 'allianceModal.multipleRoundsRemaining',
+              { count: item.roundsLeft },
+            )}
           </Text>
         </View>
 
@@ -165,7 +177,9 @@ export default function AllianceModal({
           onPress={() => dissolveAlliance(item.id)}
           activeOpacity={0.75}
         >
-          <Text style={styles.dissolveText}>Disolver</Text>
+          <Text style={styles.dissolveText}>
+            {t('allianceModal.dissolve')}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -179,9 +193,9 @@ export default function AllianceModal({
     selectedPlayer1 !== selectedPlayer2;
 
   const selectionPrompt = !selectedPlayer1
-    ? 'Selecciona el primer jugador'
+    ? t('allianceModal.selectFirst')
     : !selectedPlayer2
-      ? 'Selecciona el segundo jugador'
+      ? t('allianceModal.selectSecond')
       : `${getPlayerName(selectedPlayer1)} 🤝 ${getPlayerName(selectedPlayer2)}`;
 
   return (
@@ -197,7 +211,9 @@ export default function AllianceModal({
           <View style={styles.header}>
             <Text style={styles.headerEmoji}>🤝</Text>
             <Text style={styles.headerTitle}>FEATURING</Text>
-            <Text style={styles.headerSubtitle}>Alianzas temporales</Text>
+            <Text style={styles.headerSubtitle}>
+              {t('allianceModal.subtitle')}
+            </Text>
             <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
               <Text style={styles.closeText}>✕</Text>
             </TouchableOpacity>
@@ -215,7 +231,7 @@ export default function AllianceModal({
                   activeTab === 'declare' && styles.tabTextActive,
                 ]}
               >
-                Declarar
+                {t('allianceModal.declareTab')}
               </Text>
             </TouchableOpacity>
 
@@ -229,7 +245,7 @@ export default function AllianceModal({
                   activeTab === 'active' && styles.tabTextActive,
                 ]}
               >
-                Activas
+                {t('allianceModal.activeTab')}
                 {alliances.length > 0 && (
                   <Text style={styles.tabBadge}> {alliances.length}</Text>
                 )}
@@ -243,12 +259,7 @@ export default function AllianceModal({
               {/* Info box */}
               <View style={styles.infoBox}>
                 <Text style={styles.infoText}>
-                  Si tu aliado responde correctamente,{' '}
-                  <Text style={styles.infoHighlight}>
-                    recibes el 50% de sus puntos
-                  </Text>
-                  . La alianza dura{' '}
-                  <Text style={styles.infoHighlight}>3 rondas</Text>.
+                  {t('allianceModal.rules')}
                 </Text>
               </View>
 
@@ -278,8 +289,8 @@ export default function AllianceModal({
               >
                 <Text style={styles.declareButtonText}>
                   {canDeclare
-                    ? '🤝 Declarar Alianza'
-                    : 'Selecciona 2 jugadores'}
+                    ? t('allianceModal.declareButton')
+                    : t('allianceModal.selectTwo')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -291,12 +302,16 @@ export default function AllianceModal({
               {alliances.length === 0 ? (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyEmoji}>🤷</Text>
-                  <Text style={styles.emptyText}>No hay alianzas activas</Text>
+                  <Text style={styles.emptyText}>
+                    {t('allianceModal.empty')}
+                  </Text>
                   <TouchableOpacity
                     onPress={() => setActiveTab('declare')}
                     style={styles.emptyAction}
                   >
-                    <Text style={styles.emptyActionText}>Declarar una →</Text>
+                    <Text style={styles.emptyActionText}>
+                      {t('allianceModal.emptyAction')}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               ) : (

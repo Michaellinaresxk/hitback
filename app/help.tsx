@@ -1,5 +1,7 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
+import { GAME_DURATION } from '@/constants/Game';
+import { SCORE_TO_WIN } from '@/constants/Points';
 import {
   Platform,
   ScrollView,
@@ -35,10 +37,14 @@ export default function HelpScreen() {
           <Text style={styles.sectionTitle}>{t('help.objective.title')}</Text>
           <View style={styles.overviewCard}>
             <Text style={styles.overviewText}>
-              Ser el primer jugador en alcanzar{' '}
-              <Text style={styles.highlight}>15 puntos</Text> o tener la mayor
-              puntuación después de{' '}
-              <Text style={styles.highlight}>20 minutos</Text> de juego.
+              <Trans
+                i18nKey='help.objective.text'
+                values={{
+                  score: SCORE_TO_WIN,
+                  time: GAME_DURATION / 60,
+                }}
+                components={{ 1: <Text style={styles.highlight} /> }}
+              />
             </Text>
           </View>
         </View>

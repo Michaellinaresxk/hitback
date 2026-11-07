@@ -236,7 +236,6 @@ export default function GameScreen() {
     updateLossStreaks,
     clearFeaturing,
     clearBets,
-    setShowGameEndModal,
     featuringPlayerId,
     featuringTargetId,
 
@@ -306,20 +305,6 @@ export default function GameScreen() {
     reactionTarget === null &&
     !showGameEndModal;
 
-  // ── Effects ────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (isActive && players.length >= 2 && !gameStarted) {
-      initializeGame();
-    }
-  }, [isActive, players.length, gameStarted]);
-
-  useEffect(() => {
-    if (flowState.phase === 'question' && flowState.currentRound) {
-      setShowPointsModal(true);
-    }
-  }, [flowState.phase, flowState.currentRound, setShowPointsModal]);
-
-  // ── Handlers ───────────────────────────────────────────────────────────────
   const initializeGame = useCallback(async () => {
     try {
       console.log('🎮 Initializing game...');
@@ -337,6 +322,20 @@ export default function GameScreen() {
     }
   }, [players, testConnection, showWarning, showError]);
 
+  // ── Effects ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (isActive && players.length >= 2 && !gameStarted) {
+      initializeGame();
+    }
+  }, [isActive, players.length, gameStarted, initializeGame]);
+
+  useEffect(() => {
+    if (flowState.phase === 'question' && flowState.currentRound) {
+      setShowPointsModal(true);
+    }
+  }, [flowState.phase, flowState.currentRound, setShowPointsModal]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────────
   const handleNextRound = useCallback(async () => {
     console.log('🎵 Next Round button pressed');
     const success = await nextRound();
@@ -348,22 +347,42 @@ export default function GameScreen() {
     }
   }, [nextRound, flowState.currentRound, showInfo]);
 
-  const handleNewGame = useCallback(() => {
+  const handleNewGame = useCallback(async () => {
+    try {
+      await gameSessionService.clearCurrentSession();
+    } catch (error) {
+      console.error('Could not clear the saved session:', error);
+      showError(
+        'Error',
+        'No se pudo borrar de forma segura la sesión guardada.',
+      );
+      return;
+    }
+
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
     soundEffects.dispose();
-    gameSessionService.clearCurrentSession();
     createNewGame();
-  }, [setShowGameEndModal, setGameActive, createNewGame]);
+  }, [setShowGameEndModal, setGameActive, createNewGame, showError]);
 
-  const handleBackToMenu = useCallback(() => {
+  const handleBackToMenu = useCallback(async () => {
+    try {
+      await gameSessionService.clearCurrentSession();
+    } catch (error) {
+      console.error('Could not clear the saved session:', error);
+      showError(
+        'Error',
+        'No se pudo borrar de forma segura la sesión guardada.',
+      );
+      return;
+    }
+
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
-    gameSessionService.clearCurrentSession();
     createNewGame();
-  }, [setShowGameEndModal, setGameActive, createNewGame]);
+  }, [setShowGameEndModal, setGameActive, createNewGame, showError]);
 
   const handleScoreboardUsePowerCard = useCallback(
     async (playerId: string, cardId: string) => {
