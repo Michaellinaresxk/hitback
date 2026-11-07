@@ -3,18 +3,13 @@
 // Ruta en tu proyecto: store/slices/allianceSlice.ts
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { AllianceSlice, GameStore } from '@/types/game.types';
+import type { Alliance, GameStore } from '../types/gameStoreTypes';
 import { StateCreator } from 'zustand';
 
 // Counter for generating unique alliance IDs
 let allianceCounter = 0;
 
-export const createAllianceSlice: StateCreator<
-  GameStore,
-  [],
-  [],
-  AllianceSlice
-> = (set, get) => ({
+export const createAllianceSlice = ((set, get, ..._rest) => ({
   // ─── Initial state ────────────────────────────────────────────────────────
   alliances: [],
 
@@ -76,7 +71,7 @@ export const createAllianceSlice: StateCreator<
       createdAtRound: round,
     };
 
-    set((state: { alliances: any }) => ({
+    set((state) => ({
       alliances: [...state.alliances, newAlliance],
     }));
 
@@ -95,7 +90,7 @@ export const createAllianceSlice: StateCreator<
       return;
     }
 
-    set((state: { alliances: any[] }) => ({
+    set((state) => ({
       alliances: state.alliances.filter((a) => a.id !== allianceId),
     }));
 
@@ -109,35 +104,31 @@ export const createAllianceSlice: StateCreator<
     if (alliances.length === 0) return;
 
     // Separate expiring from active
-    const expiring = alliances.filter(
-      (a: { roundsLeft: number }) => a.roundsLeft <= 1,
-    );
+    const expiring = alliances.filter((a) => a.roundsLeft <= 1);
     const remaining = alliances
-      .filter((a: { roundsLeft: number }) => a.roundsLeft > 1)
-      .map((a: { roundsLeft: number }) => ({
+      .filter((a) => a.roundsLeft > 1)
+      .map((a) => ({
         ...a,
         roundsLeft: a.roundsLeft - 1,
       }));
 
     // Log expired alliances (UI notification will be handled in Feature 5)
-    expiring.forEach((a: { player1Id: any; player2Id: any }) => {
-      const p1 = players.find((p: { id: any }) => p.id === a.player1Id);
-      const p2 = players.find((p: { id: any }) => p.id === a.player2Id);
+    expiring.forEach((a) => {
+      const p1 = players.find((p) => p.id === a.player1Id);
+      const p2 = players.find((p) => p.id === a.player2Id);
       console.log(
         `⏳ Alliance expired: ${p1?.name ?? a.player1Id} ⟷ ${p2?.name ?? a.player2Id}`,
       );
     });
 
     // Log decremented alliances
-    remaining.forEach(
-      (a: { player1Id: any; player2Id: any; id: any; roundsLeft: number }) => {
-        const p1 = players.find((p: { id: any }) => p.id === a.player1Id);
-        const p2 = players.find((p: { id: any }) => p.id === a.player2Id);
+    remaining.forEach((a) => {
+        const p1 = players.find((p) => p.id === a.player1Id);
+        const p2 = players.find((p) => p.id === a.player2Id);
         console.log(
           `🤝 Alliance "${a.id}" (${p1?.name} ⟷ ${p2?.name}): ${a.roundsLeft + 1} → ${a.roundsLeft} rounds left`,
         );
-      },
-    );
+    });
 
     set({ alliances: remaining });
   },
@@ -151,4 +142,9 @@ export const createAllianceSlice: StateCreator<
       ) ?? null
     );
   },
-});
+})) satisfies StateCreator<
+  GameStore,
+  [],
+  [],
+  Partial<GameStore>
+>;

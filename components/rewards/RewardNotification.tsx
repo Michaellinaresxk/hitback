@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { IconSymbol } from '@/components/ui/IconSymbol';
-import { Difficulty, ComboReward, PowerCard } from '@/types/game.types';
+import type { Combo, Difficulty, PowerCard } from '@/types/game.types';
 import {
   DIFFICULTY_VISUAL_CONFIG,
   getComboDescription,
@@ -26,7 +26,7 @@ interface RewardNotificationProps {
   difficulty: Difficulty;
   powerCardWon?: PowerCard;
   bonusTokens: number;
-  combosAchieved: ComboReward[];
+  combosAchieved: Combo[];
 }
 
 export default function RewardNotification({

@@ -1,10 +1,11 @@
 // store/slices/uiSlice.ts
 import { StateCreator } from 'zustand';
-import { GameStore } from '../types/gameTypes';
+import type { GameStore } from '../types/gameStoreTypes';
 
-export const createUISlice: StateCreator<GameStore, [], [], UISlice> = (
-  set,
-) => ({
+export const createUISlice = ((set, ..._rest) => ({
+  isScanning: false,
+  error: null,
+  timerInterval: null,
   audioFinished: false,
   showQuestion: false,
   showAnswer: false,
@@ -16,4 +17,4 @@ export const createUISlice: StateCreator<GameStore, [], [], UISlice> = (
   setShowGameEndModal: (show: boolean) => set({ showGameEndModal: show }),
   setScanning: (scanning: boolean) => set({ isScanning: scanning }),
   setError: (error: string | null) => set({ error }),
-});
+})) satisfies StateCreator<GameStore, [], [], Partial<GameStore>>;

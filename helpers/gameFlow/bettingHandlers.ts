@@ -5,7 +5,7 @@ import { GameFlow } from './types';
 export const createBettingHandler = (
   setFlowState: React.Dispatch<React.SetStateAction<GameFlow>>
 ) => {
-  let bettingTimerRef: NodeJS.Timeout | null = null;
+  let bettingTimerRef: ReturnType<typeof setTimeout> | null = null;
 
   const startBettingTimer = () => {
     // Limpiar timer anterior

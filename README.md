@@ -27,6 +27,8 @@ npm install
 npm start
 ```
 
+Para abrir en Expo Go desde un teléfono físico, ejecuta `npx expo start --go --lan` y conecta el teléfono y el equipo a la misma red Wi-Fi. No uses `--localhost`, porque el teléfono no puede acceder al servidor Metro del equipo mediante esa dirección. Si la red bloquea conexiones locales, prueba `npx expo start --go --tunnel`.
+
 Para ejecutar los comandos móviles:
 
 ```bash
@@ -35,7 +37,7 @@ npm run android
 npm run web
 ```
 
-`npm start` ejecuta Expo CLI. Usa un development build si el runtime necesita módulos nativos no disponibles en Expo Go. El cliente lee primero `EXPO_PUBLIC_HITBACK_API_URL`; en desarrollo intenta detectar el host de Expo y usa `192.168.1.10` como fallback. Confirma que el backend sea alcanzable desde el dispositivo antes de probar flujos HTTP. No se verificó aquí la disponibilidad del host de producción configurado en el cliente.
+`npm start` ejecuta Expo CLI. Usa un development build si el runtime necesita módulos nativos no disponibles en Expo Go. El cliente lee primero `EXPO_PUBLIC_HITBACK_API_URL`; en desarrollo intenta detectar el host de Expo y usa `192.168.1.10` como fallback. Si Expo Go abre pero no conecta al backend, configura esa variable con la IP LAN del equipo (`http://<IP-LAN>:3000`); `localhost` en el teléfono apunta al propio teléfono. Confirma que el backend sea alcanzable desde el dispositivo antes de probar flujos HTTP. No se verificó aquí la disponibilidad del host de producción configurado en el cliente.
 
 ## Ciclo de ronda
 

@@ -1,6 +1,6 @@
 // gameFlow/phaseHandlers.ts
 import { gameSessionService } from '@/services/GameSessionService';
-import { GameFlow } from './types';
+import type { GameFlow, PlayerSyncData } from './types';
 import {
   getLoadingState,
   getAudioState,
@@ -14,9 +14,9 @@ export const createPhaseHandlers = (
   dependencies: {
     endGame: () => void;
     setShowGameEndModal: (show: boolean) => void;
-    syncPlayersWithStore: (players: any[]) => void;
+    syncPlayersWithStore: (players: PlayerSyncData[]) => void;
     endBettingPhase: () => void;
-  }
+  },
 ) => {
   const handleAudioFinished = () => {
     console.log(`🎵 Audio finished, starting betting phase`);
@@ -46,7 +46,7 @@ export const createPhaseHandlers = (
 
       const roundResult = result.results;
 
-      const showReward = roundResult.pointsAwarded > 0 && winnerId;
+      const showReward = roundResult.pointsAwarded > 0 && Boolean(winnerId);
       const rewardData = showReward
         ? {
             type: 'tokens' as const,
@@ -71,7 +71,7 @@ export const createPhaseHandlers = (
 
       if (roundResult.gameOver && roundResult.gameWinner) {
         console.log(
-          `🏆 Game Over detected! Winner: ${roundResult.gameWinner.name}`
+          `🏆 Game Over detected! Winner: ${roundResult.gameWinner.name}`,
         );
         dependencies.endGame();
         dependencies.setShowGameEndModal(true);

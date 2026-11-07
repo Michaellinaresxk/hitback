@@ -111,6 +111,25 @@ export default function GameScreen() {
     showWarning,
   } = useFeedback();
 
+  const reconcileCanonicalScores = useCallback(async () => {
+    try {
+      const { session } = await gameSessionService.getStatus();
+      useGameStore.getState().syncPlayersFromBackend(session.players);
+    } catch (error) {
+      console.error('❌ Could not reconcile canonical scores:', error);
+    }
+  }, []);
+
+  const settleScoreAdjustments = useCallback(
+    async (
+      adjustments: { playerId: string; delta: number; reason: string }[],
+    ) => {
+      const result = await gameSessionService.applyScoreSettlement(adjustments);
+      useGameStore.getState().syncPlayersFromBackend(result.players);
+    },
+    [],
+  );
+
   // ── Local State ────────────────────────────────────────────────────────────
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
@@ -144,11 +163,14 @@ export default function GameScreen() {
     applyImmediateCardEffect: async (playerId, scoreChange) => {
       applyBadReview(playerId); // LABEL FEE siempre es -1: reusa applyBadReview
       const backendId = getBackendPlayerId(playerId, players, playerIdMap);
-      await gameSessionService.applyScoreDelta(
-        backendId,
-        scoreChange,
-        'LABEL_FEE',
-      );
+      try {
+        await settleScoreAdjustments([
+          { playerId: backendId, delta: scoreChange, reason: 'LABEL_FEE' },
+        ]);
+      } catch (error) {
+        await reconcileCanonicalScores();
+        throw error;
+      }
     },
   });
 
@@ -272,6 +294,17 @@ export default function GameScreen() {
     if (featuringTargetId) ids.push(featuringTargetId);
     return ids;
   }, [featuringPlayerId, featuringTargetId]);
+
+  const canShowBSideNotification =
+    !landingEvent &&
+    !showPointsModal &&
+    !showBettingModal &&
+    !showAllianceModal &&
+    !showFeaturingModal &&
+    !showDuelModal &&
+    !comboFlowState.isActive &&
+    reactionTarget === null &&
+    !showGameEndModal;
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -441,8 +474,9 @@ export default function GameScreen() {
   );
 
   const handleReactionCard = useCallback(
-    (cardType: ReactionCardType, playerId: string) => {
-      switch (cardType) {
+    async (cardType: ReactionCardType, playerId: string) => {
+      try {
+        switch (cardType) {
         case 'MUTE':
           toggleFreezePlayer(playerId);
           break;
@@ -476,16 +510,10 @@ export default function GameScreen() {
               players,
               playerIdMap,
             );
-            gameSessionService.applyScoreDelta(
-              leaderBackendId,
-              -1,
-              'ROYALTIES',
-            );
-            gameSessionService.applyScoreDelta(
-              holderBackendId,
-              +1,
-              'ROYALTIES',
-            );
+            await settleScoreAdjustments([
+              { playerId: leaderBackendId, delta: -1, reason: 'ROYALTIES' },
+              { playerId: holderBackendId, delta: 1, reason: 'ROYALTIES' },
+            ]);
           }
           break;
         }
@@ -501,11 +529,9 @@ export default function GameScreen() {
               players,
               playerIdMap,
             );
-            gameSessionService.applyScoreDelta(
-              backendId,
-              -deduction,
-              'COPYRIGHTS',
-            );
+            await settleScoreAdjustments([
+              { playerId: backendId, delta: -deduction, reason: 'COPYRIGHTS' },
+            ]);
           }
           break;
         }
@@ -516,7 +542,9 @@ export default function GameScreen() {
             players,
             playerIdMap,
           );
-          gameSessionService.applyScoreDelta(backendIdSoldOut, +1, 'SOLD_OUT');
+          await settleScoreAdjustments([
+            { playerId: backendIdSoldOut, delta: 1, reason: 'SOLD_OUT' },
+          ]);
           break;
         }
         case 'BAD_REVIEW': {
@@ -526,11 +554,9 @@ export default function GameScreen() {
             players,
             playerIdMap,
           );
-          gameSessionService.applyScoreDelta(
-            backendIdBadReview,
-            -1,
-            'BAD_REVIEW',
-          );
+          await settleScoreAdjustments([
+            { playerId: backendIdBadReview, delta: -1, reason: 'BAD_REVIEW' },
+          ]);
           break;
         }
         case 'MANAGEMENT_FEE': {
@@ -540,11 +566,9 @@ export default function GameScreen() {
             players,
             playerIdMap,
           );
-          gameSessionService.applyScoreDelta(
-            backendIdMgmt,
-            -1,
-            'MANAGEMENT_FEE',
-          );
+          await settleScoreAdjustments([
+            { playerId: backendIdMgmt, delta: -1, reason: 'MANAGEMENT_FEE' },
+          ]);
           break;
         }
         case 'CHARITY_SHOW': {
@@ -574,21 +598,25 @@ export default function GameScreen() {
               players,
               playerIdMap,
             );
-            gameSessionService.applyScoreDelta(
-              leaderBackendId,
-              -1,
-              'CHARITY_SHOW',
-            );
-            gameSessionService.applyScoreDelta(
-              recipientBackendId,
-              +1,
-              'CHARITY_SHOW',
-            );
+            await settleScoreAdjustments([
+              { playerId: leaderBackendId, delta: -1, reason: 'CHARITY_SHOW' },
+              { playerId: recipientBackendId, delta: 1, reason: 'CHARITY_SHOW' },
+            ]);
           }
           break;
         }
         default:
           break;
+      }
+    } catch (error) {
+      console.error('❌ Reaction Card score settlement failed:', error);
+      await reconcileCanonicalScores();
+      showError(
+        'Error',
+        error instanceof Error
+          ? error.message
+          : 'No se pudo sincronizar la puntuación con el servidor.',
+      );
       }
     },
     [
@@ -607,6 +635,9 @@ export default function GameScreen() {
       applyManagementFee,
       applyCharityShow,
       showSuccess,
+      settleScoreAdjustments,
+      reconcileCanonicalScores,
+      showError,
     ],
   );
 
@@ -773,7 +804,9 @@ export default function GameScreen() {
       />
 
       <LossStreakModal
-        visible={bSideNotification?.visible ?? false}
+        visible={Boolean(
+          bSideNotification?.visible && canShowBSideNotification,
+        )}
         playerNames={bSideNotification?.playerNames ?? []}
         onClose={() => setBSideNotification(null)}
       />

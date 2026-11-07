@@ -8,23 +8,14 @@ import {
   StyleSheet,
 } from 'react-native';
 import { gameSessionService } from '@/services/GameSessionService';
+import type { CurrentRound } from '@/services/GameSessionService';
 
 interface PointsAwardModalProps {
   visible: boolean;
   flowState: {
-    currentRound?: {
-      question: {
-        icon: string;
-        text: string;
-        type: string;
-        points: number;
-      };
-    };
-    gameMasterAnswer?: {
-      correctAnswer: string;
-      trackTitle: string;
-      trackArtist: string;
-    };
+    currentRound?: CurrentRound | null;
+    correctAnswer?: string | null;
+    trackInfo?: { title: string; artist: string } | null;
   };
   players: Array<{
     id: string;

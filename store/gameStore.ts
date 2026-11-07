@@ -7,7 +7,7 @@ import { createUISlice } from './slices/uiSlice';
 import { createBackendSlice } from './slices/backendSlice';
 
 import { createAllianceSlice } from './slices/allianceSlice';
-import { GameStore } from '@/types/game.types';
+import type { GameStore } from './types/gameStoreTypes';
 
 export const useGameStore = create<GameStore>()(
   devtools((...args) => ({

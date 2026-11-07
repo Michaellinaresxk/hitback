@@ -5,6 +5,7 @@ export interface Player {
   id: string;
   name: string;
   score: number;
+  correctAnswers: number;
   isCurrentTurn: boolean;
   availableTokens: number[];
   powerCards: any[];
@@ -36,12 +37,13 @@ export interface GameState {
   currentTurn: number;
   gameMode: 'normal' | 'battle' | 'speed' | 'viral';
   timeLeft: number;
+  gameDurationMinutes: number;
   isActive: boolean;
   round: number;
   currentCard: Card | null;
   isScanning: boolean;
   error: string | null;
-  timerInterval: NodeJS.Timeout | null;
+  timerInterval: ReturnType<typeof setInterval> | null;
   gamePot: { tokens: number; powerCards: any[] };
   viralMomentActive: boolean;
   speedRoundCards: Card[];
@@ -61,6 +63,11 @@ export interface GameState {
   backendConnected: boolean;
   lastBackendCheck: string | null;
   doublePlatinumActive: boolean;
+  stopBlastActive: boolean;
+  stopBlastHolderId: string | null;
+  duelActive: boolean;
+  duelPlayer1Id: string | null;
+  duelPlayer2Id: string | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +130,9 @@ export interface GameStore extends GameState {
       name: string;
       score: number;
       availableTokens: number[];
+      stats?: {
+        correctAnswers?: number;
+      };
     }[],
   ) => void;
 
@@ -132,6 +142,7 @@ export interface GameStore extends GameState {
   setGameActive: (active: boolean) => void;
   endGame: () => Promise<void>;
   nextTurn: () => void;
+  setGameDuration: (minutes: number) => void;
   startTimer: (duration: number) => void;
   stopTimer: () => void;
   startBattleMode: (player1Id: string, player2Id: string) => void;
@@ -141,6 +152,10 @@ export interface GameStore extends GameState {
   clearFeaturing: () => void;
   activateDoublePlatinum: () => void;
   clearDoublePlatinum: () => void;
+  clearStopBlast: () => void;
+  clearDuel: () => void;
+  activateStopBlast: (holderId: string) => void;
+  activateDuel: (player1Id: string, player2Id: string) => void;
 
   // ── Card slice ────────────────────────────────────────────────────────────
   scanCard: (qrCode: string, gameCard?: Card) => Promise<void>;

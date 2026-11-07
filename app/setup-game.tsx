@@ -354,7 +354,7 @@ export default function GameSetupScreen() {
 
         <View style={styles.rulesContainer}>
           <Text style={styles.ruleText}>
-            • Presiona "Siguiente Canción" para empezar cada ronda
+            • Presiona &quot;Siguiente Canción&quot; para empezar cada ronda
           </Text>
           <Text style={styles.ruleText}>
             • Escucha el audio y apuesta tokens si crees saber la respuesta
@@ -480,6 +480,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     minWidth: 48,
+  },
+  playersList: {
+    maxHeight: 300,
   },
 
   playerItem: {

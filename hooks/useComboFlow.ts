@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, MutableRefObject } from 'react';
+import { useState, useCallback, MutableRefObject } from 'react';
 import { gameSessionService } from '@/services/GameSessionService';
 import { getBackendPlayerId } from '@/utils/game/gameHelpers';
 import type { Player } from '@/store/types/gameStoreTypes';
@@ -52,7 +52,8 @@ interface UseComboFlowParams {
 /**
  * Gestiona el flujo completo de combo:
  * notificación → escáner de power card → avance de turno.
- * Incluye un safety reset de 30s para evitar estados colgados.
+ * La progresión depende explícitamente del Game Master; no hay timeout
+ * automático que cierre el escáner o avance la ronda.
  */
 export function useComboFlow({
   players,
@@ -66,20 +67,6 @@ export function useComboFlow({
   applyImmediateCardEffect,
 }: UseComboFlowParams) {
   const [comboFlowState, setComboFlowState] = useState<ComboFlowState>(INITIAL_COMBO_STATE);
-
-  // Safety: resetea el flujo si lleva más de 30s activo y avanza el turno
-  useEffect(() => {
-    if (!comboFlowState.isActive) return;
-
-    const safetyTimer = setTimeout(() => {
-      console.warn('⚠️ Safety: Combo flow was active for too long, resetting');
-      setComboFlowState(INITIAL_COMBO_STATE);
-      resetProcessingRefs();
-      advanceToNextTurn();
-    }, 30000);
-
-    return () => clearTimeout(safetyTimer);
-  }, [comboFlowState.isActive, resetProcessingRefs, advanceToNextTurn]);
 
   /** Activa el flujo de combo tras una respuesta correcta con streak. */
   const activateCombo = useCallback(

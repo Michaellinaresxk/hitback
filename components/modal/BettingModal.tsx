@@ -201,7 +201,7 @@ export default function BettingModal({
                 onClose();
               }}
             >
-              <IconSymbol name='check.circle' size={22} color='#FFFFFF' />
+              <IconSymbol               name='checkmark.circle.fill' size={22} color='#FFFFFF' />
               <Text style={styles.confirmText}>
                 CONFIRMAR APUESTAS Y CONTINUAR
               </Text>

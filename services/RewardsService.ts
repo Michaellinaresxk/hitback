@@ -1,5 +1,14 @@
 import powerCardsJson from '@/data/powerCards.json';
-import { Combo, Difficulty, Player, PowerCard } from '@/types/game.types';
+import type {
+  CardType,
+  Combo,
+  ComboCondition,
+  ComboRewardType,
+  Difficulty,
+  Player,
+  PowerCard,
+  PowerCardType,
+} from '@/types/game.types';
 
 interface RewardResult {
   powerCard?: PowerCard;
@@ -9,8 +18,31 @@ interface RewardResult {
 }
 
 class RewardsService {
-  private powerCards = powerCardsJson.powerCards;
-  private combos = powerCardsJson.combos;
+  private powerCards: PowerCard[] = powerCardsJson.powerCards.map((card) => ({
+    ...card,
+    type: card.type as PowerCardType,
+    isActive: false,
+  }));
+  private combos: Combo[] = powerCardsJson.combosList.map((combo) => ({
+    ...combo,
+    conditions: combo.conditions.map((condition) => ({
+      ...condition,
+      type: condition.type as ComboCondition['type'],
+      cardType:
+        'cardType' in condition
+          ? (condition.cardType as CardType)
+          : undefined,
+      difficulty:
+        'difficulty' in condition
+          ? (condition.difficulty as Difficulty)
+          : undefined,
+    })),
+    reward: {
+      ...combo.reward,
+      type: combo.reward.type as ComboRewardType,
+      powerCardType: combo.reward.powerCardType as PowerCardType | undefined,
+    },
+  }));
 
   // Calculate rewards based on difficulty and performance
   calculateRewards(
@@ -45,7 +77,9 @@ class RewardsService {
 
     // Streak bonuses
     if (consecutiveCorrect >= 2) {
-      const hotStreak = this.combos.find((c: { id: string; }) => c.id === 'combo_hot_streak');
+      const hotStreak = this.combos.find(
+        (c: { id: string }) => c.id === 'combo_hot_streak',
+      );
       if (hotStreak) combosAchieved.push(hotStreak);
     }
 
@@ -107,6 +141,7 @@ class RewardsService {
       ...card,
       id: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       currentUses: 0,
+      isActive: false,
     };
   }
 
@@ -120,7 +155,7 @@ class RewardsService {
   ): Combo[] {
     const achievedCombos: Combo[] = [];
 
-    this.combos.forEach((combo: { conditions: any[]; }) => {
+    this.combos.forEach((combo) => {
       const conditionsMet = combo.conditions.every((condition) => {
         switch (condition.type) {
           case 'consecutive_wins':
@@ -188,6 +223,7 @@ class RewardsService {
       ...card,
       id: `${card.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       currentUses: 0,
+      isActive: false,
     };
   }
 

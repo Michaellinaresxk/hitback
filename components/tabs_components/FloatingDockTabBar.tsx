@@ -1,7 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  useColorScheme as useRNColorScheme,
+} from 'react-native';
 import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { useColorScheme as useRNColorScheme } from 'react-native';
 import React from 'react';
 import FloatingTabButton from './FloatingTabButton';
 
@@ -55,8 +58,8 @@ export default function FloatingDockTabBar({
             options.tabBarLabel !== undefined
               ? String(options.tabBarLabel)
               : options.title !== undefined
-              ? options.title
-              : route.name;
+                ? options.title
+                : route.name;
 
           const isFocused = state.index === index;
 

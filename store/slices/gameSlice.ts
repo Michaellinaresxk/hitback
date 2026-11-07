@@ -8,8 +8,9 @@ import {
 import { GAME_DURATION } from '@/constants/Game';
 import { generateRoute } from '@/utils/worldtourUtils';
 import { BoardTile } from '@/types/worldTour.types';
+import type { GameStore } from '../types/gameStoreTypes';
 
-export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
+export const createGameSlice = ((set, get, ..._rest) => ({
   id: '',
   currentTurn: 0,
   worldTourRoutes: null as Record<string, BoardTile[]> | null,
@@ -209,7 +210,7 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
 
     set({ timeLeft: duration });
 
-    const newInterval = setInterval(() => {
+    const newInterval: ReturnType<typeof setInterval> = setInterval(() => {
       const { timeLeft, isActive } = get();
       if (!isActive || timeLeft <= 0) {
         get().stopTimer();
@@ -315,4 +316,4 @@ export const createGameSlice: StateCreator<GameStore, [], []> = (set, get) => ({
   setGameDuration: (minutes: number) => {
     set({ gameDurationMinutes: minutes });
   },
-});
+})) satisfies StateCreator<GameStore, [], [], Partial<GameStore>>;

@@ -1,10 +1,11 @@
 // store/slices/cardSlice.ts
 import { StateCreator } from 'zustand';
-import { GameStore, Card } from '../types/gameTypes';
+import type { GameStore, Card } from '../types/gameStoreTypes';
 
-export const createCardSlice: StateCreator<GameStore, [], [], CardSlice> = (
+export const createCardSlice = ((
   set,
-  get
+  get,
+  ..._rest
 ) => ({
   currentCard: null,
   speedRoundCards: [],
@@ -41,4 +42,4 @@ export const createCardSlice: StateCreator<GameStore, [], [], CardSlice> = (
       });
     }
   },
-});
+})) satisfies StateCreator<GameStore, [], [], Partial<GameStore>>;

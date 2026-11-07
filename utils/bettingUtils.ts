@@ -1,5 +1,5 @@
 // utils/game/bettingUtils.ts
-import { Player } from '@/store/gameStore';
+import type { Player } from '@/store/types/gameStoreTypes';
 
 /**
  * Determina si se puede apostar en la ronda actual
@@ -7,7 +7,7 @@ import { Player } from '@/store/gameStore';
 export const canBetInCurrentRound = (
   roundNumber: number,
   phase: string,
-  hasPlacedBet: boolean
+  hasPlacedBet: boolean,
 ): boolean => {
   // Solo se puede apostar:
   // 1. En rondas 2+ (ronda 1 no tiene apuestas)
@@ -21,7 +21,7 @@ export const canBetInCurrentRound = (
  */
 export const validateTokenUsage = (
   player: Player | undefined,
-  tokenValue: number
+  tokenValue: number,
 ): { valid: boolean; error?: string } => {
   if (!player) {
     return { valid: false, error: 'Jugador no encontrado' };
@@ -43,7 +43,7 @@ export const validateTokenUsage = (
 export const calculateTotalPoints = (
   basePoints: number,
   tokenValue: number,
-  hasBoost: boolean = false
+  hasBoost: boolean = false,
 ): number => {
   let total = basePoints + tokenValue;
   if (hasBoost) {

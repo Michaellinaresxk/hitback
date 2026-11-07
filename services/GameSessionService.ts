@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import type { PowerCard } from '@/types/game.types';
 
 // ✅ Conecta con el nuevo API v2 (SIN QR)
 // ✅ Maneja sesiones de juego completas
@@ -33,8 +34,9 @@ export interface SessionPlayer {
   id: string;
   name: string;
   score: number;
-  tokens: number;
-  powerCards: any[];
+  availableTokens: number[];
+  tokens?: number;
+  powerCards: PowerCard[];
   stats: {
     correctAnswers: number;
     wrongAnswers: number;
@@ -55,6 +57,18 @@ export interface GameSession {
   currentRound: CurrentRound | null;
   timeRemaining: number;
   startedAt: string | null;
+}
+
+export interface ScoreModifiers {
+  alliancePartnerId?: string;
+  featuringPartnerId?: string;
+  bSidePlayerId?: string;
+}
+
+export interface ScoreAdjustment {
+  playerId: string;
+  delta: number;
+  reason: string;
 }
 
 export interface CurrentRound {
@@ -115,6 +129,12 @@ export interface RoundResult {
   };
   tokensLost: Record<string, number>;
   tokensWon: number;
+  scoreModifiers?: Array<{
+    type: 'ALLIANCE' | 'FEATURING' | 'B_SIDE';
+    playerId: string;
+    points: number;
+  }>;
+  players?: SessionPlayer[];
   gameOver?: boolean;
   gameWinner?: {
     id: string;
@@ -133,6 +153,7 @@ class GameSessionService {
   private baseUrl: string;
   private timeout: number = 15000;
   private currentSessionId: string | null = null;
+  private currentSessionToken: string | null = null;
 
   constructor() {
     this.baseUrl = getBaseUrl();
@@ -179,6 +200,9 @@ class GameSessionService {
           headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            ...(this.currentSessionToken
+              ? { Authorization: `Bearer ${this.currentSessionToken}` }
+              : {}),
             ...options.headers,
           },
         });
@@ -215,12 +239,16 @@ class GameSessionService {
   async createSession(config: Partial<SessionConfig>): Promise<{
     success: boolean;
     session: GameSession;
+    capabilityToken: string;
   }> {
     console.log(`📋 Creating session...`, config);
+    this.currentSessionId = null;
+    this.currentSessionToken = null;
 
     const result = await this.fetchAPI<{
       success: boolean;
       session: GameSession;
+      capabilityToken: string;
     }>('/session', {
       method: 'POST',
       body: JSON.stringify(config),
@@ -228,6 +256,7 @@ class GameSessionService {
 
     if (result.success && result.session) {
       this.currentSessionId = result.session.id;
+      this.currentSessionToken = result.capabilityToken;
       console.log(`✅ Session created: ${this.currentSessionId}`);
     }
 
@@ -244,6 +273,7 @@ class GameSessionService {
   async startGame(sessionId?: string): Promise<{
     success: boolean;
     session: GameSession;
+    error?: string;
   }> {
     const id = sessionId || this.currentSessionId;
 
@@ -271,13 +301,10 @@ class GameSessionService {
     forceQuestionType?: string,
   ): Promise<{
     success: boolean;
-    round?: {
-      number: number;
-      track: CurrentRound['track'];
-      question: CurrentRound['question'];
-    };
+    round?: CurrentRound;
     gameOver?: boolean;
-    winner?: any;
+    winner?: { id: string; name: string; score: number };
+    error?: string;
   }> {
     const id = sessionId || this.currentSessionId;
 
@@ -287,7 +314,7 @@ class GameSessionService {
 
     console.log(`🎵 Getting next round for session: ${id}`);
 
-    const body: any = {};
+    const body: { forceQuestionType?: string } = {};
     if (forceQuestionType) {
       body.forceQuestionType = forceQuestionType;
     }
@@ -313,6 +340,7 @@ class GameSessionService {
     success: boolean;
     bet: BetInfo;
     playerTokens: number;
+    error?: string;
   }> {
     const id = sessionId || this.currentSessionId;
 
@@ -337,11 +365,13 @@ class GameSessionService {
    */
   async revealAnswer(
     winnerId: string | null,
+    scoreModifiers: ScoreModifiers = {},
     sessionId?: string,
   ): Promise<{
     success: boolean;
     results: RoundResult;
     players: SessionPlayer[];
+    error?: string;
   }> {
     const id = sessionId || this.currentSessionId;
 
@@ -353,7 +383,7 @@ class GameSessionService {
 
     return this.fetchAPI(`/session/${id}/reveal`, {
       method: 'POST',
-      body: JSON.stringify({ winnerId }),
+      body: JSON.stringify({ winnerId, scoreModifiers }),
     });
   }
 
@@ -437,6 +467,9 @@ class GameSessionService {
         headers: {
           'Content-Type': 'application/json',
           Accept: 'application/json',
+          ...(this.currentSessionToken
+            ? { Authorization: `Bearer ${this.currentSessionToken}` }
+            : {}),
         },
         body: JSON.stringify({ qrCode, playerId, sessionId: id }),
       });
@@ -502,29 +535,35 @@ class GameSessionService {
     backendPlayerId: string,
     delta: number,
     reason: string,
-  ): Promise<{ success: boolean }> {
+  ): Promise<{ success: boolean; players: SessionPlayer[] }> {
+    return this.applyScoreSettlement([
+      { playerId: backendPlayerId, delta, reason },
+    ]);
+  }
+
+  async applyScoreSettlement(
+    adjustments: ScoreAdjustment[],
+  ): Promise<{ success: boolean; players: SessionPlayer[] }> {
     const id = this.currentSessionId;
     if (!id) {
-      console.warn('⚠️ applyScoreDelta: no hay sesión activa');
-      return { success: false };
+      throw new Error('No hay sesión activa para liquidar puntuación');
     }
 
     console.log(
-      `🎴 applyScoreDelta → ${reason}: player ${backendPlayerId} ${delta > 0 ? '+' : ''}${delta}`,
+      `🎴 Applying ${adjustments.length} canonical score adjustment(s)`,
     );
 
     try {
       return await this.fetchAPI(
-        `/session/${id}/players/${backendPlayerId}/score`,
+        `/session/${id}/score-settlement`,
         {
-          method: 'PATCH',
-          body: JSON.stringify({ delta, reason }),
+          method: 'POST',
+          body: JSON.stringify({ adjustments }),
         },
       );
     } catch (error) {
-      // No bloqueamos el juego si falla — el score local ya está actualizado
-      console.error(`❌ applyScoreDelta failed (${reason}):`, error);
-      return { success: false };
+      console.error('❌ Score settlement failed:', error);
+      throw error;
     }
   }
 
@@ -552,6 +591,7 @@ class GameSessionService {
 
     if (result.success && id === this.currentSessionId) {
       this.currentSessionId = null;
+      this.currentSessionToken = null;
     }
 
     return result;
@@ -562,6 +602,7 @@ class GameSessionService {
    */
   clearCurrentSession(): void {
     this.currentSessionId = null;
+    this.currentSessionToken = null;
     console.log(`🧹 Current session cleared`);
   }
 

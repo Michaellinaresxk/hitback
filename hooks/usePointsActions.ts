@@ -8,6 +8,8 @@ import { useGameStore } from '@/store/gameStore';
 import { BoardTile } from '@/types/worldTour.types';
 import { TourLandingEvent } from '@/components/modal/TourLandingModal';
 import { getActForPosition } from '@/utils/worldtourUtils';
+import { gameSessionService } from '@/services/GameSessionService';
+import type { ScoreModifiers } from '@/services/GameSessionService';
 
 interface BSideNotification {
   visible: boolean;
@@ -19,7 +21,10 @@ interface UsePointsActionsParams {
   players: Player[];
   playerIdMap: Record<string, string>;
   advancePlayerBoard: (playerId: string) => BoardTile | null;
-  revealAnswer: (winnerId: string | null) => Promise<any>;
+  revealAnswer: (
+    winnerId: string | null,
+    scoreModifiers?: ScoreModifiers,
+  ) => Promise<any>;
   awardAllianceBonus: (winnerId: string, pts: number) => void;
   applyFeaturingBonus: (partnerId: string, pts: number) => void;
   applyBSideBonus: (winnerId: string) => boolean;
@@ -76,16 +81,29 @@ export function usePointsActions({
     null,
   );
 
+  const reconcileCanonicalScores = useCallback(async () => {
+    try {
+      const { session } = await gameSessionService.getStatus();
+      useGameStore.getState().syncPlayersFromBackend(session.players);
+    } catch (error) {
+      console.error('❌ Could not reconcile canonical scores:', error);
+    }
+  }, []);
+
   const handleWrongAnswer = useCallback(async () => {
     soundEffects.playWrong();
     const result = await revealAnswer(null);
 
-    if (result) {
-      showInfo(
-        'Nadie Acertó',
-        `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
-      );
+    if (!result) {
+      await reconcileCanonicalScores();
+      showError('Error', 'No se pudo guardar el resultado de la ronda. Inténtalo de nuevo.');
+      return;
     }
+
+    showInfo(
+      'Nadie Acertó',
+      `La respuesta era: ${result.correctAnswer}\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
+    );
 
     const playersWithBets = players.filter(
       (p) => p.currentBet && p.currentBet > 0,
@@ -121,6 +139,8 @@ export function usePointsActions({
     showWarning,
     advanceToNextTurn,
     updateLossStreaks,
+    reconcileCanonicalScores,
+    showError,
   ]);
 
   const handleAwardPoints = useCallback(
@@ -147,7 +167,39 @@ export function usePointsActions({
           players,
           playerIdMap,
         );
-        const result = await revealAnswer(backendPlayerId);
+        const scoreModifiers: ScoreModifiers = {};
+        const alliance = useGameStore.getState().getPlayerAlliance(playerId);
+        if (alliance) {
+          const partnerId =
+            alliance.player1Id === playerId
+              ? alliance.player2Id
+              : alliance.player1Id;
+          scoreModifiers.alliancePartnerId = getBackendPlayerId(
+            partnerId,
+            players,
+            playerIdMap,
+          );
+        }
+        if (
+          featuringPlayerId &&
+          featuringTargetId &&
+          (playerId === featuringPlayerId || playerId === featuringTargetId)
+        ) {
+          const partnerId =
+            playerId === featuringPlayerId
+              ? featuringTargetId
+              : featuringPlayerId;
+          scoreModifiers.featuringPartnerId = getBackendPlayerId(
+            partnerId,
+            players,
+            playerIdMap,
+          );
+        }
+        if (player.bSideActive) {
+          scoreModifiers.bSidePlayerId = backendPlayerId;
+        }
+
+        const result = await revealAnswer(backendPlayerId, scoreModifiers);
 
         if (result) {
           const pts = result.pointsAwarded as number;
@@ -160,36 +212,11 @@ export function usePointsActions({
 
           // 1️⃣ Alliance 50/50
           if (pts) {
-            const alliance = useGameStore.getState().getPlayerAlliance(playerId);
+            const alliance = useGameStore
+              .getState()
+              .getPlayerAlliance(playerId);
             if (alliance) {
-              const partnerId =
-                alliance.player1Id === playerId
-                  ? alliance.player2Id
-                  : alliance.player1Id;
-              const share = Math.floor(pts / 2);
               awardAllianceBonus(playerId, pts);
-              const winnerBackendId = getBackendPlayerId(
-                playerId,
-                players,
-                playerIdMap,
-              );
-              const partnerBackendId = getBackendPlayerId(
-                partnerId,
-                players,
-                playerIdMap,
-              );
-              await Promise.all([
-                gameSessionService.applyScoreDelta(
-                  winnerBackendId,
-                  -share,
-                  'ALLIANCE',
-                ),
-                gameSessionService.applyScoreDelta(
-                  partnerBackendId,
-                  share,
-                  'ALLIANCE',
-                ),
-              ]);
             }
           }
 
@@ -205,17 +232,6 @@ export function usePointsActions({
                   : featuringPlayerId;
 
               applyFeaturingBonus(partnerId, pts);
-              const partnerBackendId = getBackendPlayerId(
-                partnerId,
-                players,
-                playerIdMap,
-              );
-              await gameSessionService.applyScoreDelta(
-                partnerBackendId,
-                pts,
-                'FEATURING',
-              );
-
               const partner = players.find((p) => p.id === partnerId);
               showSuccess(
                 '🎤 ¡Featuring!',
@@ -228,12 +244,6 @@ export function usePointsActions({
           // 3️⃣ B-SIDE comeback +1
           const bSideApplied = applyBSideBonus(playerId);
           if (bSideApplied) {
-            const backendId = getBackendPlayerId(
-              playerId,
-              players,
-              playerIdMap,
-            );
-            await gameSessionService.applyScoreDelta(backendId, +1, 'B_SIDE');
             showSuccess('🎶 ¡B-SIDE!', `${player.name} recupera con +1 bonus`);
           }
 
@@ -246,10 +256,20 @@ export function usePointsActions({
             setBSideNotification({ visible: true, playerNames: names });
           }
 
+          if (Array.isArray(result.players)) {
+            useGameStore.getState().syncPlayersFromBackend(result.players);
+          }
+
           // 5️⃣ World Tour: always advance the correct player's board tile
           const tile = advancePlayerBoard(playerId);
 
-          // 6️⃣ Combo flow — board already advanced, combo takes UI control
+          // 6️⃣ Game over takes precedence over combo/scanner UI.
+          if (result.gameOver && result.gameWinner) {
+            setTimeout(() => setShowGameEndModal(true), 1500);
+            return;
+          }
+
+          // 7️⃣ Combo flow — board already advanced, combo takes UI control
           if (result.comboStatus) {
             activateCombo({
               playerId,
@@ -258,12 +278,6 @@ export function usePointsActions({
               comboEmoji: '🔥',
               comboDescription: result.comboStatus.message,
             });
-            return;
-          }
-
-          // 7️⃣ Game over — board already advanced
-          if (result.gameOver && result.gameWinner) {
-            setTimeout(() => setShowGameEndModal(true), 1500);
             return;
           }
 
@@ -288,7 +302,19 @@ export function usePointsActions({
             // Fallback: no route active, go to next turn directly
             setTimeout(() => advanceToNextTurn(), 2000);
           }
+        } else {
+          await reconcileCanonicalScores();
+          showError('Error', 'No se pudo guardar el resultado de la ronda. Inténtalo de nuevo.');
         }
+      } catch (error) {
+        console.error('❌ Failed to award points:', error);
+        await reconcileCanonicalScores();
+        showError(
+          'Error',
+          error instanceof Error
+            ? error.message
+            : 'No se pudo guardar el resultado de la ronda.',
+        );
       } finally {
         isAwardingRef.current = false;
       }
@@ -310,6 +336,8 @@ export function usePointsActions({
       featuringTargetId,
       clearFeaturing,
       activateCombo,
+      reconcileCanonicalScores,
+      showError,
     ],
   );
 

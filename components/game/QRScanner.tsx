@@ -35,7 +35,7 @@ export default function QRScanner({
 
   const isProcessingRef = useRef(false);
   const isMountedRef = useRef(true);
-  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ✅ Track mounted state
   useEffect(() => {

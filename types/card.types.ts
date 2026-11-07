@@ -1,5 +1,5 @@
 // types/card_types.ts - HITBACK Card Types
-// ✅ Re-exporta CurrentCard de game_types para compatibilidad
+// ✅ Re-exporta CurrentCard de game.types para compatibilidad
 
 import { CurrentCard, Track, CardType, QuestionData } from './game.types';
 
