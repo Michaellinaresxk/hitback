@@ -3,7 +3,7 @@
     "city": "Los Angeles",
     "country": "Stany Zjednoczone",
     "venue": "The Roxy",
-    "story": "The Roxy otworzył prywatny koncert Neila Younga i szybko stał się starszym bratem Whisky a Go Go. Występ Bruce'a Springsteena przekonał magazyn Rolling Stone, by nazwać go przyszłością rocka.",
+    "story": "The Roxy otworzył prywatny concert Neila Younga i szybko stał się starszym bratem Whisky a Go Go. Występ Bruce'a Springsteena przekonał magazyn Rolling Stone, by nazwać go przyszłością rocka.",
     "realFact": "Na liście gości podczas otwarcia w 1973 roku znaleźli się Elton John, David Bowie i Carole King. Każdy wieczór w The Roxy mógł przejść do historii muzyki."
   },
   "bataclan": {
@@ -18,7 +18,7 @@
     "country": "Wielka Brytania",
     "venue": "KOKO",
     "story": "KOKO, zbudowane w 1900 roku jako teatr w Camden Town, jest świątynią londyńskiej sceny alternatywnej. Madonna zaskoczyła tu publiczność w latach 2000, a Prince zagrał trzy sekretne koncerty z rzędu w 2014 roku.",
-    "realFact": "Budynek jest objęty ochroną jako zabytek. Gdy w latach 90. planowano jego rozbiórkę, tysiące fanów z Camden przykuło się do jego drzwi."
+    "realFact": "Budynek jest objęty ochroną jako zabytek. Gdy w latach 90. planowano jego rozbiórke, tysiące fanów z Camden przykuło się do jego drzwi."
   },
   "tempodrom": {
     "city": "Berlin",
@@ -39,20 +39,20 @@
     "country": "Argentyna",
     "venue": "La Vieja Usina",
     "story": "Dawna elektrownia w dzielnicy San Telmo, dziś centrum kultury, w którym tango i argentyński rock spotykają się wśród ceglanych ścian. Los Fabulosos Cadillacs nagrali tu kilka utworów ze swojego złotego okresu.",
-    "realFact": "San Telmo było pierwszą dzielnicą Buenos Aires z elektrycznością, w 1888 roku. Ta sama elektrownia, która oświetlała miasto, dziś wzmacnia muzykę jego spadkobierców kultury."
+    "realFact": "San Telmo było pierwszą dzielnicą Buenos Aires z elektrycznością, w 1888 roku. Ta sama elektrownia, która oświtała miasto, dziś wzmacnia muzykę jego spadkobierców kultury."
   },
   "theGarage": {
-    "city": "Glasgow",
+    "city": "Glaszcza",
     "country": "Szkocja",
     "venue": "The Garage",
-    "story": "Glasgow ma jedną z najżywszych scen koncertowych w Wielkiej Brytanii. W The Garage Franz Ferdinand, Frightened Rabbit i Biffy Clyro grali jedne ze swoich pierwszych koncertów, zanim podbili świat.",
-    "realFact": "Glasgow ma więcej sal koncertowych na mieszkańca niż jakiekolwiek inne europejskie miasto. W latach 90. miało więcej klubów indie niż Manchester, Liverpool i Londyn razem."
+    "story": "Glaszcza ma jedną z najżywszych scen koncertowych w Wielkiej Brytanii. W The Garage Franz Ferdinand, Frightened Rabbit i Biffy Clyro grali jedne ze swoich pierwszych koncertos, zanim podbili świat.",
+    "realFact": "Glaszcza ma więcej sal koncertowych na mieszkańca niż jakiekolwiek inne europejskie miasto. W latach 90. miało więcej klubów indie niż Manchester, Liverpool i Londyn razem."
   },
   "scala": {
     "city": "Londyn",
     "country": "Wielka Brytania",
     "venue": "Scala",
-    "story": "Dawne kino w King's Cross, dziś sala koncertowa. Po wydaniu OK Computer Radiohead zagrali tu swój pierwszy sekretny koncert. Oryginalna akustyka teatru sprawia, że każdy występ brzmi wyjątkowo.",
+    "story": "Dawne kino w King's Cross, dziś sala koncertowa. Po wydaniu OK Computer Radiohead zagrali tu swój pierwszy sekretny koncert. Oryginalna akustyka theatru sprawia, że każdy występ brzmi wyjątkowo.",
     "realFact": "Pierwszy seans w Scali odbył się w 1920 roku. Zanim stała się salą muzyczną, była kinem dla dorosłych, kinem kultowym i centrum sztuki. Każda epoka zostawiła ślad na jej ścianach."
   },
   "pointEphemere": {
@@ -73,112 +73,147 @@
     "city": "Londyn",
     "country": "Wielka Brytania",
     "venue": "London Astoria",
-    "story": "W londyńskim Astorii Nirvana nagrała swój pierwszy album koncertowy, a Radiohead zaprezentowali The Bends. Ta sala w stylu art déco mieściła 2000 osób, miała świetną akustykę i osiem dekad historii.",
-    "realFact": "Astorię zburzono w 2009 roku, by zbudować stację metra. 50 tysięcy fanów podpisało petycję o jej ocalenie. Nie udało się, ale duch sali pozostał na nagranych tam płytach."
+    "story": "W londyńskim Astorii Nirvana nagrała swój pierwszy album koncertowy, a Radiohead zaprezentowały The Bends. Ta sala w stylu art decó mieściła 2000 personas, miała świetną akustykę i osiem dekad historii.",
+    "realFact": "Astorią zburono w 2009 roku, by zbudować stację metra. 50 tysięcy fanów podpisało petycję o su ocaleń. No udało się, ale duch sali pozostał na nagranych tam płytach."
   },
   "maFoi": {
     "city": "Singapur",
     "country": "Singapur",
     "venue": "Esplanade Theatres",
-    "story": "W jednym z najnowocześniejszych miast Azji singapurski Esplanade należy do najbardziej zaawansowanych technologicznie sal koncertowych na świecie. Artyści indie i śpiewacy operowi występują tu na równie wysokim poziomie.",
-    "realFact": "Singapur zakazał żucia gumy do 2004 roku. Ten sam kraj zbudował jeden z najdroższych kompleksów kultury na świecie — w 2002 roku kosztował 600 milionów dolarów."
+    "story": "W jednym z najnowocześniejszych miast Azi singapurski Esplanade należy do najbardziej zaawansowanych technologicznie sal koncertowych na świecie. Artyści indie i śpiewacy operowi występują tu na równie wysokim poziomie.",
+    "realFact": "Singapur zakazał żucia gumy do 2004 roku. Ten sam kraj zbudował jeden de los complejos culturales más costosos del mundo — en 2002 roku kosztó 600 millones de dólares."
   },
   "lindenpark": {
     "city": "Poczdam",
     "country": "Niemcy",
     "venue": "Lindenpark",
-    "story": "W NRD Lindenpark był jednym z niewielu miejsc, gdzie można było usłyszeć zachodni rock — zawsze pod nadzorem władz. Zespoły ukrywały zakazane myśli w metaforach, których Stasi nie zawsze rozumiała.",
+    "story": "W NRD Lindenpark był jednym z niewielu miejsc, gdzie można usłyszeć zachodni rock — zawsze pod nadzorem władz. Zespoły ukrywały zakazane myśli w metaforach, których Stasi nie zawsze rozumiała.",
     "realFact": "W czasach NRD śpiewanie rocka po niemiecku uznawano za wywrotowe. Zespoły śpiewające po angielsku miały więcej swobody, bo władze zakładały, że mniej osób zrozumie teksty."
   },
   "palauSantJordi": {
     "city": "Barcelona",
     "country": "Hiszpania",
     "venue": "Palau Sant Jordi",
-    "story": "Zaprojektowany przez Aratę Isozakiego na igrzyska olimpijskie w Barcelonie w 1992 roku Palau Sant Jordi ma akustykę dorównującą najlepszym salom świata. Występowali tu U2, The Rolling Stones i Madonna.",
+    "story": "Zaprojektowany przez Aratę Isozakiego na igrzyska olimpijskie w Barcelonie w 1992 roku Palau Sant Jordi ma akustykę dorównującą najlepszym salom světa. Występowali tu U2, The Rolling Stones i Madonna.",
     "realFact": "Dach Palau zmontowano na ziemi, a potem podniesiono hydraulicznie w jednej operacji w 1990 roku. Siedemset ton stali uniosło się na wysokość 45 metrów w cztery godziny."
   },
   "bercy": {
     "city": "Paryż",
     "country": "Francja",
     "venue": "Accor Arena (Bercy)",
-    "story": "Paryżanie mówią na tę arenę „Bercy”. Dla artysty występ tutaj to ostateczny próg sławy. Michael Jackson zagrał sześć wyprzedanych koncertów w 1988 roku — rekord utrzymał się przez 15 lat.",
-    "realFact": "Od 1984 roku oficjalna nazwa Accor Arena zmieniała się sześć razy z powodu sponsorów. Paryżanie nadal mówią „Bercy”, od nazwy dzielnicy. W Paryżu geografia wygrywa ze sponsorami."
+    "story": "Paryżanie mówią na tę arená «Bercy». Dla artysty występ tutaj to ostateczny próg sławy. Michael Jackson zagrał sześć wyprzedanych koncertos w 1988 roku — récordu utrzymał się przez 15 lat.",
+    "realFact": "Od 1984 roku oficialna nazwa Accor Arena zmieniała się sześć razy z powodu sponsorów. Paryżanie nadal mówią «Bercy» — od nazwy dzielnicy. W Paryżu geografia wygráveze ze sponsorami."
   },
   "morumbiSP": {
     "city": "São Paulo",
     "country": "Brazylia",
     "venue": "Estádio Morumbi",
-    "story": "Stadion São Paulo FC był miejscem największego koncertu w historii Brazylii. W 1991 roku The Rolling Stones zagrali dla 140 tysięcy osób. São Paulo ma największą rockową publiczność w Ameryce Południowej.",
-    "realFact": "Publiczność w São Paulo słynie ze śpiewania całych piosenek po angielsku z pamięci — nawet artyści nie spodziewają się, że ich teksty znane są tak daleko na południe od równika."
+    "story": "Stadion São Paulo FC był miejscem największego koncertu w historii Brazi. En 1991 roku The Rolling Stones zagrali dla 140 tysięcy personas. São Paulo ma la audiencia de rock más grande de América del Sur.",
+    "realFact": "Publiczność en São Paulo sincnla cantando canciones completas de memoria — en inglés — ni siquiera artisti no se esperan que sus letras sean conocidas tan al sur del ecuador."
   },
   "nurburgring": {
     "city": "Nürburg",
     "country": "Niemcy",
     "venue": "Rock am Ring",
-    "story": "Na legendarnym torze Formuły 1 każdego czerwca odbywa się jeden z największych festiwali rockowych w Europie. Metallica, Rammstein i Guns N' Roses grali na tej samej nawierzchni, na której ścigali się kierowcy.",
+    "story": "Na legendarnym torze Formuły 1 każdego czerwca odbywa się jeden z największych festiwali rockowych w Europie. Metallica, Rammstein i Guns N' Roses grali na tej samea nawierzchni, na której ścigali się kierowcy.",
     "realFact": "Nürburgring ma 170 zakrętów na 25 kilometrach. Jackie Stewart nazwał go Zielonym Piekłem. Co roku tor, który budzi respekt najlepszych kierowców, przyjmuje 80 tysięcy fanów metalu."
   },
   "velezSarsfield": {
     "city": "Buenos Aires",
     "country": "Argentyna",
     "venue": "Estadio Vélez Sársfield",
-    "story": "W 1998 roku Los Redonditos de Ricota zagrali na tym stadionie dla 70 tysięcy osób — był to największy koncert w historii argentyńskiego rocka. El Indio Solari nie udzielił wywiadów. Po prostu zagrał.",
-    "realFact": "Los Redonditos nie nagrywali teledysków, nie udzielali wywiadów telewizyjnych i nie grali poza Argentyną. Łamiąc zasady branży, stworzyli jedną z najbardziej oddanych społeczności fanów na świecie."
+    "story": "En 1998 roku Los Redonditos de Ricota zagrali na tym stadionie para 70 tysięcy osób — był to największy koncert w historia argento-rocka. El Indio Solari no udzielił wywiadów. Po prostu zagrał.",
+    "realFact": "Los Redonditos no nagrywali teledysków, nie udzielali wywiadów telewizyjnych i nie grali poza Argentyną. Łamiąc zasady branży, stworzyli jedną de los más oddanych społeczności fanów na świecie."
   },
   "johannesburgDome": {
     "city": "Johannesburg",
     "country": "Republika Południowej Afryki",
     "venue": "Dome Northgate",
-    "story": "W jednym z najbardziej nierównych miast świata hala Dome przypomina, że muzyka może połączyć ludzi rozdzielonych przez politykę. W 1994 roku odbyły się tu jedne z pierwszych koncertów w RPA dostępnych dla wszystkich ras.",
-    "realFact": "W czasach apartheidu prawo zabraniało czarnym i białym uczestniczyć w tych samych koncertach. Współpraca Paula Simona z czarnymi muzykami z RPA spotkała się z krytyką, ale pomogła zmieniać świat."
+    "story": "W jednym z najbardziej nierównych miast świata hala Dome przypomina, że muzyka może połączyć ludzi rozdzielonych przez politykę. W 1994 roku odbyły się tu jedne de los primeiros concertos w RPA dostępnych dla wszystkich ras.",
+    "realFact": "W czasach apartheidu prawo zabraniało czarnym i białym participé en los mesmos concertos. Współpraca Paula Simona z czarnymi muzykami z RPA spotkała się con crítica, pero pomogła zmieniać świat."
   },
   "tokyoDome": {
     "city": "Tokio",
     "country": "Japonia",
     "venue": "Tokyo Dome",
-    "story": "Tokijska „Wielka Jajecznica” to azjatycki odpowiednik Wembley. W 1987 roku Michael Jackson jako pierwszy zachodni artysta wyprzedał tu stadion. Japonia odkryła, że potrafi kochać oryginał bardziej niż ktokolwiek.",
-    "realFact": "Tokyo Dome był pierwszym stadionem na świecie z nadmuchiwanym dachem. Utrzymuje go ciśnienie powietrza — gdy wentylatory przestaną działać, dach opadnie. Deszcz nie odwoła tu koncertu."
+    "story": "Tokijska „Wielka Jajecznica” to azjatycki odpowiednik Wembley. En 1987 roku Michael Jackson jako pierwszy zachodni artysta wyprzedał tu estadio. Japonia odkryła, que potrafi kochać oryginal más que ktokolwiek.",
+    "realFact": "Tokyo Dome był pierwszym stadium na mundo z nadmuchiwanym dachem. Utrzymuje go ciśnienie powietrza — gdy wentylatory przestanão działać, dach opadnie. Deszcz non odwoła tu koncertu."
   },
   "o2London": {
     "city": "Londyn",
     "country": "Wielka Brytania",
     "venue": "The O2 Arena",
-    "story": "Zbudowany jako Millennium Dome na rok 2000 obiekt nie miał jasnego przeznaczenia. W 2007 roku stał się najczęściej odwiedzaną areną świata. Prince zagrał tu 21 wyprzedanych koncertów, każdy inny.",
-    "realFact": "Prince wycenił bilety na wszystkie 21 koncertów na 31,21 funta — odwrócone cyfry roku 1921. Nie wysłał informacji prasowej, tylko SMS do fanów. Bilety zniknęły w kilka godzin."
+    "story": "Zbudowany jako Millennium Dome na rok 2000 objet no had jasnho przeznaczenia. W 2007 roku stał się najczęściej odwiedzaná arena świata. Prince zagrał tu 21 wyprzedanych koncertos, każdy inny.",
+    "realFact": "Prince wycenił bilety na wszystkie 21 concertos na 31,21 funta — odwrócone cyfry roku 1921. Nie wysłał informacji prasowej, tylko SMS do fanów. Bilety zniknęły w kilka godzin."
   },
   "lollapalooza": {
     "city": "Chicago",
     "country": "Stany Zjednoczone",
     "venue": "Lollapalooza",
-    "story": "Perry Farrell z Jane's Addiction stworzył Lollapaloozę w 1991 roku jako objazdowy festiwal dla zespołów niepasujących do jednego gatunku. Chicago stało się jej stałym domem i wzorem dla miejskich festiwali.",
-    "realFact": "W 2006 roku Lollapalooza Chicago przyciągnęła 270 tysięcy osób w jeden weekend. Miasto szacuje, że festiwal przynosi 700 milionów dolarów rocznie z turystyki. Rock to także gospodarka."
+    "story": "Perry Farrell z Jane's Addiction stworzył Lollapalooza en 1991 como objazdowy festiwal dla zespołsy niepasujących do jednego gatunku. Chicago stało su domínio fij y praż y miejskich festiwali.",
+    "realFact": "En 2006 roku Lollapalooza Chicago przyciągnęła 270 tysięcy personas en un fin de semana. Miasto szacuje, że festiwal przynosi 700 millones de dólares rocznie z turystyki. Rock to także gospodarka."
   },
   "estadioNacional": {
     "city": "Santiago",
     "country": "Chile",
     "venue": "Estadio Nacional",
-    "story": "W 1973 roku, podczas dyktatury Pinocheta, stadion był ośrodkiem zatrzymań. Chilijczycy odzyskali tę przestrzeń, traktując muzykę jako akt oporu. Sting i Peter Gabriel zagrali tu w latach 90., gdy Chile wracało do demokracji.",
-    "realFact": "Chilijski Estadio Nacional jako pierwszy stadion na świecie został uznany za zabytek historyczny właśnie dlatego, że był miejscem zbrodni. Organizowanie tu koncertów jest świadomym gestem politycznym."
+    "story": "En 1973 roku, podczas la dictadura Pinochet, el estadio era un centro de detenciones. Chilenos odzyskali esta espacio,tratandendo música como acto de resistencia. Sting y Peter Gabriel zagraли en los años 90, cuando Chile volvía a la democracia.",
+    "realFact": "Chilijski Estadio Nacional como primer estadio na mundo wurde uznany za zabytek historyczny właśnie dlatego, ze był miejscem zbrodni. Decyzja o użyciu tego samego przestrzeni do muzyki jest świadomym gestem politico."
   },
   "lanxessArena": {
     "city": "Kolonia",
     "country": "Niemcy",
     "venue": "LANXESS Arena",
-    "story": "Najczęściej odwiedzana arena Europy ma niepisaną zasadę: publiczność w Kolonii jest najgłośniejsza w Niemczech. Depeche Mode, Beyoncé i Roger Waters mówili, że koncert w Kolonii był najlepszym przystankiem ich europejskiej trasy.",
-    "realFact": "Kolonia ma największą gotycką katedrę świata, najbardziej szalony karnawał Europy i najpopularniejszą arenę kontynentu. To niemieckie miasto wyjątkowo poważnie traktuje przyjemność."
+    "story": "Najczęściej odwiedzana arena Europy ma niepisaną zasadę: publiczność w Kolonii jest najgłośniejsza w Niemczech. Depeche Mode, Beyoncé y Roger Waters mówili, que koncert w Kolonii był najlepszym przystankiem ich europejskiej trasy.",
+    "realFact": "Kolonia ma największą gotycką katedrale świata, najbardziej szalny karnawał Europy i najpopularniejszą arenę kontynentu. To niemieckie miasto wyjątkowo poważnie traktuje przyjemność."
   },
   "riverbend": {
     "city": "Cincinnati",
     "country": "Stany Zjednoczone",
     "venue": "Riverbend Music Center",
     "story": "Nad rzeką Ohio ten amfiteatr pod gołym niebem nadaje rytm amerykańskiemu latu. Dave Matthews Band, Phish i Tom Petty zamienili go w coroczne miejsce pielgrzymek swoich najwierniejszych fanów.",
-    "realFact": "Cincinnati uważa się za jedno z miejsc narodzin amerykańskiego country rocka. Połączenie Północy i Południa nad rzeką Ohio stworzyło brzmienie niespotykane nigdzie indziej."
+    "realFact": "Cincinnati uważa się za jedno de los miejsc narodzin amerykańskiego country rocka. Połączenie Północy i Południa nad rzeką Ohio stworzyło brzmienie niespotykane nigdzie indziej."
   },
   "commonwealthStadium": {
     "city": "Sydney",
     "country": "Australia",
     "venue": "Accor Stadium (dawniej ANZ Stadium)",
-    "story": "Zbudowany na igrzyska w Sydney w 2000 roku stadion gościł największy koncert AC/DC: 110 tysięcy osób podczas trasy Black Ice w 2010 roku. Australijski hard rock ma intensywność, której nie osłabia nawet upał.",
-    "realFact": "AC/DC to najbardziej utytułowany australijski zespół, choć żaden z jego członków nie urodził się w Australii: Bon Scott i bracia Young pochodzili ze Szkocji. Zespół powstał w Melbourne i przyjął Australię za swoją tożsamość."
+    "story": "Zbudowany na igrzyska w Sydney w 2000 roku stadion gościł największy koncert AC/DC: 110 tysięcy osób podczas trasy Black Ice w 2010 roku. Australijski hard rock ma intensywność, która nie osłabia nawet upał.",
+    "realFact": "AC/DC to najbardziej utytułowany australijski zespół, choć żaden z jego członków nie urodził się w Australii: Bon Scott był Szkoty, bracia Young byli Szkotami. Zespół powstał w Melbourne i przyjął Australię za swoją tożsamość."
+  },
+  "madridRock": {
+    "city": "Madryt",
+    "country": "Hiszpania",
+    "venue": "Matadero Madrid",
+    "story": "Lata 80. Matadero stał się centro alternatywó Madrydy, donde equipos tales como Dover i Los Planetas comenzaron a sonar. Espacio industrial que marcó a toda una generación de la escena madrileña.",
+    "realFact": "Matadero en Madrid se inauguró en 1913 como zakład zagona bydła. Dziś jest jednym de los complejos culturales más importantes de Europa."
+  },
+  "palaisStockholm": {
+    "city": "Stoholm",
+    "country": "Szwecja",
+    "venue": "Kungsträdgården",
+    "story": "Festival al aire libre w sercu Stoholmu od 1990 roku gospodarujący najlepszym rockiem i folkiem skandynawskim. Światło letniego dnia Północy tworzy unikalną atmosferę na koncertach o zachwiecie słońca.",
+    "realFact": "Stoholm ma więcej wysp niż którakolwiek inna stolica europejska - archipelag składa się z 24 000 wysp i wyspików."
+  },
+  "sfrJazz": {
+    "city": "Paryż",
+    "country": "Francja",
+    "venue": "Café Delirium",
+    "story": "Legendarny klub jazzowy w dzielnicy Łacińskiej, gdzie Miles Davis i Chet Bier mir had unforgettable performances.",
+    "realFact": "Café Delirium kultowy klub jazzowy w Paryżu, gdzie Miles Davis i Chet Bier mir had unforgettable performances."
+  },
+  "rioLento": {
+    "city": "Río de Janeiro",
+    "country": "Brazylia",
+    "venue": "Praia de Copacabana",
+    "story": "Festival zachodu słońca na plaży Copacabana łączący surf, sambá i rock internacional. Od 1995 roku idealne podsumowanie lata w Brazylii.",
+    "realFact": "Fortaleza do Rio była sceną największego koncertu w historii Brazi na plaży: 3,5 miliona ludzi na koncert Roda Stewarta w 1994 roku."
+  },
+  "tokyoJazz": {
+    "city": "Osaka",
+    "country": "Japonia",
+    "venue": "Blue Note Osaka",
+    "story": "Młodszy brat Blue Note Tokio, uruchomiony w 1992 roku, specjalizował się w jazzie fusion i wschodzących japońskich artystach. Kansai ma wibrantną podziemną scenę muzyczną.",
+    "realFact": "Osaka jest kuchią Japonii - 50% świeżych składników kraju przechodzi przez jej targi hurtowe."
   }
 }

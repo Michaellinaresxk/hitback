@@ -701,6 +701,66 @@
       "venue": "Olympic Park, Sídney",
       "story": "Construido para las Olimpiadas de Sídney 2000, este estadio vio el mayor concierto de AC/DC en la historia: 110,000 personas para su Black Ice World Tour en 2010. Australia produce bandas de hard rock con una intensidad que desafía el calor del continente.",
       "realFact": "AC/DC es la banda australiana más exitosa de la historia, pero ninguno de sus miembros es de Australia: Bon Scott era escocés, los hermanos Young eran escoceses. Se formaron en Melbourne y adoptaron el continente como su identidad."
+    },
+    {
+      "id": "madridRock",
+      "emoji": "🎸",
+      "tileType": "concert",
+      "country": "ES",
+      "yearFact": 1985,
+      "name": "Rocódromo Matadero",
+      "location": "Madrid, España",
+      "venue": "Matadero Madrid",
+      "story": "En los años 80, Matadero se convirtió en el centro alternativo de Madrid donde bandas como Dover y Los Planetas comenzaron a sonar. Un espacio industrial que marcó a toda una generación de la escena madrileña.",
+      "realFact": "Matadero de Madrid fue inaugurado en 1913 como frigorífico y abatidor de ganado. Hoy es uno de los complejos culturales más importantes de Europa."
+    },
+    {
+      "id": "palaisStockholm",
+      "emoji": "🏰",
+      "tileType": "festival",
+      "country": "SE",
+      "yearFact": 1990,
+      "name": "Culturaplats",
+      "location": "Estocolmo, Suecia",
+      "venue": "Kungsträdgården",
+      "story": "Un festival al aire libre en el corazón de Estocolmo que desde 1990 acoge lo mejor del rock y folk escandinavo. La luz del verano nórdico crea una atmósfera única para los conciertos al atardecer.",
+      "realFact": "Estocolmo tiene más islas que cualquier capital europea - el archipiélago consta de 24,000 islas y islotes."
+    },
+    {
+      "id": "sfrJazz",
+      "emoji": "🎷",
+      "tileType": "record_deal",
+      "country": "FR",
+      "yearFact": 1988,
+      "name": "Café Delirium",
+      "location": "París, Francia",
+      "venue": "36 Rue de la Huchette",
+      "story": "Un legendario jazz club en el Barrio Latino donde Miles Davis y Chet Baker tuvieron sesiones inolvidables. El lugar mantiene su decoración original de los años 60.",
+      "realFact": "Café Delirium reivindica ser el bar más pequeño del mundo con la mayor colección de discos de jazz vintage."
+    },
+    {
+      "id": "rioLento",
+      "emoji": "🌅",
+      "tileType": "sold_out",
+      "country": "BR",
+      "yearFact": 1995,
+      "name": "Fortaleza do Rio",
+      "location": "Río de Janeiro, Brasil",
+      "venue": "Praia de Copacabana",
+      "story": "Un festival de atardecer en la playa de Copacabana que combina surf, samba y rock internacional. Desde 1995, es el cierre perfecto para el verano brasileño.",
+      "realFact": "Fortaleza do Rio fue el escenario del concierto más grande de la historia de Brasil en playa: 3.5 millones para Rod Stewart en 1994."
+    },
+    {
+      "id": "tokyoJazz",
+      "emoji": "🥢",
+      "tileType": "concert",
+      "country": "JP",
+      "yearFact": 1992,
+      "name": "Blue Note Osaka",
+      "location": "Osaka, Japón",
+      "venue": "Namba Hatch",
+      "story": "El hermano menor de Blue Note Tokio, inaugurado en 1992, se especializó en jazz fusion y artistas japoneses emergentes. La ciudad de Kansai tiene una escena musical subterránea vibrante.",
+      "realFact": "Osaka es la cocina de Japón - el 50% de los ingredientes frescos del país pasan por sus mercados mayoristas."
     }
   ]
 }
