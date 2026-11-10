@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { View, ScrollView, StatusBar } from 'react-native';
 
 // External Components
@@ -133,6 +133,7 @@ export default function GameScreen() {
   // ── Local State ────────────────────────────────────────────────────────────
   const [playerIdMap, setPlayerIdMap] = useState<Record<string, string>>({});
   const [gameStarted, setGameStarted] = useState(false);
+  const gameInitializedRef = useRef(false);
   const [showAllianceModal, setShowAllianceModal] = useState(false);
   const [reactionTarget, setReactionTarget] = useState<{
     id: string;
@@ -308,7 +309,11 @@ export default function GameScreen() {
   const initializeGame = useCallback(async () => {
     try {
       console.log('🎮 Initializing game...');
-      setPlayerIdMap(buildPlayerIdMap(players));
+      // Use ref to avoid infinite loop - set playerIdMap only once
+      if (!gameInitializedRef.current) {
+        gameInitializedRef.current = true;
+        setPlayerIdMap(buildPlayerIdMap(players));
+      }
       await soundEffects.initialize();
       const isConnected = await testConnection();
       if (!isConnected) {
@@ -320,14 +325,14 @@ export default function GameScreen() {
       console.error('❌ Error initializing game:', error);
       showError('Error', 'No se pudo inicializar el juego');
     }
-  }, [players, testConnection, showWarning, showError]);
+  }, [soundEffects, testConnection, showWarning, showError]);
 
   // ── Effects ────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (isActive && players.length >= 2 && !gameStarted) {
+    if (isActive && players.length >= 2 && !gameStarted && !gameInitializedRef.current) {
       initializeGame();
     }
-  }, [isActive, players.length, gameStarted, initializeGame]);
+  }, [isActive, players.length, gameStarted]);
 
   useEffect(() => {
     if (flowState.phase === 'question' && flowState.currentRound) {
@@ -362,6 +367,7 @@ export default function GameScreen() {
     setShowGameEndModal(false);
     setGameActive(false);
     setGameStarted(false);
+    gameInitializedRef.current = false; // Reset ref for new game
     soundEffects.dispose();
     createNewGame();
   }, [setShowGameEndModal, setGameActive, createNewGame, showError]);
