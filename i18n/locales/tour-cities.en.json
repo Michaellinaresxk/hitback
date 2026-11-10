@@ -180,5 +180,40 @@
     "venue": "Accor Stadium (formerly ANZ Stadium)",
     "story": "Built for the 2000 Sydney Olympics, the stadium hosted AC/DC's biggest concert crowd: 110,000 people on the Black Ice World Tour in 2010. Australia produces hard-rock bands with an intensity that defies the continent's heat.",
     "realFact": "AC/DC is Australia's most successful band, but none of its members were born there: Bon Scott and the Young brothers were Scottish. They formed in Melbourne and made Australia their identity."
+  },
+  "madridRock": {
+    "city": "Madrid",
+    "country": "Spain",
+    "venue": "Matadero Madrid",
+    "story": "In the 80s, Matadero became the alternative center of Madrid where bands like Dover and Los Planetas began to sound. An industrial space that marked an entire generation of the Madrid music scene.",
+    "realFact": "Matadero de Madrid was inaugurated in 1913 as a slaughterhouse and livestock abattoir. Today it is one of Europe's most important cultural complexes."
+  },
+  "palaisStockholm": {
+    "city": "Stockholm",
+    "country": "Sweden",
+    "venue": "Kungsträdgården",
+    "story": "An open-air festival in the heart of Stockholm since 1990 hosting the best of Scandinavian rock and folk. The Nordic summer light creates a unique atmosphere for sunset concerts.",
+    "realFact": "Stockholm has more islands than any European capital - the archipelago consists of 24,000 islands and islets."
+  },
+  "sfrJazz": {
+    "city": "Paris",
+    "country": "France",
+    "venue": "Café Delirium",
+    "story": "A legendary jazz club in the Latin Quarter where Miles Davis and Chet Baker had unforgettable sessions. The place maintains its original 1960s décor.",
+    "realFact": "Café Delirium claims to be the world's smallest bar with the largest collection of vintage jazz records."
+  },
+  "rioLento": {
+    "city": "Rio de Janeiro",
+    "country": "Brazil",
+    "venue": "Praia de Copacabana",
+    "story": "A sunset beach festival at Copacabana combining surf, samba and international rock. Since 1995, the perfect summer Brazilian closer.",
+    "realFact": "Fortaleza do Rio was the stage for Brazil's largest-ever beach concert: 3.5 million for Rod Stewart in 1994."
+  },
+  "tokyoJazz": {
+    "city": "Osaka",
+    "country": "Japan",
+    "venue": "Blue Note Osaka",
+    "story": "The younger brother of Blue Note Tokyo, opened in 1992, specialized in jazz fusion and emerging Japanese artists. Kansai has a vibrant underground music scene.",
+    "realFact": "Osaka is Japan's kitchen - 50% of Japan's fresh ingredients pass through its wholesale markets."
   }
 }

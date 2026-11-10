@@ -8,20 +8,20 @@ World Tour tiene una ruta aleatoria independiente de 22 posiciones por jugador: 
 
 ## Fuentes de implementación
 
-| Archivo                                 | Responsabilidad                                                 |
-| --------------------------------------- | --------------------------------------------------------------- |
-| `constants/worldTour.ts`                | Orden de actos, mecánicas de tile, tamaño de ruta y rangos      |
-| `constants/worldTourCities.json`        | Pools, IDs, emoji y tipos de tile por acto                     |
-| `i18n/locales/tour-cities.*.json`       | Contenido localizado de las 58 ciudades en es/en/pl             |
-| `types/worldTour.types.ts`              | `TileType`, `MechanicTrigger`, `ActId`, `CityData`, `BoardTile` |
-| `utils/worldtourUtils.ts`               | Generación aleatoria y helpers de posición/progreso             |
-| `store/slices/gameSlice.ts`             | Genera las rutas antes de crear la sesión; restaura estado       |
-| `store/slices/playerSlice.ts`           | Presenta posición sincronizada del jugador correcto             |
-| `server/services/GameSessionService.js` | Posee rutas, posiciones, score y resolución de ganador           |
-| `server/services/GameSessionPersistence.js` | Guarda/restaura snapshots y hash de capability en PostgreSQL |
-| `hooks/usePointsActions.ts`             | Revela la ronda y presenta el tile canónico de llegada            |
-| `app/(tabs)/game.tsx`                   | Maneja el aterrizaje y dispara mecánicas existentes             |
-| `components/modal/TourLandingModal.tsx` | Presenta ciudad, historia y tipo de casilla                     |
+| Archivo                                     | Responsabilidad                                                 |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| `constants/worldTour.ts`                    | Orden de actos, mecánicas de tile, tamaño de ruta y rangos      |
+| `constants/worldTourCities.json`            | Pools, IDs, emoji y tipos de tile por acto                      |
+| `i18n/locales/tour-cities.*.json`           | Contenido localizado de las 58 ciudades en es/en/pl             |
+| `types/worldTour.types.ts`                  | `TileType`, `MechanicTrigger`, `ActId`, `CityData`, `BoardTile` |
+| `utils/worldtourUtils.ts`                   | Generación aleatoria y helpers de posición/progreso             |
+| `store/slices/gameSlice.ts`                 | Genera las rutas antes de crear la sesión; restaura estado      |
+| `store/slices/playerSlice.ts`               | Presenta posición sincronizada del jugador correcto             |
+| `server/services/GameSessionService.js`     | Posee rutas, posiciones, score y resolución de ganador          |
+| `server/services/GameSessionPersistence.js` | Guarda/restaura snapshots y hash de capability en PostgreSQL    |
+| `hooks/usePointsActions.ts`                 | Revela la ronda y presenta el tile canónico de llegada          |
+| `app/(tabs)/game.tsx`                       | Maneja el aterrizaje y dispara mecánicas existentes             |
+| `components/modal/TourLandingModal.tsx`     | Presenta ciudad, historia y tipo de casilla                     |
 
 ## Tablero y generación
 
