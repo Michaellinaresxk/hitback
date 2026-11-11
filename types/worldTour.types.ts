@@ -21,6 +21,11 @@ export interface CityData {
   tileType: TileType;
   country: string;
   yearFact: number;
+  name: string;
+  location: string;
+  venue: string;
+  story: string;
+  realFact: string;
 }
 
 export interface BoardTile {

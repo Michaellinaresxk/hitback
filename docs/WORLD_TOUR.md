@@ -86,6 +86,6 @@ La existencia de `MechanicTrigger` o de `TILE_MECHANICS` por sí sola no signifi
 - No se muestra aún el resumen de paradas o países únicos; debe derivarse de las rutas individuales, sin enumerar un camino fijo.
 - `split_dice` está declarado pero no implementado.
 - El trigger `reaction_card` no abre automáticamente un selector; la gestión actual continúa en el scoreboard.
-- No hay historial durable de ciudades visitadas.
+- **Historial de ciudades visitadas**: ya implementado en el frontend (ver `useVisitedCities` hook y `CityHistoryModal`). Los datos fluyen desde el backend a través de las rutas World Tour.
 
 Al cambiar cualquiera de estos comportamientos, actualiza primero esta guía y el documento canónico [`../../documentation/HITBACK_SYSTEM_DOCS.md`](../../documentation/HITBACK_SYSTEM_DOCS.md).

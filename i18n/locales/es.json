@@ -25,7 +25,11 @@
       "step2": "Escanea cartas QR",
       "step3": "¡Compite y diviértete!"
     },
-    "footer": "Versión Beta • Hecho con ❤️ para amigos"
+    "hallOfFame": {
+    "candidate": "🌟 Candidato al Hall of Fame Musical",
+    "legend": "🏆 ¡ES UNA LEYNA MUSICAL!"
+  },
+  "footer": "Versión Beta • Hecho con ❤️ para amigos"
   },
   "setupGame": {
     "config_game": "Configura tu partida",
@@ -692,7 +696,11 @@
       "tileTypeLabel": "Tipo: {{type}}",
       "factLabel": "📖 ¿Sabías que...?",
       "continueButton": "Continuar Tour",
-      "viewRouteButton": "Ver Ruta Completa"
+      "viewRouteButton": "Ver Ruta Completa",
+      "hallOfFame": {
+        "candidate": "🌟 Candidato al Hall of Fame Musical",
+        "legend": "🏆 ¡ES UNA LEYNA MUSICAL!"
+      }
     }
   }
 }

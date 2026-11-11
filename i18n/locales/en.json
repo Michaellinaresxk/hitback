@@ -677,7 +677,11 @@
       "tileTypeLabel": "Type: {{type}}",
       "factLabel": "📖 Did you know...?",
       "continueButton": "Continue Tour",
-      "viewRouteButton": "View Full Route"
+      "viewRouteButton": "View Full Route",
+      "hallOfFame": {
+        "candidate": "🌟 Hall of Fame Candidate",
+        "legend": "🏆 You're a Musical Legend!"
+      }
     }
   }
 }

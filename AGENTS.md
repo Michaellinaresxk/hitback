@@ -91,7 +91,7 @@ El script `validate` todavía contiene comprobaciones heredadas de QR de cancion
 - Partida normal: todos pueden responder; el GM decide el ganador. Solo el ganador avanza una casilla de su ruta.
 - World Tour se sincroniza con el backend: este es canónico para rutas, `boardPosition`, fans y fin de partida; Expo conserva una copia de presentación y recupera la sesión autenticada desde SecureStore.
 - El aterrizaje `festival` permite gestionar una Reaction Card en el flujo existente; `rival_band` abre el duelo; `sold_out` activa Double Platinum para la próxima respuesta. `record_deal` / `split_dice` no tiene flujo implementado.
-- ARTIST HOLD dura `ARTIST_HOLD_ROUND = 1`; `nextTurn()` reduce el contador de congelación una vez por ronda.
+- ARTIST HOLD dura `ARTIST_HOLD_ROUND = 2`; `nextTurn()` reduce el contador de congelación una vez por ronda.
 - La condición de victoria Expo está definida por `SCORE_TO_WIN = 22` y `setup-game.tsx` envía ese valor al crear la sesión. El backend conserva el `targetScore` recibido y usa 22 como default para otros clientes; mantener ambos lados y sus tests alineados al cambiar la regla.
 
 ## Documentación
