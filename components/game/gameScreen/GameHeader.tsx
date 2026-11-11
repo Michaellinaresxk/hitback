@@ -8,13 +8,15 @@ import { formatTime } from '@/utils/timeFormatter';
 interface GameHeaderProps {
   timeLeft: number;
   currentPhase: string;
-  onOpenAlliances: () => void; // ← nuevo prop
+  onOpenAlliances: () => void;
+  onCityHistoryPress?: () => void;
 }
 
 export const GameHeader: React.FC<GameHeaderProps> = ({
   timeLeft,
   currentPhase,
   onOpenAlliances,
+  onCityHistoryPress,
 }) => {
   const { t } = useTranslation();
   const phaseStyle = getPhaseStyle(currentPhase);
@@ -39,6 +41,16 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
           activeOpacity={0.75}
         >
           <Text style={styles.allianceEmoji}>🤝</Text>
+        </TouchableOpacity>
+
+        {/* Botón historial de ciudades */}
+        <TouchableOpacity
+          style={styles.cityHistoryButton}
+          onPress={onCityHistoryPress}
+          activeOpacity={0.75}
+        >
+          <IconSymbol name='map' size={18} color='#64748B' />
+          <Text style={styles.cityHistoryLabel}>Ciudades</Text>
         </TouchableOpacity>
 
         {/* Timer */}
@@ -103,6 +115,22 @@ const styles = StyleSheet.create({
   },
   allianceEmoji: {
     fontSize: 20,
+  },
+  cityHistoryButton: {
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34, 197, 94, 0.4)',
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cityHistoryLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#34D399',
+    marginLeft: 4,
   },
   timerContainer: {
     flexDirection: 'row',

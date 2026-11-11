@@ -43,6 +43,7 @@ import { ReactionCardType } from '@/constants/ReactionCard';
 
 // Screens
 import GameSetupScreen from '../setup-game';
+import CityHistoryModal from '@/components/modal/CityHistoryModal';
 import TourLandingModal from '@/components/modal/TourLandingModal';
 import { MechanicTrigger } from '@/types/worldTour.types';
 
@@ -88,6 +89,12 @@ export default function GameScreen() {
     advancePlayerBoard,
     activateDoublePlatinum,
   } = useGameScreenStore();
+
+  // ── City History Modal ────────────────────────────────────────────────
+  const [showCityHistory, setShowCityHistory] = useState(false);
+  const selectedPlayerId = showCityHistory ? 'player_1' : undefined;
+  const handleCloseCityHistory = useCallback(() => setShowCityHistory(false), []);
+  const handleOpenCityHistory = useCallback(() => setShowCityHistory(true), []);
 
   // ── Game Flow ──────────────────────────────────────────────────────────────
   const {
@@ -859,6 +866,12 @@ export default function GameScreen() {
         visible={landingEvent !== null}
         event={landingEvent}
         onContinue={handleTourLandingContinue}
+/>
+
+      <CityHistoryModal
+        visible={showCityHistory}
+        onClose={handleCloseCityHistory}
+        playerId={selectedPlayerId}
       />
     </View>
   );

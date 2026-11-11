@@ -689,7 +689,11 @@
       "tileTypeLabel": "Typ: {{type}}",
       "factLabel": "📖 Czy wiesz, że...?",
       "continueButton": "Kontynuuj trasę",
-      "viewRouteButton": "Zobacz pełną trasę"
+      "viewRouteButton": "Zobacz pełną trasę",
+      "hallOfFame": {
+        "candidate": "🌟 Kandidat do Hall of Fame",
+        "legend": "🏆 Jesteś Legendą Muzyczną!"
+      }
     }
   }
 }

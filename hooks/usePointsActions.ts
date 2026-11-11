@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import { useVisitedCities } from '@/hooks/useVisitedCities';
 import type { GameFlow } from '@/hooks/useGameFlow';
 import type { Player } from '@/store/types/gameStoreTypes';
 import type { ComboActivationData } from '@/hooks/useComboFlow';
@@ -75,6 +76,7 @@ export function usePointsActions({
   const lastAwardedPointsRef = useRef<number>(0);
   /** Guard: evita que dos taps simultáneos lancen dos revealAnswer en paralelo. */
   const isAwardingRef = useRef(false);
+  const candidateAdmittedRef = useRef(false);
   const [landingEvent, setLandingEvent] = useState<TourLandingEvent | null>(
     null,
   );
@@ -208,6 +210,17 @@ export function usePointsActions({
             `${player.name} gana ${pts} pts\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
           );
 
+          // NUEVO: Verificar si es candidato al Hall of Fame (score = targetScore - 1)
+          if (result.isCandidate && !candidateAdmittedRef.current) {
+            showSuccess(
+              '🌟 Candidato al Hall of Fame',
+              `${player.name} has alcanzado ${pts} pts. ¡Eres candidato al Hall of Fame Musical!` +
+                '\n\nSerá una leyenda musical gracias a tus fans y tu trayectoria.',
+            );
+            // Marcar que ya fue mostrado para no mostrar de nuevo
+            candidateAdmittedRef.current = true;
+          }
+
           // 1️⃣ Alliance 50/50
           if (pts) {
             const alliance = useGameStore
@@ -262,8 +275,16 @@ export function usePointsActions({
 
           // 6️⃣ Game over takes precedence over combo/scanner UI.
           if (result.gameOver && result.gameWinner) {
-            setTimeout(() => {
-              void useGameStore.getState().endGame().catch((error) => {
+            // Determinar mensaje final basado en si fue candidato o leyenda
+            let finalMessage = '';
+            if (result.isCandidate && !candidateAdmittedRef.current) {
+              finalMessage = `🌟 ¡Has sido admitido al Hall of Fame Musical!\n\nFelicidades ${player.name} por alcanzar la cúspide. Tu trayectoria y ${player.score} puntos te han consolidado como una leyenda del rock.`;
+            } else {
+              finalMessage = `🏆 ${player.name} ¡ES UNA LEYNA MUSICAL!\n\nGracias a tus fans y tu trayectoria. Has acumulado ${player.score} puntos, una verdadera hazaña musical.`;
+            }
+            
+            setTimeout(async () => {
+              await useGameStore.getState().endGame().catch((error) => {
                 console.error('Could not finalize the World Tour:', error);
                 showError(
                   'Error',
@@ -272,6 +293,8 @@ export function usePointsActions({
                     : 'No se pudo finalizar el tour.',
                 );
               });
+              
+              showSuccess('🏆 ¡Juego Finalizado!', finalMessage);
             }, 1500);
             return;
           }
