@@ -42,7 +42,7 @@ import { buildPlayerIdMap, getBackendPlayerId } from '@/utils/game/gameHelpers';
 import { ReactionCardType } from '@/constants/ReactionCard';
 
 // Screens
-import GameSetupScreen from '../setup-game';
+import GameSetupScreen from './setup-game';
 import CityHistoryModal from '@/components/modal/CityHistoryModal';
 import TourLandingModal from '@/components/modal/TourLandingModal';
 import { MechanicTrigger } from '@/types/worldTour.types';
