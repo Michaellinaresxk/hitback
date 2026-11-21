@@ -70,22 +70,7 @@ export default function GameScreen() {
     clearBets,
     setGameActive,
     addPowerCard,
-    awardAllianceBonus,
-    toggleFreezePlayer,
-    applyRoyalties,
-    applyArtistHold,
-    activateFeaturing,
     clearFeaturing,
-    updateLossStreaks,
-    applyBSideBonus,
-    activateDuel,
-    activateStopBlast,
-    applyFeaturingBonus,
-    applyCopyrights,
-    applySoldOut,
-    applyBadReview,
-    applyManagementFee,
-    applyCharityShow,
     advancePlayerBoard,
     activateDoublePlatinum,
   } = useGameScreenStore();
@@ -202,6 +187,74 @@ export default function GameScreen() {
     showInfo,
   });
 
+  const syncCanonicalResponse = useCallback((response: any) => {
+    if (Array.isArray(response?.players)) {
+      useGameStore.getState().syncPlayersFromBackend(response.players);
+    }
+    const session = response?.session;
+    const backendToLocal = Object.fromEntries(
+      Object.entries(playerIdMap).map(([local, backend]) => [backend, local]),
+    );
+    const alliancesSource = response?.alliances || session?.alliances || [];
+    const mappedAlliances = alliancesSource
+      .filter((a: any) => a.status === 'active' && a.roundsLeft > 0)
+      .map((a: any) => ({
+        id: a.id,
+        player1Id: backendToLocal[a.player1Id] || a.player1Id,
+        player2Id: backendToLocal[a.player2Id] || a.player2Id,
+        roundsLeft: a.roundsLeft,
+        createdAtRound: a.createdAtRound,
+      }));
+    const activeEffects = (response?.activeEffects || session?.activeEffects || []).filter((e: any) => e.status === 'active');
+    const stopBlast = activeEffects.find((e: any) => e.type === 'STOP_BLAST');
+    const duel = activeEffects.find((e: any) => e.type === 'DUEL');
+    const featuring = activeEffects.find((e: any) => e.type === 'FEATURING');
+
+    useGameStore.setState({
+      alliances: mappedAlliances,
+      doublePlatinumActive: Boolean(session?.doublePlatinumActive ?? useGameStore.getState().doublePlatinumActive),
+      stopBlastActive: Boolean(stopBlast),
+      stopBlastHolderId: stopBlast ? (backendToLocal[stopBlast.sourcePlayerId] || stopBlast.sourcePlayerId) : null,
+      duelActive: Boolean(duel),
+      duelPlayer1Id: duel ? (backendToLocal[duel.targetPlayerIds?.[0]] || duel.targetPlayerIds?.[0] || null) : null,
+      duelPlayer2Id: duel ? (backendToLocal[duel.targetPlayerIds?.[1]] || duel.targetPlayerIds?.[1] || null) : null,
+      featuringPlayerId: featuring ? (backendToLocal[featuring.sourcePlayerId] || featuring.sourcePlayerId) : null,
+      featuringTargetId: featuring ? (backendToLocal[featuring.targetPlayerIds?.[0]] || featuring.targetPlayerIds?.[0] || null) : null,
+    } as any);
+  }, [playerIdMap]);
+
+  const handleServerFeaturing = useCallback(async (portadorId: string, targetId: string) => {
+    try {
+      const response = await gameSessionService.applyReactionCard({
+        sourcePlayerId: getBackendPlayerId(portadorId, players, playerIdMap),
+        cardType: 'FEATURING',
+        targetPlayerId: getBackendPlayerId(targetId, players, playerIdMap),
+        idempotencyKey: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      });
+      if (!response?.success) throw new Error(response?.error || 'No se pudo aplicar FEATURING');
+      syncCanonicalResponse(response);
+    } catch (error) {
+      showError('Error', error instanceof Error ? error.message : 'No se pudo aplicar FEATURING');
+      await reconcileCanonicalScores();
+    }
+  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores]);
+
+  const handleServerDuel = useCallback(async (challengerId: string, opponentId: string) => {
+    try {
+      const response = await gameSessionService.applyReactionCard({
+        sourcePlayerId: getBackendPlayerId(challengerId, players, playerIdMap),
+        cardType: 'DUEL',
+        targetPlayerId: getBackendPlayerId(opponentId, players, playerIdMap),
+        idempotencyKey: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      });
+      if (!response?.success) throw new Error(response?.error || 'No se pudo aplicar DUEL');
+      syncCanonicalResponse(response);
+    } catch (error) {
+      showError('Error', error instanceof Error ? error.message : 'No se pudo aplicar DUEL');
+      await reconcileCanonicalScores();
+    }
+  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores]);
+
   // ── Featuring & Duel Actions ───────────────────────────────────────────────
   const {
     showFeaturingModal,
@@ -217,8 +270,8 @@ export default function GameScreen() {
   } = useFeaturingDuelActions({
     featuringPlayerId,
     clearFeaturing,
-    activateFeaturing,
-    activateDuel,
+    activateFeaturing: handleServerFeaturing as any,
+    activateDuel: handleServerDuel as any,
   });
 
   // ── Points Actions ─────────────────────────────────────────────────────────
@@ -238,10 +291,6 @@ export default function GameScreen() {
     playerIdMap,
     advancePlayerBoard,
     revealAnswer,
-    awardAllianceBonus,
-    applyFeaturingBonus,
-    applyBSideBonus,
-    updateLossStreaks,
     clearFeaturing,
     clearBets,
     featuringPlayerId,
@@ -508,168 +557,67 @@ export default function GameScreen() {
   const handleReactionCard = useCallback(
     async (cardType: ReactionCardType, playerId: string) => {
       try {
-        switch (cardType) {
-        case 'MUTE':
-          toggleFreezePlayer(playerId);
-          break;
-        case 'STOP_BLAST':
-          activateStopBlast(playerId);
-          break;
-        case 'DUEL':
-          openDuelModal(playerId);
-          break;
-        case 'FEATURING':
+        // Selection-first cards: open UI, command sent on confirmation
+        if (cardType === 'FEATURING') {
           handleFeaturingPlayer(playerId);
-          break;
-        case 'ALLIANCE':
+          return;
+        }
+        if (cardType === 'ALLIANCE') {
           setShowAllianceModal(true);
-          break;
-        case 'ROYALTIES': {
-          // Capturar líder ANTES de mutar el store local
-          const leader = [...players].reduce((a, b) =>
-            a.score > b.score ? a : b,
-          );
-          applyRoyalties(playerId);
-          // Sincronizar backend solo si el holder no es el líder
-          if (leader.id !== playerId) {
-            const leaderBackendId = getBackendPlayerId(
-              leader.id,
-              players,
-              playerIdMap,
-            );
-            const holderBackendId = getBackendPlayerId(
-              playerId,
-              players,
-              playerIdMap,
-            );
-            await settleScoreAdjustments([
-              { playerId: leaderBackendId, delta: -1, reason: 'ROYALTIES' },
-              { playerId: holderBackendId, delta: 1, reason: 'ROYALTIES' },
-            ]);
-          }
-          break;
+          return;
         }
-        case 'ARTIST_HOLD':
-          applyArtistHold();
-          break;
-        case 'COPYRIGHTS': {
-          const deduction = Math.floor(lastAwardedPointsRef.current / 2);
-          applyCopyrights(playerId, lastAwardedPointsRef.current);
-          if (deduction > 0) {
-            const backendId = getBackendPlayerId(
-              playerId,
-              players,
-              playerIdMap,
-            );
-            await settleScoreAdjustments([
-              { playerId: backendId, delta: -deduction, reason: 'COPYRIGHTS' },
-            ]);
-          }
-          break;
+        if (cardType === 'DUEL') {
+          openDuelModal(playerId);
+          return;
         }
-        case 'SOLD_OUT': {
-          applySoldOut(playerId);
-          const backendIdSoldOut = getBackendPlayerId(
-            playerId,
-            players,
-            playerIdMap,
-          );
-          await settleScoreAdjustments([
-            { playerId: backendIdSoldOut, delta: 1, reason: 'SOLD_OUT' },
-          ]);
-          break;
+
+        const sourceBackendId = getBackendPlayerId(playerId, players, playerIdMap);
+        const payload: Record<string, any> = {};
+        if (cardType === 'COPYRIGHTS') {
+          payload.lastAwardedPoints = lastAwardedPointsRef.current;
         }
-        case 'BAD_REVIEW': {
-          applyBadReview(playerId);
-          const backendIdBadReview = getBackendPlayerId(
-            playerId,
-            players,
-            playerIdMap,
-          );
-          await settleScoreAdjustments([
-            { playerId: backendIdBadReview, delta: -1, reason: 'BAD_REVIEW' },
-          ]);
-          break;
+
+        const response = await gameSessionService.applyReactionCard({
+          sourcePlayerId: sourceBackendId,
+          cardType,
+          targetPlayerId: ['BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS', 'MUTE'].includes(cardType)
+            ? sourceBackendId
+            : undefined,
+          payload,
+          idempotencyKey: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        });
+
+        if (!response?.success) {
+          throw new Error(response?.error || 'No se pudo aplicar la Reaction Card');
         }
-        case 'MANAGEMENT_FEE': {
-          applyManagementFee(playerId);
-          const backendIdMgmt = getBackendPlayerId(
-            playerId,
-            players,
-            playerIdMap,
-          );
-          await settleScoreAdjustments([
-            { playerId: backendIdMgmt, delta: -1, reason: 'MANAGEMENT_FEE' },
-          ]);
-          break;
+
+        syncCanonicalResponse(response);
+
+        if (cardType === 'CHARITY_SHOW' && response.event) {
+          const tiedNote = response.event.tiedRecipients > 1 ? ` (sorteado entre ${response.event.tiedRecipients})` : '';
+          showSuccess('🎸 Charity Show', `${response.event.leaderName} le regaló 1pt a ${response.event.recipientName}${tiedNote}`);
         }
-        case 'CHARITY_SHOW': {
-          // El sorteo y la mutación ocurren dentro del store
-          const charityResult = applyCharityShow();
-          if (charityResult) {
-            const {
-              leaderId,
-              leaderName,
-              recipientId,
-              recipientName,
-              tiedCount,
-            } = charityResult;
-            const tiedNote =
-              tiedCount > 1 ? ` (sorteado entre ${tiedCount})` : '';
-            showSuccess(
-              '🎸 Charity Show',
-              `${leaderName} le regaló 1pt a ${recipientName}${tiedNote}`,
-            );
-            const leaderBackendId = getBackendPlayerId(
-              leaderId,
-              players,
-              playerIdMap,
-            );
-            const recipientBackendId = getBackendPlayerId(
-              recipientId,
-              players,
-              playerIdMap,
-            );
-            await settleScoreAdjustments([
-              { playerId: leaderBackendId, delta: -1, reason: 'CHARITY_SHOW' },
-              { playerId: recipientBackendId, delta: 1, reason: 'CHARITY_SHOW' },
-            ]);
-          }
-          break;
-        }
-        default:
-          break;
-      }
-    } catch (error) {
-      console.error('❌ Reaction Card score settlement failed:', error);
-      await reconcileCanonicalScores();
-      showError(
-        'Error',
-        error instanceof Error
-          ? error.message
-          : 'No se pudo sincronizar la puntuación con el servidor.',
-      );
+      } catch (error) {
+        console.error('❌ Reaction Card command failed:', error);
+        await reconcileCanonicalScores();
+        showError(
+          'Error',
+          error instanceof Error
+            ? error.message
+            : 'No se pudo aplicar la Reaction Card en el servidor.',
+        );
       }
     },
     [
-      toggleFreezePlayer,
-      activateStopBlast,
-      openDuelModal,
       handleFeaturingPlayer,
-      applyArtistHold,
+      openDuelModal,
       players,
-      applyRoyalties,
       playerIdMap,
       lastAwardedPointsRef,
-      applyCopyrights,
-      applySoldOut,
-      applyBadReview,
-      applyManagementFee,
-      applyCharityShow,
-      showSuccess,
-      settleScoreAdjustments,
+      syncCanonicalResponse,
       reconcileCanonicalScores,
       showError,
+      showSuccess,
     ],
   );
 
@@ -795,6 +743,31 @@ export default function GameScreen() {
       <AllianceModal
         visible={showAllianceModal}
         onClose={() => setShowAllianceModal(false)}
+        onDeclare={async (player1Id, player2Id) => {
+          try {
+            const response = await gameSessionService.applyReactionCard({
+              sourcePlayerId: getBackendPlayerId(player1Id, players, playerIdMap),
+              cardType: 'ALLIANCE',
+              targetPlayerId: getBackendPlayerId(player2Id, players, playerIdMap),
+              idempotencyKey: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            });
+            if (!response?.success) throw new Error(response?.error || 'No se pudo crear la alianza');
+            syncCanonicalResponse(response);
+          } catch (error) {
+            showError('Error', error instanceof Error ? error.message : 'No se pudo crear la alianza');
+            await reconcileCanonicalScores();
+          }
+        }}
+        onDissolve={async (allianceId) => {
+          try {
+            const response = await gameSessionService.dissolveAlliance(allianceId);
+            if (!response?.success) throw new Error(response?.error || 'No se pudo disolver la alianza');
+            syncCanonicalResponse(response);
+          } catch (error) {
+            showError('Error', error instanceof Error ? error.message : 'No se pudo disolver la alianza');
+            await reconcileCanonicalScores();
+          }
+        }}
       />
 
       <FeaturingModal

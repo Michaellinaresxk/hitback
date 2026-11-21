@@ -540,6 +540,13 @@ export const createPlayerSlice = ((set, get, ..._rest) => ({
       stats?: {
         correctAnswers?: number;
       };
+      effects?: {
+        isFrozen?: boolean;
+        frozenRoundsLeft?: number;
+        frozenForRound?: number | null;
+        lossStreak?: number;
+        bSideActive?: boolean;
+      };
     }[],
   ) => {
     set((state) => {
@@ -555,6 +562,7 @@ export const createPlayerSlice = ((set, get, ..._rest) => ({
           localPlayer.name.trim().toLowerCase(),
         );
         if (backendPlayer) {
+          const effects = backendPlayer.effects;
           return {
             ...localPlayer,
             score: backendPlayer.score,
@@ -564,6 +572,11 @@ export const createPlayerSlice = ((set, get, ..._rest) => ({
               backendPlayer.stats?.correctAnswers ?? localPlayer.correctAnswers,
             availableTokens:
               backendPlayer.availableTokens || localPlayer.availableTokens,
+            isFrozen: effects ? Boolean(effects.isFrozen) : localPlayer.isFrozen,
+            artistHoldRoundsLeft: effects ? Math.max(0, Number(effects.frozenRoundsLeft) || 0) : localPlayer.artistHoldRoundsLeft,
+            frozenForRound: effects ? (effects.frozenForRound ?? null) : localPlayer.frozenForRound,
+            lossStreak: effects ? Math.max(0, Number(effects.lossStreak) || 0) : localPlayer.lossStreak,
+            bSideActive: effects ? Boolean(effects.bSideActive) : localPlayer.bSideActive,
           };
         }
         console.error(

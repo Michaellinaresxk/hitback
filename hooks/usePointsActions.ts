@@ -26,10 +26,10 @@ interface UsePointsActionsParams {
     winnerId: string | null,
     scoreModifiers?: ScoreModifiers,
   ) => Promise<any>;
-  awardAllianceBonus: (winnerId: string, pts: number) => void;
-  applyFeaturingBonus: (partnerId: string, pts: number) => void;
-  applyBSideBonus: (winnerId: string) => boolean;
-  updateLossStreaks: (winnerId: string | null) => string[];
+  awardAllianceBonus?: (winnerId: string, pts: number) => void;
+  applyFeaturingBonus?: (partnerId: string, pts: number) => void;
+  applyBSideBonus?: (winnerId: string) => boolean;
+  updateLossStreaks?: (winnerId: string | null) => string[];
   clearFeaturing: () => void;
   clearBets: () => void;
   featuringPlayerId: string | null;
@@ -116,13 +116,12 @@ export function usePointsActions({
       showWarning('Tokens Perdidos', `${totalLost} tokens perdidos`);
     }
 
-    // B-SIDE: nadie ganó → todos suman lossStreak
-    const newlyActivated = updateLossStreaks(null);
-    if (newlyActivated.length > 0) {
-      const names = newlyActivated
-        .map((id) => players.find((p) => p.id === id)?.name)
-        .filter((name): name is string => !!name);
-      setBSideNotification({ visible: true, playerNames: names });
+    // B-SIDE: server is canonical
+    if (Array.isArray(result.bSideActivatedPlayerIds) && result.bSideActivatedPlayerIds.length > 0) {
+      const names = result.bSideActivatedPlayerIds
+        .map((bid: string) => players.find((p) => getBackendPlayerId(p.id, players, playerIdMap) === bid)?.name)
+        .filter((name: any): name is string => !!name);
+      if (names.length > 0) setBSideNotification({ visible: true, playerNames: names });
     }
 
     clearFeaturing();
@@ -221,50 +220,25 @@ export function usePointsActions({
             candidateAdmittedRef.current = true;
           }
 
-          // 1️⃣ Alliance 50/50
-          if (pts) {
-            const alliance = useGameStore
-              .getState()
-              .getPlayerAlliance(playerId);
-            if (alliance) {
-              awardAllianceBonus(playerId, pts);
-            }
+          // Server is canonical for alliance/featuring/bside/streaks.
+          if (Array.isArray(result.players)) {
+            useGameStore.getState().syncPlayersFromBackend(result.players);
           }
 
-          // 2️⃣ Featuring 100/100
-          if (pts && featuringPlayerId && featuringTargetId) {
-            const isInFeaturing =
-              playerId === featuringPlayerId || playerId === featuringTargetId;
-
-            if (isInFeaturing) {
-              const partnerId =
-                playerId === featuringPlayerId
-                  ? featuringTargetId
-                  : featuringPlayerId;
-
-              applyFeaturingBonus(partnerId, pts);
-              const partner = players.find((p) => p.id === partnerId);
-              showSuccess(
-                '🎤 ¡Featuring!',
-                `${partner?.name ?? 'Partner'} también recibe ${pts} pts`,
-              );
-              clearFeaturing();
-            }
+          if (result.scoreModifiers?.some((m: any) => m.type === 'FEATURING')) {
+            const partner = result.scoreModifiers.find((m: any) => m.type === 'FEATURING');
+            const partnerName = players.find((p) => getBackendPlayerId(p.id, players, playerIdMap) === partner?.playerId)?.name;
+            showSuccess('🎤 ¡Featuring!', `${partnerName ?? 'Partner'} también recibe puntos`);
+            clearFeaturing();
           }
-
-          // 3️⃣ B-SIDE comeback +1
-          const bSideApplied = applyBSideBonus(playerId);
-          if (bSideApplied) {
+          if (result.scoreModifiers?.some((m: any) => m.type === 'B_SIDE')) {
             showSuccess('🎶 ¡B-SIDE!', `${player.name} recupera con +1 bonus`);
           }
-
-          // 4️⃣ Actualizar lossStreaks — ganador resetea, resto suma
-          const newlyActivated = updateLossStreaks(playerId);
-          if (newlyActivated.length > 0) {
-            const names = newlyActivated
-              .map((id) => players.find((p) => p.id === id)?.name)
-              .filter((name): name is string => !!name);
-            setBSideNotification({ visible: true, playerNames: names });
+          if (Array.isArray(result.bSideActivatedPlayerIds) && result.bSideActivatedPlayerIds.length > 0) {
+            const names = result.bSideActivatedPlayerIds
+              .map((bid: string) => players.find((p) => getBackendPlayerId(p.id, players, playerIdMap) === bid)?.name)
+              .filter((name: any): name is string => !!name);
+            if (names.length > 0) setBSideNotification({ visible: true, playerNames: names });
           }
 
           // 5️⃣ World Tour: always advance the correct player's board tile

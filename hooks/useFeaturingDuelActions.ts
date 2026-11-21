@@ -39,9 +39,9 @@ export function useFeaturingDuelActions({
   );
 
   const handleFeaturingPartnerSelected = useCallback(
-    (partnerId: string) => {
+    async (partnerId: string) => {
       if (!featuringPortadorId) return;
-      activateFeaturing(featuringPortadorId, partnerId);
+      await Promise.resolve(activateFeaturing(featuringPortadorId, partnerId));
       setShowFeaturingModal(false);
       setFeaturingPortadorId(null);
     },
@@ -60,9 +60,9 @@ export function useFeaturingDuelActions({
   }, []);
 
   const handleDuelOpponentSelected = useCallback(
-    (opponentId: string) => {
+    async (opponentId: string) => {
       if (!duelChallengerId) return;
-      activateDuel(duelChallengerId, opponentId);
+      await Promise.resolve(activateDuel(duelChallengerId, opponentId));
       setShowDuelModal(false);
       setDuelChallengerId(null);
     },

@@ -22,6 +22,8 @@ interface PlayerOption {
 interface AllianceModalProps {
   visible: boolean;
   onClose: () => void;
+  onDeclare?: (player1Id: string, player2Id: string) => Promise<void> | void;
+  onDissolve?: (allianceId: string) => Promise<void> | void;
 }
 
 type ActiveTab = 'declare' | 'active';
@@ -29,6 +31,8 @@ type ActiveTab = 'declare' | 'active';
 export default function AllianceModal({
   visible,
   onClose,
+  onDeclare,
+  onDissolve,
 }: AllianceModalProps) {
   const { t } = useTranslation();
   const players = useGameStore((s) => s.players);
@@ -72,13 +76,14 @@ export default function AllianceModal({
     [selectedPlayer1],
   );
 
-  const handleDeclare = useCallback(() => {
+  const handleDeclare = useCallback(async () => {
     if (!selectedPlayer1 || !selectedPlayer2) return;
-    declareAlliance(selectedPlayer1, selectedPlayer2);
+    if (onDeclare) await onDeclare(selectedPlayer1, selectedPlayer2);
+    else declareAlliance(selectedPlayer1, selectedPlayer2);
     setSelectedPlayer1(null);
     setSelectedPlayer2(null);
     setActiveTab('active');
-  }, [selectedPlayer1, selectedPlayer2, declareAlliance]);
+  }, [selectedPlayer1, selectedPlayer2, declareAlliance, onDeclare]);
 
   const handleClose = useCallback(() => {
     setSelectedPlayer1(null);
@@ -174,7 +179,7 @@ export default function AllianceModal({
 
         <TouchableOpacity
           style={styles.dissolveButton}
-          onPress={() => dissolveAlliance(item.id)}
+          onPress={() => (onDissolve ? onDissolve(item.id) : dissolveAlliance(item.id))}
           activeOpacity={0.75}
         >
           <Text style={styles.dissolveText}>

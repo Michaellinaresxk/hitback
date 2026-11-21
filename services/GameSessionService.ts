@@ -33,6 +33,18 @@ export interface SessionConfig {
   worldTourRoutes: Record<string, BoardTile[]>;
 }
 
+export interface SessionPlayerEffects {
+  isFrozen?: boolean;
+  frozenRoundsLeft?: number;
+  frozenForRound?: number | null;
+  lossStreak?: number;
+  bSideActive?: boolean;
+  stopBlastActive?: boolean;
+  duelActive?: boolean;
+  duelOpponentId?: string | null;
+  featuringPartnerId?: string | null;
+}
+
 export interface SessionPlayer {
   id: string;
   name: string;
@@ -47,6 +59,27 @@ export interface SessionPlayer {
     tokensWon: number;
     tokensLost: number;
   };
+  effects?: SessionPlayerEffects;
+}
+
+export interface SessionAlliance {
+  id: string;
+  player1Id: string;
+  player2Id: string;
+  roundsLeft: number;
+  createdAtRound: number;
+  status?: 'active' | 'expired';
+}
+
+export interface SessionActiveEffect {
+  id: string;
+  type: string;
+  sourceCard?: string;
+  sourcePlayerId: string;
+  targetPlayerIds: string[];
+  roundsLeft: number;
+  createdAtRound: number;
+  status: 'active' | 'consumed' | 'expired';
 }
 
 export interface GameSession {
@@ -62,6 +95,17 @@ export interface GameSession {
   currentRound: CurrentRound | null;
   timeRemaining: number;
   startedAt: string | null;
+  alliances?: SessionAlliance[];
+  activeEffects?: SessionActiveEffect[];
+  doublePlatinumActive?: boolean;
+  powerCardState?: any;
+  timer?: {
+    durationMs: number;
+    remainingMs: number;
+    startedAt: string | null;
+    pausedAt: string | null;
+    isPaused: boolean;
+  };
 }
 
 export interface ScoreModifiers {
@@ -630,6 +674,37 @@ class GameSessionService {
       console.error('❌ Score settlement failed:', error);
       throw error;
     }
+  }
+
+  async applyReactionCard(command: {
+    sourcePlayerId: string;
+    cardType: string;
+    targetPlayerId?: string | null;
+    payload?: Record<string, any>;
+    idempotencyKey?: string;
+  }): Promise<{
+    success: boolean;
+    event?: any;
+    session?: GameSession;
+    players?: SessionPlayer[];
+    activeEffects?: any[];
+    alliances?: any[];
+    error?: string;
+  }> {
+    const id = this.currentSessionId;
+    if (!id) throw new Error('No hay sesión activa');
+    return this.fetchAPI(`/session/${id}/reaction-cards/apply`, {
+      method: 'POST',
+      body: JSON.stringify(command),
+    });
+  }
+
+  async dissolveAlliance(allianceId: string): Promise<any> {
+    const id = this.currentSessionId;
+    if (!id) throw new Error('No hay sesión activa');
+    return this.fetchAPI(`/session/${id}/alliances/${allianceId}/dissolve`, {
+      method: 'POST',
+    });
   }
 
   // ════════════════════════════════════════════════════════════

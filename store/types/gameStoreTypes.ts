@@ -135,6 +135,13 @@ export interface GameStore extends GameState {
       stats?: {
         correctAnswers?: number;
       };
+      effects?: {
+        isFrozen?: boolean;
+        frozenRoundsLeft?: number;
+        frozenForRound?: number | null;
+        lossStreak?: number;
+        bSideActive?: boolean;
+      };
     }[],
   ) => void;
 

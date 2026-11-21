@@ -140,29 +140,37 @@ export const createGameSlice = ((set, get, ..._rest) => ({
 
     await audioService.initializeAudio();
     const restoredPlayers: Player[] = session.players.map(
-      (backendPlayer, index) => ({
-        id: `restored_${index + 1}`,
-        name: backendPlayer.name,
-        score: backendPlayer.score,
-        correctAnswers: backendPlayer.stats?.correctAnswers ?? 0,
-        isCurrentTurn: false,
-        availableTokens: [...backendPlayer.availableTokens],
-        powerCards: backendPlayer.powerCards ?? [],
-        currentBet: 0,
-        isImmune: false,
-        boostActive: false,
-        peekUsed: false,
-        consecutiveWins: 0,
-        cardTypeStreaks: {},
-        difficultyStreaks: {},
-        isFrozen: false,
-        boardPosition: backendPlayer.boardPosition,
-        frozenForRound: null,
-        artistHoldRoundsLeft: 0,
-        lossStreak: 0,
-        bSideActive: false,
-      }),
+      (backendPlayer, index) => {
+        const effects = backendPlayer.effects || {};
+        return {
+          id: `restored_${index + 1}`,
+          name: backendPlayer.name,
+          score: backendPlayer.score,
+          correctAnswers: backendPlayer.stats?.correctAnswers ?? 0,
+          isCurrentTurn: false,
+          availableTokens: [...backendPlayer.availableTokens],
+          powerCards: backendPlayer.powerCards ?? [],
+          currentBet: 0,
+          isImmune: false,
+          boostActive: false,
+          peekUsed: false,
+          consecutiveWins: 0,
+          cardTypeStreaks: {},
+          difficultyStreaks: {},
+          isFrozen: Boolean(effects.isFrozen),
+          boardPosition: backendPlayer.boardPosition,
+          frozenForRound: effects.frozenForRound ?? null,
+          artistHoldRoundsLeft: Math.max(0, Number(effects.frozenRoundsLeft) || 0),
+          lossStreak: Math.max(0, Number(effects.lossStreak) || 0),
+          bSideActive: Boolean(effects.bSideActive),
+        };
+      },
     );
+
+    const backendIdToLocal = new Map(
+      session.players.map((p, i) => [p.id, `restored_${i + 1}`]),
+    );
+
     const restoredRoutes = Object.fromEntries(
       session.players.map((backendPlayer, index) => {
         const route = session.worldTourRoutes?.[backendPlayer.id];
@@ -172,6 +180,22 @@ export const createGameSlice = ((set, get, ..._rest) => ({
         return [`restored_${index + 1}`, route];
       }),
     );
+
+    const restoredAlliances = (session.alliances || [])
+      .filter((a: any) => a.status === 'active' && a.roundsLeft > 0)
+      .map((a: any) => ({
+        id: a.id,
+        player1Id: backendIdToLocal.get(a.player1Id) || a.player1Id,
+        player2Id: backendIdToLocal.get(a.player2Id) || a.player2Id,
+        roundsLeft: a.roundsLeft,
+        createdAtRound: a.createdAtRound,
+      }));
+
+    const activeEffects = (session.activeEffects || []).filter((e: any) => e.status === 'active');
+    const stopBlast = activeEffects.find((e: any) => e.type === 'STOP_BLAST');
+    const duel = activeEffects.find((e: any) => e.type === 'DUEL');
+    const featuring = activeEffects.find((e: any) => e.type === 'FEATURING');
+
     const isPlaying = session.status === 'playing';
     const configuredDuration =
       session.config.timeLimit || session.timeRemaining || 0;
@@ -187,6 +211,7 @@ export const createGameSlice = ((set, get, ..._rest) => ({
       id: session.id,
       players: restoredPlayers,
       worldTourRoutes: restoredRoutes,
+      alliances: restoredAlliances,
       isActive: isPlaying,
       currentTurn: 0,
       timeLeft: remainingSeconds,
@@ -199,6 +224,14 @@ export const createGameSlice = ((set, get, ..._rest) => ({
       showAnswer: false,
       showGameEndModal: session.status === 'finished',
       backendConnected: true,
+      doublePlatinumActive: Boolean(session.doublePlatinumActive),
+      stopBlastActive: Boolean(stopBlast),
+      stopBlastHolderId: stopBlast ? (backendIdToLocal.get(stopBlast.sourcePlayerId) || stopBlast.sourcePlayerId) : null,
+      duelActive: Boolean(duel),
+      duelPlayer1Id: duel ? (backendIdToLocal.get(duel.targetPlayerIds?.[0]) || duel.targetPlayerIds?.[0] || null) : null,
+      duelPlayer2Id: duel ? (backendIdToLocal.get(duel.targetPlayerIds?.[1]) || duel.targetPlayerIds?.[1] || null) : null,
+      featuringPlayerId: featuring ? (backendIdToLocal.get(featuring.sourcePlayerId) || featuring.sourcePlayerId) : null,
+      featuringTargetId: featuring ? (backendIdToLocal.get(featuring.targetPlayerIds?.[0]) || featuring.targetPlayerIds?.[0] || null) : null,
     });
 
     if (isPlaying && remainingSeconds > 0) {
