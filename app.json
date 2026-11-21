@@ -53,7 +53,8 @@
           "recordAudioAndroid": true
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true

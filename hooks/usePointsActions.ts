@@ -209,14 +209,13 @@ export function usePointsActions({
             `${player.name} gana ${pts} pts\n"${result.trackInfo.title}" - ${result.trackInfo.artist}`,
           );
 
-          // NUEVO: Verificar si es candidato al Hall of Fame (score = targetScore - 1)
+          // Near-win warning: 1 point away from target
           if (result.isCandidate && !candidateAdmittedRef.current) {
-            showSuccess(
-              '🌟 Candidato al Hall of Fame',
-              `${player.name} has alcanzado ${pts} pts. ¡Eres candidato al Hall of Fame Musical!` +
-                '\n\nSerá una leyenda musical gracias a tus fans y tu trayectoria.',
+            const candidateName = result.candidatePlayerName || player.name;
+            showWarning(
+              '⚠️ ¡Casi una leyenda!',
+              `${candidateName} está a 1 punto de ganar. ¡La próxima puede coronarlo como leyenda!`,
             );
-            // Marcar que ya fue mostrado para no mostrar de nuevo
             candidateAdmittedRef.current = true;
           }
 

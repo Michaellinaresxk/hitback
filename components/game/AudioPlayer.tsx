@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, Animated } from 'react-native';
-import { Audio } from 'expo-av';
+import { AudioPlayer as ExpoAudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 import { IconSymbol } from '@/components/ui/IconSymbol';
 
 interface AudioPlayerProps {
@@ -25,8 +25,9 @@ export default function AudioPlayer({
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(Math.ceil(duration / 1000));
 
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const playerRef = useRef<ExpoAudioPlayer | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const stopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasFinishedRef = useRef(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
@@ -34,12 +35,12 @@ export default function AudioPlayer({
   useEffect(() => {
     const setupAudio = async () => {
       try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          shouldPlayInBackground: false,
+          interruptionMode: 'duckOthers',
+          allowsRecording: false,
+          shouldRouteThroughEarpiece: false,
         });
       } catch (err) {
         console.error('Error setting audio mode:', err);
@@ -54,25 +55,38 @@ export default function AudioPlayer({
     let isMounted = true;
     hasFinishedRef.current = false;
 
-    const loadAndPlay = async () => {
-      // Limpiar audio anterior
-      if (soundRef.current) {
-        try {
-          await soundRef.current.stopAsync();
-          await soundRef.current.unloadAsync();
-        } catch {}
-        soundRef.current = null;
+    const cleanupPlayer = () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
+      if (stopTimeoutRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+      }
+      if (playerRef.current) {
+        try {
+          playerRef.current.pause();
+          playerRef.current.remove();
+        } catch {}
+        playerRef.current = null;
+      }
+    };
+
+    const finishOnce = () => {
+      if (hasFinishedRef.current) return;
+      hasFinishedRef.current = true;
+      onAudioFinished?.();
+    };
+
+    const loadAndPlay = async () => {
+      cleanupPlayer();
 
       if (!previewUrl) {
         setError('No hay URL de audio');
         setIsLoading(false);
-        // Aún así llamar onAudioFinished después de un delay
         setTimeout(() => {
-          if (isMounted && onAudioFinished && !hasFinishedRef.current) {
-            hasFinishedRef.current = true;
-            onAudioFinished();
-          }
+          if (isMounted) finishOnce();
         }, 2000);
         return;
       }
@@ -80,79 +94,57 @@ export default function AudioPlayer({
       try {
         setIsLoading(true);
         setError(null);
+        setTimeLeft(Math.ceil(duration / 1000));
         console.log(`🎵 AudioPlayer: Loading ${previewUrl}`);
 
-        const { sound } = await Audio.Sound.createAsync(
-          { uri: previewUrl },
-          { shouldPlay: autoPlay, volume: 1.0 }
-        );
+        const player = createAudioPlayer(previewUrl);
+        player.volume = 1.0;
 
         if (!isMounted) {
-          await sound.unloadAsync();
+          try { player.remove(); } catch {}
           return;
         }
 
-        soundRef.current = sound;
+        playerRef.current = player;
+
+        if (autoPlay) {
+          player.play();
+        }
+
         setIsPlaying(autoPlay);
         setIsLoading(false);
-        setTimeLeft(Math.ceil(duration / 1000));
 
         console.log(`✅ AudioPlayer: Playing for ${duration}ms`);
-
-        // Iniciar animación de pulso
         startPulseAnimation();
 
-        // Iniciar countdown
         timerRef.current = setInterval(() => {
-          setTimeLeft((prev) => {
-            if (prev <= 1) {
-              return 0;
-            }
-            return prev - 1;
-          });
+          setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
         }, 1000);
 
-        // Detener después de duration
-        setTimeout(async () => {
+        stopTimeoutRef.current = setTimeout(() => {
           if (!isMounted) return;
-
           console.log(`⏰ AudioPlayer: Duration reached, stopping...`);
 
-          // Limpiar timer
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
           }
 
-          // Detener audio
-          if (soundRef.current) {
-            try {
-              await soundRef.current.stopAsync();
-            } catch {}
+          if (playerRef.current) {
+            try { playerRef.current.pause(); } catch {}
           }
 
           setIsPlaying(false);
           setTimeLeft(0);
-
-          // Llamar callback solo una vez
-          if (onAudioFinished && !hasFinishedRef.current) {
-            hasFinishedRef.current = true;
-            console.log(`✅ AudioPlayer: Calling onAudioFinished`);
-            onAudioFinished();
-          }
+          finishOnce();
         }, duration);
       } catch (err) {
         console.error('❌ AudioPlayer error:', err);
         if (isMounted) {
           setError('Error reproduciendo audio');
           setIsLoading(false);
-
-          // Llamar onAudioFinished incluso si hay error
           setTimeout(() => {
-            if (isMounted && onAudioFinished && !hasFinishedRef.current) {
-              hasFinishedRef.current = true;
-              onAudioFinished();
-            }
+            if (isMounted) finishOnce();
           }, 2000);
         }
       }
@@ -162,22 +154,11 @@ export default function AudioPlayer({
       loadAndPlay();
     }
 
-    // Cleanup
     return () => {
       isMounted = false;
-
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-
-      if (soundRef.current) {
-        soundRef.current.stopAsync().catch(() => {});
-        soundRef.current.unloadAsync().catch(() => {});
-        soundRef.current = null;
-      }
+      cleanupPlayer();
     };
-  }, [previewUrl]); // It only depends on previewUrl to avoid multiple plays
+  }, [previewUrl]); // Only depends on previewUrl to avoid multiple plays
 
   // 🎨 Pulse animation
   const startPulseAnimation = () => {

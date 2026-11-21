@@ -2,8 +2,7 @@
 // ✅ Todos los métodos que usa gameStore.ts
 // ✅ Siempre obtiene audio desde el backend (Deezer)
 
-import { Audio } from 'expo-av';
-import { Platform } from 'react-native';
+import { AudioPlayer, createAudioPlayer, setAudioModeAsync } from 'expo-audio';
 
 // 🔧 CONFIGURACIÓN
 const getBaseUrl = (): string => {
@@ -51,10 +50,12 @@ interface Track {
 
 // 🏭 CLASE PRINCIPAL
 class AudioService {
-  private sound: Audio.Sound | null = null;
+  private player: AudioPlayer | null = null;
+  private statusSubscription: { remove: () => void } | null = null;
   private baseUrl: string;
   private playbackTimeout: ReturnType<typeof setTimeout> | null = null;
   private onFinishCallback: (() => void) | null = null;
+  private hasFinished = false;
 
   private state: AudioState = {
     isPlaying: false,
@@ -87,12 +88,12 @@ class AudioService {
     }
 
     try {
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: true,
-        playThroughEarpieceAndroid: false,
+      await setAudioModeAsync({
+        playsInSilentMode: true,
+        shouldPlayInBackground: false,
+        interruptionMode: 'duckOthers',
+        allowsRecording: false,
+        shouldRouteThroughEarpiece: false,
       });
 
       this.state.isInitialized = true;
@@ -135,18 +136,21 @@ class AudioService {
     this.state.isLoading = true;
     this.state.error = null;
     this.onFinishCallback = onFinish || null;
+    this.hasFinished = false;
 
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: true, volume: 1.0 },
-        this.onPlaybackStatusUpdate.bind(this)
-      );
+      const player = createAudioPlayer(url);
+      player.volume = 1.0;
+      this.player = player;
+      this.state.currentUrl = url;
 
-      this.sound = sound;
+      this.statusSubscription = player.addListener('playbackStatusUpdate', (status) => {
+        this.onPlaybackStatusUpdate(status);
+      });
+
+      player.play();
       this.state.isPlaying = true;
       this.state.isLoading = false;
-      this.state.currentUrl = url;
 
       console.log(`✅ Audio playing`);
 
@@ -154,10 +158,7 @@ class AudioService {
       if (duration > 0) {
         this.playbackTimeout = setTimeout(() => {
           console.log(`⏰ Duration limit reached (${duration}s)`);
-          this.stopAudio();
-          if (this.onFinishCallback) {
-            this.onFinishCallback();
-          }
+          this.finishPlayback();
         }, duration * 1000);
       }
 
@@ -182,29 +183,30 @@ class AudioService {
    * Callback de estado de reproducción
    */
   private onPlaybackStatusUpdate(status: any): void {
-    if (!status.isLoaded) {
-      if (status.error) {
-        console.error(`❌ Playback error: ${status.error}`);
-        this.state.error = status.error;
-      }
-      return;
-    }
+    if (!status?.isLoaded) return;
 
-    this.state.isPlaying = status.isPlaying;
-    this.state.duration = status.durationMillis
-      ? status.durationMillis / 1000
-      : 0;
-    this.state.position = status.positionMillis
-      ? status.positionMillis / 1000
-      : 0;
+    this.state.isPlaying = !!status.playing;
+    this.state.duration = status.duration || 0;
+    this.state.position = status.currentTime || 0;
 
-    if (status.didJustFinish && !status.isLooping) {
+    if (status.didJustFinish && !this.hasFinished) {
       console.log(`🏁 Audio finished naturally`);
-      this.cleanup();
-      if (this.onFinishCallback) {
-        this.onFinishCallback();
-      }
+      this.finishPlayback();
     }
+  }
+
+  private finishPlayback(): void {
+    if (this.hasFinished) return;
+    this.hasFinished = true;
+    this.cleanup();
+    const cb = this.onFinishCallback;
+    this.onFinishCallback = null;
+    // Stop player async but don't block callback
+    if (this.player) {
+      try { this.player.pause(); } catch {}
+    }
+    this.state.isPlaying = false;
+    if (cb) cb();
   }
 
   /**
@@ -215,19 +217,26 @@ class AudioService {
     console.log(`⏹️ AudioService.stopAudio`);
 
     this.cleanup();
+    this.hasFinished = true; // prevent late callbacks
 
-    if (this.sound) {
+    if (this.statusSubscription) {
+      try { this.statusSubscription.remove(); } catch {}
+      this.statusSubscription = null;
+    }
+
+    if (this.player) {
       try {
-        await this.sound.stopAsync();
-        await this.sound.unloadAsync();
+        this.player.pause();
+        this.player.remove();
       } catch (error) {
         // Ignorar errores al detener
       }
-      this.sound = null;
+      this.player = null;
     }
 
     this.state.isPlaying = false;
     this.state.currentUrl = null;
+    this.onFinishCallback = null;
   }
 
   /**
@@ -241,9 +250,9 @@ class AudioService {
    * Pausar audio
    */
   async pause(): Promise<void> {
-    if (this.sound && this.state.isPlaying) {
+    if (this.player && this.state.isPlaying) {
       try {
-        await this.sound.pauseAsync();
+        this.player.pause();
         this.state.isPlaying = false;
         console.log(`⏸️ Audio paused`);
       } catch (error) {
@@ -256,9 +265,9 @@ class AudioService {
    * Reanudar audio
    */
   async resume(): Promise<void> {
-    if (this.sound && !this.state.isPlaying) {
+    if (this.player && !this.state.isPlaying) {
       try {
-        await this.sound.playAsync();
+        this.player.play();
         this.state.isPlaying = true;
         console.log(`▶️ Audio resumed`);
       } catch (error) {
@@ -271,9 +280,9 @@ class AudioService {
    * Ajustar volumen
    */
   async setVolume(volume: number): Promise<void> {
-    if (this.sound) {
+    if (this.player) {
       try {
-        await this.sound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
+        this.player.volume = Math.max(0, Math.min(1, volume));
       } catch (error) {
         console.error(`❌ Set volume failed:`, error);
       }
@@ -426,13 +435,11 @@ class AudioService {
     const testUrl = 'https://www.soundjay.com/buttons/beep-01a.mp3';
 
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: testUrl },
-        { shouldPlay: false }
-      );
-
-      await sound.unloadAsync();
-
+      const player = createAudioPlayer(testUrl);
+      // Give it a moment to be created; then clean up
+      setTimeout(() => {
+        try { player.remove(); } catch {}
+      }, 500);
       return { success: true };
     } catch (error) {
       return {
