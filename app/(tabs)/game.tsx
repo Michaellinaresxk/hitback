@@ -71,6 +71,7 @@ export default function GameScreen() {
     setGameActive,
     addPowerCard,
     clearFeaturing,
+    applyBadReview,
     advancePlayerBoard,
     activateDoublePlatinum,
   } = useGameScreenStore();
@@ -629,7 +630,7 @@ export default function GameScreen() {
   if (!isActive && showGameEndModal) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+        <StatusBar barStyle='light-content' />
         <GameEndModal
           visible={true}
           players={players as any}
@@ -645,7 +646,7 @@ export default function GameScreen() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <View style={styles.container}>
-      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+      <StatusBar barStyle='light-content' />
       <GameFeedback messages={messages} onMessageDismiss={dismissFeedback} />
 
       <ScrollView>

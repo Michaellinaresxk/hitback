@@ -8,23 +8,19 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import React from 'react';
 import FloatingTabButton from './FloatingTabButton';
 
-export default function FloatingDockTabBar({
-  state,
-  descriptors,
-  navigation,
-}: BottomTabBarProps) {
+export default function FloatingDockTabBar(props: any) {
+  const { state, descriptors, navigation } = props as BottomTabBarProps & any;
   const colorScheme = useRNColorScheme();
   const isDark = colorScheme === 'dark';
 
   const handleTabPress = (route: any, isFocused: boolean) => {
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: route.key,
-      canPreventDefault: true,
-    });
-
+    const nav = navigation || props;
+    const event = nav.emit
+      ? nav.emit({ type: 'tabPress', target: route.key, canPreventDefault: true })
+      : { defaultPrevented: false };
     if (!isFocused && !event.defaultPrevented) {
-      navigation.navigate(route.name, route.params);
+      if (nav.navigate) nav.navigate(route.name, route.params);
+      else if (props.navigateToTab) props.navigateToTab(route.key);
     }
   };
 
@@ -52,7 +48,7 @@ export default function FloatingDockTabBar({
       <View style={[styles.backgroundOrb, styles.orb2]} />
 
       <View style={styles.tabsContainer}>
-        {state.routes.map((route, index) => {
+        {state.routes.map((route: any, index: number) => {
           const { options } = descriptors[route.key];
           const label =
             options.tabBarLabel !== undefined

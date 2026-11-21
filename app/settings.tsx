@@ -30,7 +30,7 @@ export default function SettingsScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+      <StatusBar barStyle='light-content' />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 🌍 LANGUAGE SECTION */}

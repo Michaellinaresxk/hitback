@@ -22,7 +22,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               name={focused ? 'home' : 'home-outline'}
-              color={color}
+              color={(color as string) ?? undefined}
             />
           ),
         }}
@@ -34,7 +34,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               name={focused ? 'game-controller' : 'game-controller-outline'}
-              color={color}
+              color={(color as string) ?? undefined}
             />
           ),
         }}
@@ -46,7 +46,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               name={focused ? 'musical-notes' : 'musical-notes-outline'}
-              color={color}
+              color={(color as string) ?? undefined}
             />
           ),
         }}
@@ -58,7 +58,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               name={focused ? 'settings' : 'settings-outline'}
-              color={color}
+              color={(color as string) ?? undefined}
             />
           ),
         }}
@@ -70,7 +70,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, focused }) => (
             <TabBarIcon
               name={focused ? 'help-circle' : 'help-circle-outline'}
-              color={color}
+              color={(color as string) ?? undefined}
             />
           ),
         }}

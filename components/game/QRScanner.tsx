@@ -196,7 +196,7 @@ export default function QRScanner({
       onRequestClose={handleClose}
     >
       <View style={styles.container}>
-        <StatusBar barStyle='light-content' backgroundColor='#000000' />
+        <StatusBar barStyle='light-content' />
 
         {/* Header */}
         <View style={styles.header}>

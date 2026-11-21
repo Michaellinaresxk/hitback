@@ -76,7 +76,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView>
-        <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+        <StatusBar barStyle='light-content' />
 
         {/* Header */}
         <View style={styles.header}>

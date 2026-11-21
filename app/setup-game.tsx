@@ -240,7 +240,7 @@ export default function GameSetupScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <StatusBar barStyle='light-content' backgroundColor='#0F172A' />
+      <StatusBar barStyle='light-content' />
 
       {/* Header */}
       <View style={styles.header}>

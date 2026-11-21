@@ -6,20 +6,40 @@ import { SymbolWeight, SymbolViewProps } from 'expo-symbols';
 import { ComponentProps } from 'react';
 import { OpaqueColorValue, type StyleProp, type TextStyle } from 'react-native';
 
-type IconMapping = Record<SymbolViewProps['name'], ComponentProps<typeof MaterialIcons>['name']>;
-type IconSymbolName = keyof typeof MAPPING;
-
-/**
- * Add your SF Symbols to Material Icons mappings here.
- * - see Material Icons in the [Icons Directory](https://icons.expo.fyi).
- * - see SF Symbols in the [SF Symbols](https://developer.apple.com/sf-symbols/) app.
- */
-const MAPPING = {
+const MAPPING: Record<string, ComponentProps<typeof MaterialIcons>['name']> = {
   'house.fill': 'home',
   'paperplane.fill': 'send',
   'chevron.left.forwardslash.chevron.right': 'code',
   'chevron.right': 'chevron-right',
-} as IconMapping;
+  'checkmark.circle.fill': 'check-circle',
+  'checkmark.circle': 'check-circle-outline',
+  'exclamationmark.triangle.fill': 'warning',
+  'info.circle.fill': 'info',
+  'xmark.circle.fill': 'cancel',
+  'xmark': 'close',
+  'bolt.fill': 'bolt',
+  'star.fill': 'star',
+  'flame.fill': 'local-fire-department',
+  'bitcoinsign.circle.fill': 'monetization-on',
+  'sparkles': 'auto-awesome',
+  'chart.bar.fill': 'bar-chart',
+  'crown.fill': 'workspace-premium',
+  'medal.fill': 'military-tech',
+  'arrow.clockwise': 'refresh',
+  'dice.fill': 'casino',
+  'map': 'map',
+  'clock': 'schedule',
+  'play.circle': 'play-circle',
+  'camera': 'photo-camera',
+  'camera.fill': 'photo-camera',
+  'flashlight.off.fill': 'flashlight-off',
+  'flashlight.on.fill': 'flashlight-on',
+  'timer': 'timer',
+  'video.circle': 'videocam',
+  'stop.circle': 'stop-circle',
+  'qrcode': 'qr-code',
+  'gamecontroller': 'sports-esports',
+};
 
 /**
  * An icon component that uses native SF Symbols on iOS, and Material Icons on Android and web.
@@ -32,11 +52,12 @@ export function IconSymbol({
   color,
   style,
 }: {
-  name: IconSymbolName;
+  name: string;
   size?: number;
   color: string | OpaqueColorValue;
   style?: StyleProp<TextStyle>;
   weight?: SymbolWeight;
 }) {
-  return <MaterialIcons color={color} size={size} name={MAPPING[name]} style={style} />;
+  const mapped = MAPPING[name] || (name as ComponentProps<typeof MaterialIcons>['name']);
+  return <MaterialIcons color={color} size={size} name={mapped} style={style} />;
 }
