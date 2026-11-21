@@ -654,6 +654,7 @@ export default function GameScreen() {
           timeLeft={timeLeft}
           currentPhase={flowState.phase}
           onOpenAlliances={() => setShowAllianceModal(true)}
+          onCityHistoryPress={handleOpenCityHistory}
         />
 
         {gamePot?.tokens > 0 && <GamePot tokens={gamePot.tokens} />}

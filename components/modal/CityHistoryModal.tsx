@@ -8,14 +8,13 @@ import {
   Modal,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { BoardTile } from '@/types/worldTour.types';
-import type { CityData } from '@/types/worldTour.types';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useVisitedCities } from '@/hooks/useVisitedCities';
+import { useGameStore } from '@/store/gameStore';
 
 interface CityHistoryModalProps {
   visible: boolean;
   onClose: () => void;
-  playerId?: string; // Si undefined, muestra el historial del jugador actual
+  playerId?: string;
 }
 
 export default function CityHistoryModal({
@@ -24,54 +23,56 @@ export default function CityHistoryModal({
   playerId,
 }: CityHistoryModalProps) {
   const { t } = useTranslation();
+  const { players } = useGameStore();
+  const resolvedPlayerId = playerId || players[0]?.id || 'player_1';
+  const { visitedCities, totalRouteLength, currentPosition, playerName } =
+    useVisitedCities(resolvedPlayerId);
 
-  // Obtener datos del store - NOTE: Esto requiere acceso al store,
-  // en un caso real usaríamos useGameStore aquí o pasar los datos por props
-  // Para esta implementación, asumiremos que los datos vienen props o del store padre
   if (!visible) return null;
 
   return (
-    <Modal
-      visible={visible}
-      transparent={true}
-      animationType='fade'
-    >
+    <Modal visible={visible} transparent animationType='fade' onRequestClose={onClose}>
       <View style={styles.modalBackground}>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Historial de Ciudades</Text>
-            <Text style={styles.closeButtonText}>×</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} accessibilityRole='button'>
+              <Text style={styles.closeButtonText}>×</Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.content}>
-            <Text style={styles.subtitle}>Recorrido World Tour</Text>
-
-            {/* Progreso */}
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressLabel}>
-                {t('tour.progress', {
-                  current: 1,
-                  total: 22,
-                })}
-              </Text>
-              <View
-                style={[
-                  styles.progressBarBackground,
-                  {
-                    width: '100%',
-                    height: 8,
-                  },
-                ]}
-              />
-            </View>
-
-            <Text style={styles.noCitiesVisited}>
-              {t('tour.noCitiesVisited')}
+            <Text style={styles.subtitle}>
+              {playerName} · {t('tour.progress', {
+                current: Math.min(currentPosition + 1, totalRouteLength || 22),
+                total: totalRouteLength || 22,
+              })}
             </Text>
+
+            <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+              {visitedCities.length === 0 ? (
+                <Text style={styles.noCitiesVisited}>{t('tour.noCitiesVisited')}</Text>
+              ) : (
+                visitedCities.map((city) => (
+                  <View key={`${city.cityId}-${city.position}`} style={styles.cityRow}>
+                    <Text style={styles.cityEmoji}>{city.emoji}</Text>
+                    <View style={styles.cityInfo}>
+                      <Text style={styles.cityName}>
+                        {city.position + 1}. {city.name}
+                      </Text>
+                      <Text style={styles.cityMeta}>
+                        {city.country}
+                        {city.venue ? ` · ${city.venue}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
           </View>
 
           <View style={styles.footer}>
-            <Text>Ruta: 22 ciudades totales</Text>
+            <Text style={styles.footerText}>Ruta: {totalRouteLength || 22} ciudades totales</Text>
           </View>
         </View>
       </View>
@@ -83,13 +84,15 @@ const styles = StyleSheet.create({
   modalBackground: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
   },
   container: {
-    flex: 1,
     backgroundColor: '#0F172A',
     borderRadius: 20,
-    maxHeight: '90%',
+    maxHeight: '85%',
     marginHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   header: {
     padding: 20,
@@ -107,6 +110,10 @@ const styles = StyleSheet.create({
   closeButton: {
     padding: 8,
   },
+  closeButtonText: {
+    fontSize: 24,
+    color: '#64748B',
+  },
   content: {
     padding: 20,
   },
@@ -116,22 +123,35 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginBottom: 12,
   },
-  progressContainer: {
+  list: {
+    maxHeight: 360,
+  },
+  listContent: {
+    gap: 10,
+  },
+  cityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    padding: 12,
   },
-  progressLabel: {
+  cityEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  cityInfo: {
+    flex: 1,
+  },
+  cityName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F8FAFC',
+  },
+  cityMeta: {
     fontSize: 12,
     color: '#94A3B8',
-  },
-  progressBarBackground: {
-    flex: 1,
-    height: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 4,
-    overflow: 'hidden',
+    marginTop: 2,
   },
   noCitiesVisited: {
     padding: 20,
@@ -142,12 +162,10 @@ const styles = StyleSheet.create({
     padding: 12,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    marginTop: 12,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  closeButtonText: {
-    fontSize: 24,
-    color: '#64748B',
+  footerText: {
+    color: '#94A3B8',
+    fontSize: 12,
   },
 });
