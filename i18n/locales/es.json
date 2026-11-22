@@ -738,6 +738,7 @@
       "STOP_BLAST": "Conseguiste exclusiva en la radio.",
       "CHARITY_SHOW": "Te invitan a un concierto benéfico."
     },
-    "selectTarget": "Elige a quién aplicar la carta"
+    "selectTarget": "Elige a quién aplicar la carta",
+    "tourScenario": "Escenario de gira · la carta se revela aquí"
   }
 }

@@ -738,6 +738,7 @@
       "STOP_BLAST": "Zdobyłeś wyłączność radiową.",
       "CHARITY_SHOW": "Zapraszają cię na koncert charytatywny."
     },
-    "selectTarget": "Wybierz, na kogo zastosować kartę"
+    "selectTarget": "Wybierz, na kogo zastosować kartę",
+    "tourScenario": "Scenariusz trasy · karta ujawnia się tutaj"
   }
 }
