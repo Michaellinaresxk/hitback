@@ -347,7 +347,11 @@
     "multipleInstruction": "Dale una Reaction Card a cada uno 🃏",
     "singleInstruction": "Dale una Reaction Card del mazo físico 🃏",
     "multipleDelivered": "Cartas entregadas ✓",
-    "singleDelivered": "Carta entregada ✓"
+    "singleDelivered": "Carta entregada ✓",
+    "digitalSingleInstruction": "En modo streaming no hay mazo físico: solo recibe el punto de fan (+1 en su próxima respuesta correcta).",
+    "digitalMultipleInstruction": "En modo streaming no hay mazo físico: solo reciben el punto de fan (+1 en su próxima respuesta correcta).",
+    "digitalSingleDelivered": "Entendido ✓",
+    "digitalMultipleDelivered": "Entendido ✓"
   },
   "gameEnd": {
     "winnerTitle": "¡GANADOR!",

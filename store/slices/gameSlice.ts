@@ -289,10 +289,18 @@ export const createGameSlice = ((set, get, ..._rest) => ({
   },
 
   endGame: async () => {
-    await audioService.stopAudio();
+    try {
+      await audioService.stopAudio();
+    } catch (error) {
+      console.warn('⚠️ Error stopping audio during endGame:', error);
+    }
     get().stopTimer();
 
     const { players } = get();
+    if (players.length === 0) {
+      set({ isActive: false, showGameEndModal: true });
+      return;
+    }
     const winner = players.reduce((max, player) =>
       player.score > max.score ||
       (player.score === max.score && player.boardPosition > max.boardPosition)

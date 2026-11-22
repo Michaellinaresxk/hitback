@@ -73,24 +73,25 @@ export default function GameEndModal({
   };
 
   useEffect(() => {
-    if (visible) {
-      // Start confetti animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(confettiAnimation, {
-            toValue: 1,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(confettiAnimation, {
-            toValue: 0,
-            duration: 2000,
-            useNativeDriver: true,
-          }),
-        ]),
-      ).start();
-    }
-  }, [visible]);
+    if (!visible) return;
+    // Start confetti animation
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(confettiAnimation, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(confettiAnimation, {
+          toValue: 0,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [visible, confettiAnimation]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

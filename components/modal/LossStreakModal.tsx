@@ -10,6 +10,8 @@ interface LossStreakModalProps {
   visible: boolean;
   playerNames: string[]; // ← array de jugadores con B-SIDE activo
   onClose: () => void;
+  /** 'digital' = streaming (no physical deck). 'physical'/null = vinyl/physical deck. */
+  playMode?: 'physical' | 'digital' | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -20,9 +22,11 @@ export default function LossStreakModal({
   visible,
   playerNames,
   onClose,
+  playMode = null,
 }: LossStreakModalProps) {
   const { t } = useTranslation();
   const isMultiple = playerNames.length > 1;
+  const isDigital = playMode === 'digital';
 
   return (
     <Modal
@@ -60,9 +64,13 @@ export default function LossStreakModal({
           </View>
 
           <Text style={styles.instruction}>
-            {isMultiple
-              ? t('lossStreakModal.multipleInstruction')
-              : t('lossStreakModal.singleInstruction')}
+            {isDigital
+              ? isMultiple
+                ? t('lossStreakModal.digitalMultipleInstruction')
+                : t('lossStreakModal.digitalSingleInstruction')
+              : isMultiple
+                ? t('lossStreakModal.multipleInstruction')
+                : t('lossStreakModal.singleInstruction')}
           </Text>
 
           <TouchableOpacity
@@ -71,9 +79,13 @@ export default function LossStreakModal({
             activeOpacity={0.85}
           >
             <Text style={styles.buttonText}>
-              {isMultiple
-                ? t('lossStreakModal.multipleDelivered')
-                : t('lossStreakModal.singleDelivered')}
+              {isDigital
+                ? isMultiple
+                  ? t('lossStreakModal.digitalMultipleDelivered')
+                  : t('lossStreakModal.digitalSingleDelivered')
+                : isMultiple
+                  ? t('lossStreakModal.multipleDelivered')
+                  : t('lossStreakModal.singleDelivered')}
             </Text>
           </TouchableOpacity>
         </View>
