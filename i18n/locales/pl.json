@@ -25,7 +25,11 @@
       "step2": "Skanuj karty QR",
       "step3": "Rywalizuj i baw się dobrze!"
     },
-    "footer": "Wersja Beta • Stworzone z ❤️ dla przyjaciół"
+    "footer": "Wersja Beta • Stworzone z ❤️ dla przyjaciół",
+    "hallOfFame": {
+      "candidate": "🌟 Kandydat do Muzycznej Galerii Sław",
+      "legend": "🏆 MUZYCZNA LEGENDA!"
+    }
   },
   "setupGame": {
     "config_game": "Skonfiguruj swoją grę",
@@ -71,6 +75,19 @@
       "local_start_failed": "Nie udało się rozpocząć gry na tym urządzeniu.",
       "connection_title": "Błąd połączenia",
       "connection_message": "Nie można połączyć się z serwerem. Sprawdź, czy jest dostępny.\n\n{{details}}"
+    },
+    "playMode": {
+      "title": "TRYB GRY",
+      "subtitle": "Wybierz, jak będzie rozgrywana trasa. Nie można tego zmienić w trakcie gry.",
+      "required": "Wybierz Winyl lub Streaming, aby rozpocząć",
+      "physical": {
+        "name": "💿 Winyl",
+        "description": "Fizyczna plansza mówi, kiedy jest karta. MG rejestruje kartę dobraną przez gracza."
+      },
+      "digital": {
+        "name": "📡 Streaming",
+        "description": "Trasa decyduje: każde backstage ujawnia w aplikacji kartę-niespodziankę."
+      }
     }
   },
   "settingPage": {
@@ -122,7 +139,10 @@
       "title": "Efekty dźwiękowe",
       "desc": "Dźwięki interfejsu"
     },
-    "vibration": { "title": "Wibracje", "desc": "Informacja haptyczna" },
+    "vibration": {
+      "title": "Wibracje",
+      "desc": "Informacja haptyczna"
+    },
     "reset": {
       "title": "Resetuj ustawienia",
       "desc": "Przywróć wartości domyślne"
@@ -694,6 +714,30 @@
         "candidate": "🌟 Kandidat do Hall of Fame",
         "legend": "🏆 Jesteś Legendą Muzyczną!"
       }
-    }
+    },
+    "noCitiesVisited": "Brak odwiedzonych miast"
+  },
+  "backstage": {
+    "title": "BACKSTAGE",
+    "oneHitAway": "🎟️ 1 trafienie do Backstage",
+    "useCard": "Użyj karty",
+    "discard": "Odrzuć",
+    "obtained": "Otrzymujesz {{card}}",
+    "atCity": "{{city}}",
+    "scenes": {
+      "FEATURING": "Poznałeś artystę, który chce z tobą nagrać.",
+      "ALLIANCE": "Inny artysta proponuje współpracę.",
+      "DUEL": "Rywalski artysta rzuca ci wyzwanie.",
+      "SOLD_OUT": "Dowiadujesz się, że wyprzedałeś bilety w następnym mieście.",
+      "ROYALTIES": "Twój menedżer odkrył, że należą ci się pieniądze.",
+      "COPYRIGHTS": "Twój prawnik znalazł kogoś, kto używa twojej piosenki.",
+      "BAD_REVIEW": "Krytyk prosi o amunicję przeciwko rywalowi.",
+      "MANAGEMENT_FEE": "Możesz przerzucić rachunek menedżera na kogoś innego.",
+      "MUTE": "Kontakt może uciszyć innego artystę.",
+      "ARTIST_HOLD": "Kontakt może zatrzymać lidera.",
+      "STOP_BLAST": "Zdobyłeś wyłączność radiową.",
+      "CHARITY_SHOW": "Zapraszają cię na koncert charytatywny."
+    },
+    "selectTarget": "Wybierz, na kogo zastosować kartę"
   }
 }

@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 import type { PowerCard } from '@/types/game.types';
 import type { BoardTile } from '@/types/worldTour.types';
+import type { BackstageCard, PlayMode } from '@/types/backstage.types';
 
 // ✅ Conecta con el nuevo API v2 (SIN QR)
 // ✅ Maneja sesiones de juego completas
@@ -30,6 +31,8 @@ export interface SessionConfig {
   timeLimit: number;
   tokensPerPlayer: number;
   powerCardsPerPlayer: number;
+  playMode: PlayMode;
+  backstageInterval?: number;
   worldTourRoutes: Record<string, BoardTile[]>;
 }
 
@@ -97,6 +100,7 @@ export interface GameSession {
   startedAt: string | null;
   alliances?: SessionAlliance[];
   activeEffects?: SessionActiveEffect[];
+  backstageCard?: BackstageCard | null;
   doublePlatinumActive?: boolean;
   powerCardState?: any;
   timer?: {
@@ -159,6 +163,11 @@ export interface RoundResult {
   pointsAwarded: number;
   tokenBonus?: number;
   basePoints?: number;
+  backstage?: BackstageCard | null;
+  bSideActivatedPlayerIds?: string[];
+  isCandidate?: boolean;
+  candidatePlayerId?: string;
+  candidatePlayerName?: string;
   powerCardEffect?: {
     cardId: string;
     cardName: string;
@@ -696,6 +705,20 @@ class GameSessionService {
     return this.fetchAPI(`/session/${id}/reaction-cards/apply`, {
       method: 'POST',
       body: JSON.stringify(command),
+    });
+  }
+
+  async discardBackstageCard(playerId?: string): Promise<{
+    success: boolean;
+    discarded?: boolean;
+    session?: GameSession;
+    error?: string;
+  }> {
+    const id = this.currentSessionId;
+    if (!id) throw new Error('No hay sesión activa');
+    return this.fetchAPI(`/session/${id}/backstage/discard`, {
+      method: 'POST',
+      body: JSON.stringify(playerId ? { playerId } : {}),
     });
   }
 

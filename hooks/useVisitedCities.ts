@@ -13,7 +13,7 @@ export function useVisitedCities(playerId: string) {
 
   // Encontrar al jugador local o por ID
   const player = players.find((p) => p.id === playerId) || players[0];
-  const route = worldTourRoutes?.[playerId];
+  const route = player ? worldTourRoutes?.[player.id] : undefined;
 
   if (!route || !player) {
     return {

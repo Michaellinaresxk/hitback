@@ -26,10 +26,10 @@
       "step3": "¡Compite y diviértete!"
     },
     "hallOfFame": {
-    "candidate": "🌟 Candidato al Hall of Fame Musical",
-    "legend": "🏆 ¡ES UNA LEYNA MUSICAL!"
-  },
-  "footer": "Versión Beta • Hecho con ❤️ para amigos"
+      "candidate": "🌟 Candidato al Hall of Fame Musical",
+      "legend": "🏆 ¡ES UNA LEYNA MUSICAL!"
+    },
+    "footer": "Versión Beta • Hecho con ❤️ para amigos"
   },
   "setupGame": {
     "config_game": "Configura tu partida",
@@ -75,6 +75,19 @@
       "local_start_failed": "No se pudo iniciar la partida en este dispositivo.",
       "connection_title": "Error de conexión",
       "connection_message": "No se pudo conectar al servidor. Comprueba que esté disponible.\n\n{{details}}"
+    },
+    "playMode": {
+      "title": "MODO DE JUEGO",
+      "subtitle": "Elige cómo se jugará la gira. No se puede cambiar durante la partida.",
+      "required": "Elige Vinilo o Streaming para empezar",
+      "physical": {
+        "name": "💿 Vinilo",
+        "description": "El tablero físico marca cuándo hay carta. El GM registra la que sacó el jugador."
+      },
+      "digital": {
+        "name": "📡 Streaming",
+        "description": "La ruta decide: cada backstage revela una carta sorpresa en la app."
+      }
     }
   },
   "settingPage": {
@@ -701,6 +714,30 @@
         "candidate": "🌟 Candidato al Hall of Fame Musical",
         "legend": "🏆 ¡ES UNA LEYNA MUSICAL!"
       }
-    }
+    },
+    "noCitiesVisited": "Aún no hay ciudades visitadas"
+  },
+  "backstage": {
+    "title": "BACKSTAGE",
+    "oneHitAway": "🎟️ A 1 acierto del Backstage",
+    "useCard": "Usar carta",
+    "discard": "Descartar",
+    "obtained": "Obtienes {{card}}",
+    "atCity": "{{city}}",
+    "scenes": {
+      "FEATURING": "Conociste a un artista que quiere grabar contigo.",
+      "ALLIANCE": "Otro artista te propone hacer equipo.",
+      "DUEL": "Un artista rival te reta.",
+      "SOLD_OUT": "Te avisan que agotaste entradas en la siguiente ciudad.",
+      "ROYALTIES": "Tu manager descubrió que te deben dinero.",
+      "COPYRIGHTS": "Tu abogado encontró a alguien usando tu canción.",
+      "BAD_REVIEW": "Un crítico te pide munición contra un rival.",
+      "MANAGEMENT_FEE": "Le puedes pasar la factura del manager a otro.",
+      "MUTE": "Un contacto puede callar a otro artista.",
+      "ARTIST_HOLD": "Un contacto puede frenar al líder.",
+      "STOP_BLAST": "Conseguiste exclusiva en la radio.",
+      "CHARITY_SHOW": "Te invitan a un concierto benéfico."
+    },
+    "selectTarget": "Elige a quién aplicar la carta"
   }
 }

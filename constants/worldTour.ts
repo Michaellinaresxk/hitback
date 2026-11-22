@@ -15,7 +15,7 @@ export const ACT_ORDER: ActId[] = [
 
 export const TILE_MECHANICS: Record<TileType, MechanicTrigger | null> = {
   concert: null,
-  festival: 'reaction_card',
+  festival: null,
   record_deal: 'split_dice',
   rival_band: 'duel',
   sold_out: 'double_points',
@@ -23,6 +23,7 @@ export const TILE_MECHANICS: Record<TileType, MechanicTrigger | null> = {
 
 export const CITIES_PER_ACT = 5;
 export const TOTAL_TILES = 22;
+export const BACKSTAGE_LAST_POSITION = 18;
 
 export const WORLD_TOUR = {
   startingPoint: { id: 'start', emoji: '🏠', tileType: 'concert' as TileType },

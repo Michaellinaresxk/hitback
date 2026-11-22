@@ -4,6 +4,7 @@
 
 import {
   ACT_ORDER,
+  BACKSTAGE_LAST_POSITION,
   CITIES_PER_ACT,
   TILE_MECHANICS,
   TOTAL_TILES,
@@ -107,4 +108,44 @@ export function hasReachedFinish(position: number): boolean {
 
 export function getStopsRemaining(position: number): number {
   return Math.max(0, TOTAL_TILES - 1 - position);
+}
+
+// ─── Backstage (Streaming) ───────────────────────────────────────────────────
+
+/**
+ * True when the position is a backstage stop (3, 6, 9, 12, 15, 18 by default).
+ * The interval comes from the session config, never from a local duplicate.
+ */
+export function isBackstagePosition(
+  position: number,
+  interval: number,
+): boolean {
+  return (
+    Number.isInteger(position) &&
+    Number.isInteger(interval) &&
+    interval > 0 &&
+    position > 0 &&
+    position <= BACKSTAGE_LAST_POSITION &&
+    position % interval === 0
+  );
+}
+
+/**
+ * Number of correct answers needed to reach the next backstage tile, or null
+ * when there is no backstage left on the route.
+ */
+export function hitsToNextBackstage(
+  position: number,
+  interval: number,
+): number | null {
+  if (
+    !Number.isInteger(position) ||
+    !Number.isInteger(interval) ||
+    interval <= 0 ||
+    position < 0 ||
+    position >= BACKSTAGE_LAST_POSITION
+  ) {
+    return null;
+  }
+  return interval - (position % interval);
 }

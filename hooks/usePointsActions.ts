@@ -11,6 +11,7 @@ import { TourLandingEvent } from '@/components/modal/TourLandingModal';
 import { getActForPosition } from '@/utils/worldtourUtils';
 import { gameSessionService } from '@/services/GameSessionService';
 import type { ScoreModifiers } from '@/services/GameSessionService';
+import type { BackstageCard } from '@/types/backstage.types';
 
 interface BSideNotification {
   visible: boolean;
@@ -36,6 +37,7 @@ interface UsePointsActionsParams {
   featuringTargetId: string | null;
   advanceToNextTurn: () => void;
   activateCombo: (data: ComboActivationData) => void;
+  onBackstageReady?: (card: BackstageCard) => void;
   showSuccess: (title: string, message: string) => void;
   showError: (title: string, message: string) => void;
   showInfo: (title: string, message: string) => void;
@@ -64,6 +66,7 @@ export function usePointsActions({
   featuringTargetId,
   advanceToNextTurn,
   activateCombo,
+  onBackstageReady,
   showSuccess,
   showError,
   showInfo,
@@ -246,8 +249,16 @@ export function usePointsActions({
             useGameStore.getState().syncPlayersFromBackend(result.players);
           }
 
+          const backstageCard = (result.backstage ?? null) as BackstageCard | null;
+          if (backstageCard) {
+            useGameStore.getState().setPendingBackstageCard(backstageCard);
+          }
+
           // 6️⃣ Game over takes precedence over combo/scanner UI.
           if (result.gameOver && result.gameWinner) {
+            if (backstageCard) {
+              useGameStore.getState().setPendingBackstageCard(null);
+            }
             // Determinar mensaje final basado en si fue candidato o leyenda
             let finalMessage = '';
             if (result.isCandidate && !candidateAdmittedRef.current) {
@@ -303,7 +314,11 @@ export function usePointsActions({
             });
           } else {
             // Fallback: no route active, go to next turn directly
-            setTimeout(() => advanceToNextTurn(), 2000);
+            setTimeout(() => {
+              const pending = useGameStore.getState().pendingBackstageCard;
+              if (pending) onBackstageReady?.(pending);
+              else advanceToNextTurn();
+            }, 2000);
           }
         } else {
           await reconcileCanonicalScores();
@@ -340,6 +355,7 @@ export function usePointsActions({
       activateCombo,
       reconcileCanonicalScores,
       showError,
+      onBackstageReady,
     ],
   );
 

@@ -10,6 +10,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useVisitedCities } from '@/hooks/useVisitedCities';
 import { useGameStore } from '@/store/gameStore';
+import { isBackstagePosition } from '@/utils/worldtourUtils';
 
 interface CityHistoryModalProps {
   visible: boolean;
@@ -23,7 +24,7 @@ export default function CityHistoryModal({
   playerId,
 }: CityHistoryModalProps) {
   const { t } = useTranslation();
-  const { players } = useGameStore();
+  const { players, playMode, backstageInterval } = useGameStore();
   const resolvedPlayerId = playerId || players[0]?.id || 'player_1';
   const { visitedCities, totalRouteLength, currentPosition, playerName } =
     useVisitedCities(resolvedPlayerId);
@@ -53,20 +54,26 @@ export default function CityHistoryModal({
               {visitedCities.length === 0 ? (
                 <Text style={styles.noCitiesVisited}>{t('tour.noCitiesVisited')}</Text>
               ) : (
-                visitedCities.map((city) => (
-                  <View key={`${city.cityId}-${city.position}`} style={styles.cityRow}>
-                    <Text style={styles.cityEmoji}>{city.emoji}</Text>
-                    <View style={styles.cityInfo}>
-                      <Text style={styles.cityName}>
-                        {city.position + 1}. {city.name}
-                      </Text>
-                      <Text style={styles.cityMeta}>
-                        {city.country}
-                        {city.venue ? ` · ${city.venue}` : ''}
-                      </Text>
+                visitedCities.map((city) => {
+                  const backstage =
+                    playMode === 'digital' &&
+                    !!backstageInterval &&
+                    isBackstagePosition(city.position, backstageInterval);
+                  return (
+                    <View key={`${city.cityId}-${city.position}`} style={styles.cityRow}>
+                      <Text style={styles.cityEmoji}>{city.emoji}</Text>
+                      <View style={styles.cityInfo}>
+                        <Text style={styles.cityName}>
+                          {city.position + 1}. {city.name} {backstage ? '🎟️' : ''}
+                        </Text>
+                        <Text style={styles.cityMeta}>
+                          {city.country}
+                          {city.venue ? ` · ${city.venue}` : ''}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
-                ))
+                  );
+                })
               )}
             </ScrollView>
           </View>

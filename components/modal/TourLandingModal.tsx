@@ -15,6 +15,8 @@ import Animated, {
   useReducedMotion,
 } from 'react-native-reanimated';
 import { BoardTile, MechanicTrigger, TileType } from '@/types/worldTour.types';
+import { useGameStore } from '@/store/gameStore';
+import { isBackstagePosition } from '@/utils/worldtourUtils';
 import { TILE_MECHANICS } from '@/constants/worldTour';
 
 export interface TourLandingEvent {
@@ -77,6 +79,8 @@ export default function TourLandingModal({
 }: TourLandingModalProps) {
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
+  const playMode = useGameStore((s) => s.playMode);
+  const backstageInterval = useGameStore((s) => s.backstageInterval);
 
   if (!event) return null;
 
@@ -90,6 +94,10 @@ export default function TourLandingModal({
   const realFact = t(`tour.cities.${cityId}.realFact`, { defaultValue: '' });
   const tileTypeName = t(`tour.tileTypes.${tileType}.name`);
   const tileTypeDesc = t(`tour.tileTypes.${tileType}.description`);
+  const isBackstage =
+    playMode === 'digital' &&
+    !!backstageInterval &&
+    isBackstagePosition(position, backstageInterval);
 
   const colors = TILE_COLORS[tileType];
   const mechanicTrigger = TILE_MECHANICS[tileType];
@@ -147,6 +155,7 @@ export default function TourLandingModal({
                 <Text style={styles.arrivalTitle}>
                   {t('tour.ui.landingTitle', { city: cityName })}
                 </Text>
+                {isBackstage && <Text style={styles.backstageTag}>🎟️ Backstage</Text>}
                 <Text style={styles.countryName}>{country}</Text>
                 <Text style={styles.venueName}>
                   {t('tour.ui.landingVenue', { venue: venueName })}
@@ -387,6 +396,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  backstageTag: {
+    marginTop: 8,
+    color: '#FDE68A',
+    fontSize: 13,
+    fontWeight: '800',
   },
 
   // ── Button ────────────────────────────────────────────────────────────
