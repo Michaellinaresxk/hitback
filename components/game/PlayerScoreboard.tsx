@@ -9,6 +9,8 @@ import {
 import { IconSymbol } from '@/components/ui/IconSymbol';
 import { useGameStore } from '@/store/gameStore';
 import { SCORE_TO_WIN } from '@/constants/Points';
+import { hitsToNextBackstage } from '@/utils/worldtourUtils';
+import { useTranslation } from 'react-i18next';
 import type { Player } from '@/store/types/gameStoreTypes';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -52,7 +54,10 @@ export default function PlayerScoreboard({
   duelPlayer2Id,
   onPlayerPress,
 }: PlayerScoreboardProps) {
+  const { t } = useTranslation();
   const getPlayerAlliance = useGameStore((s) => s.getPlayerAlliance);
+  const playMode = useGameStore((s) => s.playMode);
+  const backstageInterval = useGameStore((s) => s.backstageInterval);
 
   const sortedPlayers = [...players].sort((a, b) => b.score - a.score);
   const leader = sortedPlayers[0];
@@ -118,6 +123,10 @@ export default function PlayerScoreboard({
           {sortedPlayers.map((player, index) => {
             const isStopBlastHolder = stopBlastHolderId === player.id;
             const isStopBlastBlocked = stopBlastActive && !isStopBlastHolder;
+            const nextBackstage =
+              playMode === 'digital' && backstageInterval
+                ? hitsToNextBackstage(player.boardPosition ?? 0, backstageInterval)
+                : null;
             return (
               <View
                 key={player.id}
@@ -137,6 +146,9 @@ export default function PlayerScoreboard({
                   {player.name}
                 </Text>
                 <Text style={styles.compactScore}>{player.score}</Text>
+                {nextBackstage === 1 && (
+                  <Text style={styles.compactBackstage}>🎟️</Text>
+                )}
                 {getAvailablePowerCards(player).length > 0 && (
                   <Text style={styles.compactPowerCard}>
                     ⚡{getAvailablePowerCards(player).length}
@@ -210,6 +222,10 @@ export default function PlayerScoreboard({
           const availablePowerCards = getAvailablePowerCards(player);
           const hasPowerCards = availablePowerCards.length > 0;
           const isFrozen = player.isFrozen ?? false;
+          const nextBackstage =
+            playMode === 'digital' && backstageInterval
+              ? hitsToNextBackstage(player.boardPosition ?? 0, backstageInterval)
+              : null;
 
           const isDuelist =
             duelPlayer1Id === player.id || duelPlayer2Id === player.id;
@@ -332,6 +348,13 @@ export default function PlayerScoreboard({
                   {isBSide && (
                     <View style={styles.bSideBadge}>
                       <Text style={styles.bSideBadgeText}>🎶 B-SIDE +1</Text>
+                    </View>
+                  )}
+                  {nextBackstage === 1 && (
+                    <View style={styles.backstageHintBadge}>
+                      <Text style={styles.backstageHintText}>
+                        {t('backstage.oneHitAway')}
+                      </Text>
                     </View>
                   )}
                   {/* ── STOP-BLAST badges ── */}
@@ -730,6 +753,20 @@ const styles = StyleSheet.create({
     color: '#FCD34D',
     letterSpacing: 0.5,
   },
+  backstageHintBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.45)',
+  },
+  backstageHintText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#FDE68A',
+    letterSpacing: 0.3,
+  },
   stopBlastHolderBadge: {
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
     paddingHorizontal: 6,
@@ -897,6 +934,7 @@ const styles = StyleSheet.create({
   compactBoostText: { fontSize: 10, fontWeight: '800', color: '#000' },
   compactFrozenText: { fontSize: 12 },
   compactBSideText: { fontSize: 12 },
+  compactBackstage: { fontSize: 12 },
 
   duelBanner: {
     backgroundColor: 'rgba(249, 115, 22, 0.1)',

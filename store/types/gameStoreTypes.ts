@@ -1,5 +1,6 @@
 import { CurrentCard } from '@/types/game.types';
 import { BoardTile } from '@/types/worldTour.types';
+import type { BackstageCard, PlayMode } from '@/types/backstage.types';
 import type { GameSession } from '@/services/GameSessionService';
 
 export interface Player {
@@ -35,6 +36,9 @@ export interface GameState {
   id: string;
   players: Player[];
   worldTourRoutes: Record<string, BoardTile[]> | null;
+  playMode: PlayMode | null;
+  backstageInterval: number | null;
+  pendingBackstageCard: BackstageCard | null;
   currentTurn: number;
   gameMode: 'normal' | 'battle' | 'speed' | 'viral';
   timeLeft: number;
@@ -148,12 +152,19 @@ export interface GameStore extends GameState {
   // ── Game slice ────────────────────────────────────────────────────────────
   createNewGame: () => void;
   startGame: (
-    routes?: Record<string, BoardTile[]>,
+    routesOrOptions?:
+      | Record<string, BoardTile[]>
+      | {
+          routes?: Record<string, BoardTile[]>;
+          playMode?: PlayMode;
+          backstageInterval?: number;
+        },
   ) => Promise<void>;
   restoreGame: (session: GameSession) => Promise<void>;
   setGameActive: (active: boolean) => void;
   endGame: () => Promise<void>;
   nextTurn: () => void;
+  setPendingBackstageCard: (card: BackstageCard | null) => void;
   setGameDuration: (minutes: number) => void;
   startTimer: (duration: number) => void;
   stopTimer: () => void;

@@ -20,6 +20,11 @@ export function useGameScreenStore() {
   // Featuring
   const featuringPlayerId = useGameStore((state) => state.featuringPlayerId);
   const featuringTargetId = useGameStore((state) => state.featuringTargetId);
+  const playMode = useGameStore((state) => state.playMode);
+  const backstageInterval = useGameStore((state) => state.backstageInterval);
+  const pendingBackstageCard = useGameStore(
+    (state) => state.pendingBackstageCard,
+  );
 
   // Duel
   const duelActive = useGameStore((state) => state.duelActive);
@@ -65,6 +70,9 @@ export function useGameScreenStore() {
   const activateDoublePlatinum = useGameStore(
     (state) => state.activateDoublePlatinum,
   );
+  const setPendingBackstageCard = useGameStore(
+    (state) => state.setPendingBackstageCard,
+  );
 
   return {
     // State
@@ -76,6 +84,9 @@ export function useGameScreenStore() {
     gamePot,
     featuringPlayerId,
     featuringTargetId,
+    playMode,
+    backstageInterval,
+    pendingBackstageCard,
     duelActive,
     duelPlayer1Id,
     duelPlayer2Id,
@@ -107,5 +118,6 @@ export function useGameScreenStore() {
     applyCharityShow,
     advancePlayerBoard,
     activateDoublePlatinum,
+    setPendingBackstageCard,
   };
 }

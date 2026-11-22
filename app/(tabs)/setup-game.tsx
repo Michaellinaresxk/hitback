@@ -8,6 +8,7 @@ import { GAME_DURATION } from '@/constants/Game';
 import { gameSessionService } from '@/services/GameSessionService';
 import { useGameStore } from '@/store/gameStore';
 import { generateRoute } from '@/utils/worldtourUtils';
+import type { PlayMode } from '@/types/backstage.types';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -53,6 +54,7 @@ export default function GameSetupScreen() {
   const [playerName, setPlayerName] = useState('');
   const [selectedGenres, setSelectedGenres] = useState<string[]>([]);
   const [selectedDecades, setSelectedDecades] = useState<string[]>([]);
+  const [playMode, setPlayMode] = useState<PlayMode | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const { t } = useTranslation();
 
@@ -96,6 +98,10 @@ export default function GameSetupScreen() {
       Alert.alert(t('common.error'), t('setupGame.min_players_warning'));
       return;
     }
+    if (!playMode) {
+      Alert.alert(t('common.error'), t('setupGame.playMode.required'));
+      return;
+    }
 
     // Si no seleccionaron nada, usar ANY
     const genres = selectedGenres.length > 0 ? selectedGenres : ['ANY'];
@@ -122,6 +128,7 @@ export default function GameSetupScreen() {
         difficulty: 'ANY',
         targetScore: SCORE_TO_WIN,
         timeLimit: gameDurationMinutes * 60,
+        playMode,
         worldTourRoutes: backendWorldTourRoutes,
       });
 
@@ -139,7 +146,14 @@ export default function GameSetupScreen() {
       }
 
       // 3. Iniciar juego local
-      await startGame(worldTourRoutes);
+      await startGame({
+        routes: worldTourRoutes,
+        playMode,
+        backstageInterval:
+          playMode === 'digital'
+            ? result.session.config.backstageInterval ?? 3
+            : undefined,
+      });
       if (!useGameStore.getState().isActive) {
         throw new Error(
           useGameStore.getState().error ||
@@ -295,6 +309,59 @@ export default function GameSetupScreen() {
         )}
       </View>
 
+      {/* Play Mode Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <IconSymbol name='gamecontroller' size={20} color='#EC4899' />
+          <Text style={styles.sectionTitle}>
+            {t('setupGame.playMode.title')}
+          </Text>
+        </View>
+
+        <Text style={styles.sectionSubtitle}>
+          {t('setupGame.playMode.subtitle')}
+        </Text>
+
+        <View style={styles.playModeRow}>
+          {(['physical', 'digital'] as PlayMode[]).map((mode) => {
+            const selected = playMode === mode;
+            return (
+              <TouchableOpacity
+                key={mode}
+                style={[
+                  styles.playModeCard,
+                  selected && styles.playModeCardSelected,
+                ]}
+                onPress={() => setPlayMode(mode)}
+                activeOpacity={0.8}
+                accessibilityRole='button'
+                accessibilityState={{ selected }}
+              >
+                <Text style={styles.playModeEmoji}>
+                  {mode === 'physical' ? '💿' : '📡'}
+                </Text>
+                <Text
+                  style={[
+                    styles.playModeName,
+                    selected && styles.playModeNameSelected,
+                  ]}
+                >
+                  {t(`setupGame.playMode.${mode}.name`)}
+                </Text>
+                <Text style={styles.playModeDescription}>
+                  {t(`setupGame.playMode.${mode}.description`)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {!playMode && (
+          <Text style={styles.playModeRequired}>
+            {t('setupGame.playMode.required')}
+          </Text>
+        )}
+      </View>
+
       {/* 🎵 Genres Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
@@ -392,11 +459,11 @@ export default function GameSetupScreen() {
         <TouchableOpacity
           style={[
             styles.startGameButton,
-            (players.length < 2 || isCreatingSession) &&
+            (players.length < 2 || !playMode || isCreatingSession) &&
               styles.disabledStartButton,
           ]}
           onPress={handleStartGame}
-          disabled={players.length < 2 || isCreatingSession}
+          disabled={players.length < 2 || !playMode || isCreatingSession}
           activeOpacity={0.9}
         >
           {isCreatingSession ? (
@@ -419,6 +486,11 @@ export default function GameSetupScreen() {
         {players.length < 2 && (
           <Text style={styles.minPlayersText}>
             {t('setupGame.min_players_warning')}
+          </Text>
+        )}
+        {players.length >= 2 && !playMode && (
+          <Text style={styles.minPlayersText}>
+            {t('setupGame.playMode.required')}
           </Text>
         )}
       </View>
@@ -582,6 +654,50 @@ const styles = StyleSheet.create({
   },
   filterLabelSelected: {
     color: '#3B82F6',
+  },
+
+  playModeRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  playModeCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  playModeCardSelected: {
+    backgroundColor: 'rgba(236, 72, 153, 0.14)',
+    borderColor: '#EC4899',
+  },
+  playModeEmoji: {
+    fontSize: 30,
+    marginBottom: 8,
+  },
+  playModeName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#CBD5E1',
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  playModeNameSelected: {
+    color: '#F9A8D4',
+  },
+  playModeDescription: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    lineHeight: 17,
+  },
+  playModeRequired: {
+    marginTop: 12,
+    fontSize: 12,
+    color: '#F59E0B',
+    textAlign: 'center',
   },
 
   // Filters summary

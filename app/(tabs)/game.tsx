@@ -14,6 +14,8 @@ import FeaturingModal from '@/components/modal/FeaturingModal';
 import LossStreakModal from '@/components/modal/LossStreakModal';
 import DuelModal from '@/components/modal/DuelModal';
 import ReactionCardPickerModal from '@/components/modal/ReactionCardPickerModal';
+import BackstageModal from '@/components/modal/BackstageModal';
+import BackstageTargetModal from '@/components/modal/BackstageTargetModal';
 import { styles } from '@/components/game/gameScreen/styles';
 import { GameHeader } from '@/components/game/gameScreen/GameHeader';
 import { GamePot } from '@/components/game/gameScreen/GamePot';
@@ -34,12 +36,13 @@ import { usePointsActions } from '@/hooks/usePointsActions';
 import { gameSessionService } from '@/services/GameSessionService';
 import { soundEffects } from '@/services/SoundEffectsService';
 import { useGameStore } from '@/store/gameStore';
+import { useTranslation } from 'react-i18next';
 
 // Constants & Utils
 import { REPRODUCTION_TIME_LIMIT } from '@/constants/TrackConfig';
 import { SCORE_TO_WIN } from '@/constants/Points';
 import { buildPlayerIdMap, getBackendPlayerId } from '@/utils/game/gameHelpers';
-import { ReactionCardType } from '@/constants/ReactionCard';
+import { REACTION_CARDS, ReactionCardType } from '@/constants/ReactionCard';
 
 // Screens
 import GameSetupScreen from './setup-game';
@@ -48,6 +51,7 @@ import TourLandingModal from '@/components/modal/TourLandingModal';
 import { MechanicTrigger } from '@/types/worldTour.types';
 
 export default function GameScreen() {
+  const { t } = useTranslation();
   // ── Store ──────────────────────────────────────────────────────────────────
   const {
     players,
@@ -58,6 +62,9 @@ export default function GameScreen() {
     gamePot,
     featuringPlayerId,
     featuringTargetId,
+    playMode,
+    backstageInterval,
+    pendingBackstageCard,
     duelActive,
     duelPlayer1Id,
     duelPlayer2Id,
@@ -74,11 +81,12 @@ export default function GameScreen() {
     applyBadReview,
     advancePlayerBoard,
     activateDoublePlatinum,
+    setPendingBackstageCard,
   } = useGameScreenStore();
 
   // ── City History Modal ────────────────────────────────────────────────
   const [showCityHistory, setShowCityHistory] = useState(false);
-  const selectedPlayerId = showCityHistory ? 'player_1' : undefined;
+  const selectedPlayerId = showCityHistory ? players[0]?.id : undefined;
   const handleCloseCityHistory = useCallback(() => setShowCityHistory(false), []);
   const handleOpenCityHistory = useCallback(() => setShowCityHistory(true), []);
 
@@ -128,6 +136,10 @@ export default function GameScreen() {
   const [gameStarted, setGameStarted] = useState(false);
   const gameInitializedRef = useRef(false);
   const [showAllianceModal, setShowAllianceModal] = useState(false);
+  const [showBackstageModal, setShowBackstageModal] = useState(false);
+  const [backstageBusy, setBackstageBusy] = useState(false);
+  const [backstageTargetType, setBackstageTargetType] = useState<ReactionCardType | null>(null);
+  const [allianceLockedPlayerId, setAllianceLockedPlayerId] = useState<string | null>(null);
   const [reactionTarget, setReactionTarget] = useState<{
     id: string;
     name: string;
@@ -137,6 +149,14 @@ export default function GameScreen() {
   // ── Turn Actions (must be before hooks that depend on advanceToNextTurn) ───
   const { advanceToNextTurn, resetProcessingRefs, isPowerCardProcessingRef } =
     useGameTurnActions({ nextTurn, prepareNextRound });
+  const advanceToNextTurnWithBackstage = useCallback(() => {
+    const pending = useGameStore.getState().pendingBackstageCard;
+    if (pending) {
+      setShowBackstageModal(true);
+      return;
+    }
+    advanceToNextTurn();
+  }, [advanceToNextTurn]);
 
   // ── Combo Flow ─────────────────────────────────────────────────────────────
   const {
@@ -151,7 +171,7 @@ export default function GameScreen() {
     addPowerCard,
     showSuccess,
     showError,
-    advanceToNextTurn,
+    advanceToNextTurn: advanceToNextTurnWithBackstage,
     resetProcessingRefs,
     isPowerCardProcessingRef,
     applyImmediateCardEffect: async (playerId, scoreChange) => {
@@ -234,11 +254,17 @@ export default function GameScreen() {
       });
       if (!response?.success) throw new Error(response?.error || 'No se pudo aplicar FEATURING');
       syncCanonicalResponse(response);
+      if (useGameStore.getState().pendingBackstageCard?.cardType === 'FEATURING') {
+        setPendingBackstageCard(null);
+        setShowBackstageModal(false);
+        advanceToNextTurn();
+      }
     } catch (error) {
       showError('Error', error instanceof Error ? error.message : 'No se pudo aplicar FEATURING');
       await reconcileCanonicalScores();
+      throw error;
     }
-  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores]);
+  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores, setPendingBackstageCard, advanceToNextTurn]);
 
   const handleServerDuel = useCallback(async (challengerId: string, opponentId: string) => {
     try {
@@ -250,11 +276,17 @@ export default function GameScreen() {
       });
       if (!response?.success) throw new Error(response?.error || 'No se pudo aplicar DUEL');
       syncCanonicalResponse(response);
+      if (useGameStore.getState().pendingBackstageCard?.cardType === 'DUEL') {
+        setPendingBackstageCard(null);
+        setShowBackstageModal(false);
+        advanceToNextTurn();
+      }
     } catch (error) {
       showError('Error', error instanceof Error ? error.message : 'No se pudo aplicar DUEL');
       await reconcileCanonicalScores();
+      throw error;
     }
-  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores]);
+  }, [players, playerIdMap, syncCanonicalResponse, showError, reconcileCanonicalScores, setPendingBackstageCard, advanceToNextTurn]);
 
   // ── Featuring & Duel Actions ───────────────────────────────────────────────
   const {
@@ -297,8 +329,9 @@ export default function GameScreen() {
     featuringPlayerId,
     featuringTargetId,
 
-    advanceToNextTurn,
+    advanceToNextTurn: advanceToNextTurnWithBackstage,
     activateCombo,
+    onBackstageReady: () => setShowBackstageModal(true),
     showSuccess,
     showError,
     showInfo,
@@ -397,9 +430,51 @@ export default function GameScreen() {
     }
   }, [flowState.phase, flowState.currentRound, setShowPointsModal]);
 
+  useEffect(() => {
+    if (
+      playMode === 'digital' &&
+      pendingBackstageCard &&
+      !showBackstageModal &&
+      !backstageTargetType &&
+      !landingEvent &&
+      !comboFlowState.isActive &&
+      !showPointsModal &&
+      !showBettingModal &&
+      !showFeaturingModal &&
+      !showDuelModal &&
+      !showAllianceModal
+    ) {
+      setShowBackstageModal(true);
+    }
+  }, [
+    playMode,
+    pendingBackstageCard,
+    showBackstageModal,
+    backstageTargetType,
+    landingEvent,
+    comboFlowState.isActive,
+    showPointsModal,
+    showBettingModal,
+    showFeaturingModal,
+    showDuelModal,
+    showAllianceModal,
+  ]);
+
   // ── Handlers ───────────────────────────────────────────────────────────────
   const handleNextRound = useCallback(async () => {
     console.log('🎵 Next Round button pressed');
+    if (useGameStore.getState().pendingBackstageCard) {
+      try {
+        await gameSessionService.discardBackstageCard(
+          useGameStore.getState().pendingBackstageCard?.playerId,
+        );
+      } catch (error) {
+        console.error('❌ Failed to discard pending backstage before next round:', error);
+      }
+      setPendingBackstageCard(null);
+      setShowBackstageModal(false);
+      setBackstageTargetType(null);
+    }
     const success = await nextRound();
     if (success && flowState.currentRound) {
       showInfo(
@@ -407,7 +482,7 @@ export default function GameScreen() {
         `Ronda ${flowState.currentRound.number} - ${flowState.currentRound.question.type.toUpperCase()}`,
       );
     }
-  }, [nextRound, flowState.currentRound, showInfo]);
+  }, [nextRound, flowState.currentRound, showInfo, setPendingBackstageCard]);
 
   const handleNewGame = useCallback(async () => {
     try {
@@ -512,23 +587,23 @@ export default function GameScreen() {
       setLandingEvent(null);
 
       if (!mechanicTrigger) {
-        advanceToNextTurn();
+        advanceToNextTurnWithBackstage();
         return;
       }
 
       switch (mechanicTrigger) {
         case 'reaction_card':
-          advanceToNextTurn();
+          advanceToNextTurnWithBackstage();
           break;
         case 'duel':
           if (landingEvent) openDuelModal(landingEvent.playerId);
-          else advanceToNextTurn();
+          else advanceToNextTurnWithBackstage();
           break;
         case 'double_points':
           try {
             await gameSessionService.activateDoublePlatinum();
             activateDoublePlatinum();
-            advanceToNextTurn();
+            advanceToNextTurnWithBackstage();
           } catch (error) {
             showError(
               'Error',
@@ -539,15 +614,15 @@ export default function GameScreen() {
           }
           break;
         case 'split_dice':
-          advanceToNextTurn();
+          advanceToNextTurnWithBackstage();
           break;
         default:
-          advanceToNextTurn();
+          advanceToNextTurnWithBackstage();
       }
     },
     [
       setLandingEvent,
-      advanceToNextTurn,
+      advanceToNextTurnWithBackstage,
       landingEvent,
       activateDoublePlatinum,
       openDuelModal,
@@ -556,7 +631,7 @@ export default function GameScreen() {
   );
 
   const handleReactionCard = useCallback(
-    async (cardType: ReactionCardType, playerId: string) => {
+    async (cardType: ReactionCardType, playerId: string, targetLocalId?: string) => {
       try {
         // Selection-first cards: open UI, command sent on confirmation
         if (cardType === 'FEATURING') {
@@ -564,6 +639,12 @@ export default function GameScreen() {
           return;
         }
         if (cardType === 'ALLIANCE') {
+          const pending = useGameStore.getState().pendingBackstageCard;
+          setAllianceLockedPlayerId(
+            playMode === 'digital' && pending?.cardType === 'ALLIANCE'
+              ? playerId
+              : null,
+          );
           setShowAllianceModal(true);
           return;
         }
@@ -573,17 +654,21 @@ export default function GameScreen() {
         }
 
         const sourceBackendId = getBackendPlayerId(playerId, players, playerIdMap);
+        const targetBackendId = getBackendPlayerId(
+          targetLocalId ?? playerId,
+          players,
+          playerIdMap,
+        );
         const payload: Record<string, any> = {};
         if (cardType === 'COPYRIGHTS') {
           payload.lastAwardedPoints = lastAwardedPointsRef.current;
         }
+        const needsTarget = ['BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS', 'MUTE'].includes(cardType);
 
         const response = await gameSessionService.applyReactionCard({
           sourcePlayerId: sourceBackendId,
           cardType,
-          targetPlayerId: ['BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS', 'MUTE'].includes(cardType)
-            ? sourceBackendId
-            : undefined,
+          targetPlayerId: needsTarget ? targetBackendId : undefined,
           payload,
           idempotencyKey: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         });
@@ -594,6 +679,15 @@ export default function GameScreen() {
 
         syncCanonicalResponse(response);
 
+        if (playMode === 'digital') {
+          const pending = useGameStore.getState().pendingBackstageCard;
+          if (pending && pending.cardType === cardType) {
+            setPendingBackstageCard(null);
+            setShowBackstageModal(false);
+            advanceToNextTurn();
+          }
+        }
+
         if (cardType === 'CHARITY_SHOW' && response.event) {
           const tiedNote = response.event.tiedRecipients > 1 ? ` (sorteado entre ${response.event.tiedRecipients})` : '';
           showSuccess('🎸 Charity Show', `${response.event.leaderName} le regaló 1pt a ${response.event.recipientName}${tiedNote}`);
@@ -601,6 +695,14 @@ export default function GameScreen() {
       } catch (error) {
         console.error('❌ Reaction Card command failed:', error);
         await reconcileCanonicalScores();
+        if (playMode === 'digital') {
+          const pending = useGameStore.getState().pendingBackstageCard;
+          if (pending && pending.cardType === cardType) {
+            setPendingBackstageCard(null);
+            setShowBackstageModal(false);
+            setBackstageTargetType(null);
+          }
+        }
         showError(
           'Error',
           error instanceof Error
@@ -619,8 +721,127 @@ export default function GameScreen() {
       reconcileCanonicalScores,
       showError,
       showSuccess,
+      playMode,
+      setPendingBackstageCard,
+      advanceToNextTurn,
     ],
   );
+
+  const handleBackstageUse = useCallback(async () => {
+    if (!pendingBackstageCard || backstageBusy) return;
+    const localPlayerId = Object.keys(playerIdMap).find(
+      (localId) => playerIdMap[localId] === pendingBackstageCard.playerId,
+    );
+    if (!localPlayerId) {
+      showError('Error', 'No se pudo identificar el jugador del Backstage');
+      return;
+    }
+    const needsTarget = ['MUTE', 'BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS'].includes(
+      pendingBackstageCard.cardType,
+    );
+    if (needsTarget) {
+      setShowBackstageModal(false);
+      setBackstageTargetType(pendingBackstageCard.cardType);
+      return;
+    }
+    setBackstageBusy(true);
+    try {
+      await handleReactionCard(pendingBackstageCard.cardType, localPlayerId);
+      const stillPending = useGameStore.getState().pendingBackstageCard;
+      if (!stillPending || stillPending.cardType !== pendingBackstageCard.cardType) {
+        setShowBackstageModal(false);
+      } else {
+        // Selection-first card: hide scene while the selection modal is open.
+        setShowBackstageModal(false);
+      }
+    } finally {
+      setBackstageBusy(false);
+    }
+  }, [pendingBackstageCard, backstageBusy, playerIdMap, handleReactionCard, showError]);
+
+  const cancelPendingBackstageSelection = useCallback(
+    async (expectedType: ReactionCardType) => {
+      const pending = useGameStore.getState().pendingBackstageCard;
+      if (!pending || pending.cardType !== expectedType) return;
+      setBackstageBusy(true);
+      try {
+        await gameSessionService.discardBackstageCard(pending.playerId);
+      } catch (error) {
+        console.error('❌ Backstage cancel discard failed:', error);
+      } finally {
+        setPendingBackstageCard(null);
+        setShowBackstageModal(false);
+        setBackstageTargetType(null);
+        setBackstageBusy(false);
+        advanceToNextTurn();
+      }
+    },
+    [setPendingBackstageCard, advanceToNextTurn],
+  );
+
+  const handleBackstageTargetSelect = useCallback(
+    async (targetLocalId: string) => {
+      if (!pendingBackstageCard || !backstageTargetType || backstageBusy) return;
+      const localPlayerId = Object.keys(playerIdMap).find(
+        (localId) => playerIdMap[localId] === pendingBackstageCard.playerId,
+      );
+      if (!localPlayerId) {
+        showError('Error', 'No se pudo identificar el jugador del Backstage');
+        return;
+      }
+      setBackstageBusy(true);
+      try {
+        await handleReactionCard(backstageTargetType, localPlayerId, targetLocalId);
+        const stillPending = useGameStore.getState().pendingBackstageCard;
+        if (!stillPending || stillPending.cardType !== backstageTargetType) {
+          setBackstageTargetType(null);
+        }
+      } finally {
+        setBackstageBusy(false);
+      }
+    },
+    [pendingBackstageCard, backstageTargetType, backstageBusy, playerIdMap, handleReactionCard, showError],
+  );
+
+  const handleBackstageTargetCancel = useCallback(async () => {
+    if (backstageTargetType) {
+      await cancelPendingBackstageSelection(backstageTargetType);
+      setBackstageTargetType(null);
+    }
+  }, [backstageTargetType, cancelPendingBackstageSelection]);
+
+
+  const handleBackstageDiscard = useCallback(async () => {
+    if (!pendingBackstageCard || backstageBusy) return;
+    setBackstageBusy(true);
+    try {
+      await gameSessionService.discardBackstageCard(pendingBackstageCard.playerId);
+      setPendingBackstageCard(null);
+      setShowBackstageModal(false);
+      setBackstageTargetType(null);
+      advanceToNextTurn();
+    } catch (error) {
+      console.error('❌ Backstage discard failed:', error);
+      showError(
+        'Error',
+        error instanceof Error ? error.message : 'No se pudo descartar la carta',
+      );
+    } finally {
+      setBackstageBusy(false);
+    }
+  }, [
+    pendingBackstageCard,
+    backstageBusy,
+    setPendingBackstageCard,
+    advanceToNextTurn,
+    showError,
+  ]);
+
+  const pendingBackstageCityName = pendingBackstageCard?.cityId
+    ? t(`tour.cities.${pendingBackstageCard.cityId}.city`, {
+        defaultValue: pendingBackstageCard.cityId,
+      })
+    : undefined;
 
   // ── Early Returns ──────────────────────────────────────────────────────────
   if (!isActive && !showGameEndModal) {
@@ -697,7 +918,7 @@ export default function GameScreen() {
             flowState.phase === 'question' ||
             flowState.phase === 'idle'
           }
-          onPlayerPress={setReactionTarget}
+          onPlayerPress={playMode === 'digital' ? undefined : setReactionTarget}
           duelPlayer1Id={duelPlayer1Id}
           duelPlayer2Id={duelPlayer2Id}
           stopBlastHolderId={stopBlastHolderId}
@@ -744,7 +965,12 @@ export default function GameScreen() {
 
       <AllianceModal
         visible={showAllianceModal}
-        onClose={() => setShowAllianceModal(false)}
+        lockedPlayerId={allianceLockedPlayerId}
+        onClose={() => {
+          setShowAllianceModal(false);
+          setAllianceLockedPlayerId(null);
+          void cancelPendingBackstageSelection('ALLIANCE');
+        }}
         onDeclare={async (player1Id, player2Id) => {
           try {
             const response = await gameSessionService.applyReactionCard({
@@ -755,9 +981,17 @@ export default function GameScreen() {
             });
             if (!response?.success) throw new Error(response?.error || 'No se pudo crear la alianza');
             syncCanonicalResponse(response);
+            setShowAllianceModal(false);
+            setAllianceLockedPlayerId(null);
+            if (useGameStore.getState().pendingBackstageCard?.cardType === 'ALLIANCE') {
+              setPendingBackstageCard(null);
+              setShowBackstageModal(false);
+              advanceToNextTurn();
+            }
           } catch (error) {
             showError('Error', error instanceof Error ? error.message : 'No se pudo crear la alianza');
             await reconcileCanonicalScores();
+            throw error;
           }
         }}
         onDissolve={async (allianceId) => {
@@ -781,7 +1015,10 @@ export default function GameScreen() {
         players={players}
         committedPlayerIds={committedFeaturingIds}
         onSelectPartner={handleFeaturingPartnerSelected}
-        onClose={closeFeaturingModal}
+        onClose={() => {
+          closeFeaturingModal();
+          void cancelPendingBackstageSelection('FEATURING');
+        }}
       />
 
       <GameEndModal
@@ -826,15 +1063,48 @@ export default function GameScreen() {
         }
         players={players}
         onSelectOpponent={handleDuelOpponentSelected}
-        onClose={closeDuelModal}
+        onClose={() => {
+          closeDuelModal();
+          void cancelPendingBackstageSelection('DUEL');
+        }}
       />
 
       <ReactionCardPickerModal
-        visible={reactionTarget !== null}
+        visible={playMode !== 'digital' && reactionTarget !== null}
         targetPlayer={reactionTarget}
         disabledCards={reactionDisabledCards}
         onSelect={handleReactionCard}
         onClose={() => setReactionTarget(null)}
+      />
+
+      <BackstageModal
+        visible={showBackstageModal && pendingBackstageCard !== null}
+        card={pendingBackstageCard}
+        cityName={pendingBackstageCityName}
+        onUse={handleBackstageUse}
+        onDiscard={handleBackstageDiscard}
+      />
+
+      <BackstageTargetModal
+        visible={backstageTargetType !== null && pendingBackstageCard !== null}
+        cardLabel={
+          REACTION_CARDS.find((c) => c.type === backstageTargetType)?.label ??
+          backstageTargetType ??
+          ''
+        }
+        cardEmoji={
+          REACTION_CARDS.find((c) => c.type === backstageTargetType)?.emoji ?? '🎟️'
+        }
+        sourcePlayerId={
+          pendingBackstageCard
+            ? Object.keys(playerIdMap).find(
+                (id) => playerIdMap[id] === pendingBackstageCard.playerId,
+              ) ?? ''
+            : ''
+        }
+        players={players}
+        onSelectTarget={handleBackstageTargetSelect}
+        onClose={() => void handleBackstageTargetCancel()}
       />
 
       <TourLandingModal

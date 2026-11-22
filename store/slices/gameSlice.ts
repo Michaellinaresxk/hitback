@@ -8,6 +8,7 @@ import {
 import { GAME_DURATION } from '@/constants/Game';
 import { generateRoute } from '@/utils/worldtourUtils';
 import { BoardTile } from '@/types/worldTour.types';
+import type { BackstageCard, PlayMode } from '@/types/backstage.types';
 import type { GameSession } from '@/services/GameSessionService';
 import type { GameStore, Player } from '../types/gameStoreTypes';
 
@@ -15,6 +16,9 @@ export const createGameSlice = ((set, get, ..._rest) => ({
   id: '',
   currentTurn: 0,
   worldTourRoutes: null as Record<string, BoardTile[]> | null,
+  playMode: null as PlayMode | null,
+  backstageInterval: null as number | null,
+  pendingBackstageCard: null as BackstageCard | null,
   gameMode: 'normal',
   timeLeft: 0,
   isActive: false,
@@ -48,6 +52,9 @@ export const createGameSlice = ((set, get, ..._rest) => ({
       id: `game_${Date.now()}`,
       players: [],
       worldTourRoutes: null,
+      playMode: null,
+      backstageInterval: null,
+      pendingBackstageCard: null,
       currentTurn: 0,
       gameMode: 'normal',
       timeLeft: 0,
@@ -76,7 +83,34 @@ export const createGameSlice = ((set, get, ..._rest) => ({
     });
   },
 
-  startGame: async (initialRoutes?: Record<string, BoardTile[]>) => {
+  startGame: async (
+    routesOrOptions?:
+      | Record<string, BoardTile[]>
+      | {
+          routes?: Record<string, BoardTile[]>;
+          playMode?: PlayMode;
+          backstageInterval?: number;
+        },
+  ) => {
+    const options =
+      routesOrOptions &&
+      typeof routesOrOptions === 'object' &&
+      !Array.isArray(routesOrOptions) &&
+      ('routes' in routesOrOptions ||
+        'playMode' in routesOrOptions ||
+        'backstageInterval' in routesOrOptions)
+        ? (routesOrOptions as {
+            routes?: Record<string, BoardTile[]>;
+            playMode?: PlayMode;
+            backstageInterval?: number;
+          })
+        : {
+            routes: routesOrOptions as Record<string, BoardTile[]> | undefined,
+          };
+    const initialRoutes = options.routes;
+    const playMode = options.playMode ?? null;
+    const backstageInterval =
+      playMode === 'digital' ? options.backstageInterval ?? 3 : null;
     const { players } = get();
 
     if (players.length < 2) {
@@ -116,6 +150,9 @@ export const createGameSlice = ((set, get, ..._rest) => ({
       set({
         players: updatedPlayers,
         worldTourRoutes: route,
+        playMode,
+        backstageInterval,
+        pendingBackstageCard: null,
         isActive: true,
         currentTurn: 0,
         timeLeft: durationSeconds,
@@ -211,6 +248,12 @@ export const createGameSlice = ((set, get, ..._rest) => ({
       id: session.id,
       players: restoredPlayers,
       worldTourRoutes: restoredRoutes,
+      playMode: (session.config?.playMode as PlayMode) || 'physical',
+      backstageInterval:
+        session.config?.playMode === 'digital'
+          ? session.config.backstageInterval ?? 3
+          : null,
+      pendingBackstageCard: session.backstageCard ?? null,
       alliances: restoredAlliances,
       isActive: isPlaying,
       currentTurn: 0,
@@ -424,6 +467,10 @@ export const createGameSlice = ((set, get, ..._rest) => ({
 
   clearDoublePlatinum: () => {
     set({ doublePlatinumActive: false });
+  },
+
+  setPendingBackstageCard: (card: BackstageCard | null) => {
+    set({ pendingBackstageCard: card });
   },
 
   setGameDuration: (minutes: number) => {

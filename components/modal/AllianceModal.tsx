@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -22,6 +22,7 @@ interface PlayerOption {
 interface AllianceModalProps {
   visible: boolean;
   onClose: () => void;
+  lockedPlayerId?: string | null;
   onDeclare?: (player1Id: string, player2Id: string) => Promise<void> | void;
   onDissolve?: (allianceId: string) => Promise<void> | void;
 }
@@ -31,6 +32,7 @@ type ActiveTab = 'declare' | 'active';
 export default function AllianceModal({
   visible,
   onClose,
+  lockedPlayerId = null,
   onDeclare,
   onDissolve,
 }: AllianceModalProps) {
@@ -42,8 +44,18 @@ export default function AllianceModal({
   const getPlayerAlliance = useGameStore((s) => s.getPlayerAlliance);
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('declare');
-  const [selectedPlayer1, setSelectedPlayer1] = useState<string | null>(null);
+  const [selectedPlayer1, setSelectedPlayer1] = useState<string | null>(
+    lockedPlayerId,
+  );
   const [selectedPlayer2, setSelectedPlayer2] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (visible) {
+      setSelectedPlayer1(lockedPlayerId ?? null);
+      setSelectedPlayer2(null);
+      if (lockedPlayerId) setActiveTab('declare');
+    }
+  }, [visible, lockedPlayerId]);
 
   // ─── Helpers ─────────────────────────────────────────────────────────────
 
@@ -62,6 +74,11 @@ export default function AllianceModal({
 
   const handleSelectPlayer = useCallback(
     (playerId: string) => {
+      if (lockedPlayerId) {
+        if (playerId === lockedPlayerId) return;
+        setSelectedPlayer2((current) => (current === playerId ? null : playerId));
+        return;
+      }
       if (!selectedPlayer1) {
         setSelectedPlayer1(playerId);
         return;
@@ -73,7 +90,7 @@ export default function AllianceModal({
       }
       setSelectedPlayer2(playerId);
     },
-    [selectedPlayer1],
+    [selectedPlayer1, lockedPlayerId],
   );
 
   const handleDeclare = useCallback(async () => {
@@ -86,10 +103,10 @@ export default function AllianceModal({
   }, [selectedPlayer1, selectedPlayer2, declareAlliance, onDeclare]);
 
   const handleClose = useCallback(() => {
-    setSelectedPlayer1(null);
+    setSelectedPlayer1(lockedPlayerId ?? null);
     setSelectedPlayer2(null);
     onClose();
-  }, [onClose]);
+  }, [onClose, lockedPlayerId]);
 
   // ─── Render: player row for declare tab ──────────────────────────────────
 

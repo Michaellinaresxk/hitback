@@ -25,7 +25,11 @@
       "step2": "Scan QR cards",
       "step3": "Compete and have fun!"
     },
-    "footer": "Beta Version • Made with ❤️ for friends"
+    "footer": "Beta Version • Made with ❤️ for friends",
+    "hallOfFame": {
+      "candidate": "🌟 Musical Hall of Fame Candidate",
+      "legend": "🏆 A MUSICAL LEGEND!"
+    }
   },
   "setupGame": {
     "config_game": "Set up your game",
@@ -71,6 +75,19 @@
       "local_start_failed": "Could not start the game on this device.",
       "connection_title": "Connection error",
       "connection_message": "Could not connect to the server. Check that it is available.\n\n{{details}}"
+    },
+    "playMode": {
+      "title": "GAME MODE",
+      "subtitle": "Choose how the tour will be played. It cannot change during the game.",
+      "required": "Choose Vinyl or Streaming to start",
+      "physical": {
+        "name": "💿 Vinyl",
+        "description": "The physical board says when there is a card. The GM registers the card the player drew."
+      },
+      "digital": {
+        "name": "📡 Streaming",
+        "description": "The route decides: each backstage reveals a surprise card in the app."
+      }
     }
   },
   "settingPage": {
@@ -90,12 +107,18 @@
       "dev_title": "Settings under Development",
       "dev_text": "These options will be available in future updates. For now, all games use standard settings."
     },
-    "duration": { "title": "Game Duration", "desc": "Maximum time per game" },
+    "duration": {
+      "title": "Game Duration",
+      "desc": "Maximum time per game"
+    },
     "winning_score": {
       "title": "Winning Score",
       "desc": "Target score for victory"
     },
-    "audio_time": { "title": "Audio Time", "desc": "Music preview duration" },
+    "audio_time": {
+      "title": "Audio Time",
+      "desc": "Music preview duration"
+    },
     "betting": {
       "title": "Betting System",
       "desc": "Allow betting tokens on answers"
@@ -112,9 +135,18 @@
       "title": "Auto Advance",
       "desc": "Automatically switch turns"
     },
-    "sound_effects": { "title": "Sound Effects", "desc": "Interface sounds" },
-    "vibration": { "title": "Vibration", "desc": "Haptic feedback on actions" },
-    "reset": { "title": "Reset Settings", "desc": "Return to default values" },
+    "sound_effects": {
+      "title": "Sound Effects",
+      "desc": "Interface sounds"
+    },
+    "vibration": {
+      "title": "Vibration",
+      "desc": "Haptic feedback on actions"
+    },
+    "reset": {
+      "title": "Reset Settings",
+      "desc": "Return to default values"
+    },
     "export": {
       "title": "Export Settings",
       "desc": "Share settings with others"
@@ -682,6 +714,30 @@
         "candidate": "🌟 Hall of Fame Candidate",
         "legend": "🏆 You're a Musical Legend!"
       }
-    }
+    },
+    "noCitiesVisited": "No cities visited yet"
+  },
+  "backstage": {
+    "title": "BACKSTAGE",
+    "oneHitAway": "🎟️ 1 hit away from Backstage",
+    "useCard": "Use card",
+    "discard": "Discard",
+    "obtained": "You got {{card}}",
+    "atCity": "{{city}}",
+    "scenes": {
+      "FEATURING": "You met an artist who wants to record with you.",
+      "ALLIANCE": "Another artist offers to team up.",
+      "DUEL": "A rival artist challenges you.",
+      "SOLD_OUT": "You hear you sold out tickets in the next city.",
+      "ROYALTIES": "Your manager found out you are owed money.",
+      "COPYRIGHTS": "Your lawyer found someone using your song.",
+      "BAD_REVIEW": "A critic asks for ammo against a rival.",
+      "MANAGEMENT_FEE": "You can pass the manager bill to someone else.",
+      "MUTE": "A contact can silence another artist.",
+      "ARTIST_HOLD": "A contact can hold back the leader.",
+      "STOP_BLAST": "You got radio exclusivity.",
+      "CHARITY_SHOW": "You are invited to a charity concert."
+    },
+    "selectTarget": "Choose who to apply the card to"
   }
 }
