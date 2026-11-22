@@ -279,7 +279,7 @@ export default function GameScreen() {
       if (useGameStore.getState().pendingBackstageCard?.cardType === 'DUEL') {
         setPendingBackstageCard(null);
         setShowBackstageModal(false);
-        advanceToNextTurn();
+        // DUEL must persist into the next round.
       }
     } catch (error) {
       showError('Error', error instanceof Error ? error.message : 'No se pudo aplicar DUEL');
@@ -684,7 +684,16 @@ export default function GameScreen() {
           if (pending && pending.cardType === cardType) {
             setPendingBackstageCard(null);
             setShowBackstageModal(false);
-            advanceToNextTurn();
+            // Cards with round-lasting effects must persist; local advanceToNextTurn()
+            // would double-decrement server-synced freeze counters.
+            const ROUND_LASTING_CARDS: ReactionCardType[] = [
+              'STOP_BLAST',
+              'MUTE',
+              'ARTIST_HOLD',
+            ];
+            if (!ROUND_LASTING_CARDS.includes(cardType)) {
+              advanceToNextTurn();
+            }
           }
         }
 
@@ -986,7 +995,7 @@ export default function GameScreen() {
             if (useGameStore.getState().pendingBackstageCard?.cardType === 'ALLIANCE') {
               setPendingBackstageCard(null);
               setShowBackstageModal(false);
-              advanceToNextTurn();
+              // ALLIANCE has round duration; avoid double-decrement on local/server advance.
             }
           } catch (error) {
             showError('Error', error instanceof Error ? error.message : 'No se pudo crear la alianza');
@@ -1053,6 +1062,7 @@ export default function GameScreen() {
         )}
         playerNames={bSideNotification?.playerNames ?? []}
         onClose={() => setBSideNotification(null)}
+        playMode={playMode}
       />
 
       <DuelModal

@@ -347,7 +347,11 @@
     "multipleInstruction": "Wręcz każdemu graczowi kartę Reaction Card 🃏",
     "singleInstruction": "Wręcz kartę Reaction Card z fizycznej talii 🃏",
     "multipleDelivered": "Karty przekazane ✓",
-    "singleDelivered": "Karta przekazana ✓"
+    "singleDelivered": "Karta przekazana ✓",
+    "digitalSingleInstruction": "W trybie streamingowym nie ma fizycznej talii: gracz otrzymuje tylko punkt fana (+1 przy następnej poprawnej odpowiedzi).",
+    "digitalMultipleInstruction": "W trybie streamingowym nie ma fizycznej talii: gracze otrzymują tylko punkt fana (+1 przy następnej poprawnej odpowiedzi).",
+    "digitalSingleDelivered": "Rozumiem ✓",
+    "digitalMultipleDelivered": "Rozumiem ✓"
   },
   "gameEnd": {
     "winnerTitle": "ZWYCIĘZCA!",

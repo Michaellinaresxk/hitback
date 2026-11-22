@@ -347,7 +347,11 @@
     "multipleInstruction": "Give each player a Reaction Card 🃏",
     "singleInstruction": "Give them a Reaction Card from the physical deck 🃏",
     "multipleDelivered": "Cards delivered ✓",
-    "singleDelivered": "Card delivered ✓"
+    "singleDelivered": "Card delivered ✓",
+    "digitalSingleInstruction": "In streaming mode there is no physical deck: they only get the fan point (+1 on their next correct answer).",
+    "digitalMultipleInstruction": "In streaming mode there is no physical deck: they only get the fan point (+1 on their next correct answer).",
+    "digitalSingleDelivered": "Got it ✓",
+    "digitalMultipleDelivered": "Got it ✓"
   },
   "gameEnd": {
     "winnerTitle": "WINNER!",
