@@ -215,5 +215,96 @@
     "venue": "Blue Note Osaka",
     "story": "El hermano menor de Blue Note Tokio, inaugurado en 1992, se especializó en jazz fusion y artistas japoneses emergentes. La ciudad de Kansai tiene una escena musical subterránea vibrante.",
     "realFact": "Osaka es la cocina de Japón - el 50% de los ingredientes frescos del país pasan por sus mercados mayoristas."
+  },
+  "firstAvenue": {
+    "city": "Mineápolis",
+    "country": "Estados Unidos",
+    "venue": "First Avenue & 7th St Entry",
+    "story": "La estrella negra en la fachada de First Avenue señala a Prince, pero el club ya era leyenda antes de Purple Rain. Desde los años 70, su escenario ha sido el laboratorio del sonido de Mineápolis, donde el punk, el funk y el rock se mezclaron sin pedir permiso.",
+    "realFact": "La fachada del club está cubierta con estrellas plateadas con los nombres de artistas que han tocado allí. La estrella de Prince es dorada, la única de ese color."
+  },
+  "roundhouse": {
+    "city": "Londres",
+    "country": "Reino Unido",
+    "venue": "The Roundhouse",
+    "story": "Un antiguo depósito de locomotoras victorianas convertido en templo contracultural. En los años 60, Pink Floyd y The Doors tocaron aquí mientras el underground londinense inventaba la psicodelia británica.",
+    "realFact": "The Roundhouse se construyó en 1847 como taller de trenes. Solo funcionó como depósito ferroviario durante una década antes de convertirse en almacén de ginebra y, décadas después, en sala de conciertos."
+  },
+  "nineThirty": {
+    "city": "Washington, D. C.",
+    "country": "Estados Unidos",
+    "venue": "9:30 Club",
+    "story": "El 9:30 Club convirtió a Washington, D. C. en una parada obligatoria para el punk, el hardcore y el rock alternativo. En una ciudad conocida por la política, este club demostró que la música también podía tener poder.",
+    "realFact": "El nombre original venía de su antigua dirección: 930 F Street NW. Cuando se mudó a V Street en 1996, conservó el nombre y se convirtió en una de las salas más respetadas de Estados Unidos."
+  },
+  "metroChicago": {
+    "city": "Chicago",
+    "country": "Estados Unidos",
+    "venue": "Metro",
+    "story": "En el barrio de Wrigleyville, Metro se convirtió en la sala donde el rock alternativo de Chicago encontró su voz. Nirvana, R.E.M. y Smashing Pumpkins tocaron aquí antes de que el mundo supiera sus nombres.",
+    "realFact": "El edificio se construyó en 1927 como cine. Metro conserva parte de la ornamentación original del teatro, lo que hace que ver un concierto allí se sienta entre lo clásico y lo salvaje."
+  },
+  "foroSol": {
+    "city": "Ciudad de México",
+    "country": "México",
+    "venue": "Foro Sol",
+    "story": "Dentro del autódromo de Ciudad de México, Foro Sol se convirtió en el escenario masivo donde el rock internacional entendió la escala de la pasión mexicana. Cada concierto aquí suena como si fuera el último de la gira.",
+    "realFact": "Foro Sol se construyó originalmente para conciertos dentro del circuito de Fórmula 1. Su nombre vino de una marca de cerveza, pero para los fans es sinónimo de noches épicas en la capital mexicana."
+  },
+  "rodLaver": {
+    "city": "Melbourne",
+    "country": "Australia",
+    "venue": "Rod Laver Arena",
+    "story": "En una ciudad obsesionada con el deporte y la música en vivo, Rod Laver Arena es donde las grandes giras aterrizan en Australia. De Pink a Pearl Jam, pasar por Melbourne significa medirse con uno de los públicos más exigentes del mundo.",
+    "realFact": "Aunque hoy es famoso por el Abierto de Australia, el recinto se diseñó desde el inicio como espacio multipropósito. Su techo retráctil permitió que los conciertos no dependieran del clima impredecible de Melbourne."
+  },
+  "roseBowl": {
+    "city": "Pasadena",
+    "country": "Estados Unidos",
+    "venue": "Rose Bowl",
+    "story": "El Rose Bowl es más que un estadio: es un monumento al espectáculo estadounidense. Cuando U2, Depeche Mode o Beyoncé tocan aquí, el concierto se convierte en un evento que define una era.",
+    "realFact": "U2 grabó en el Rose Bowl el concierto de 2009 para su película \"U2 360° at the Rose Bowl\", transmitido en vivo por YouTube. Fue uno de los primeros grandes conciertos globales en streaming."
+  },
+  "sanSiro": {
+    "city": "Milán",
+    "country": "Italia",
+    "venue": "San Siro",
+    "story": "El estadio de Milán ruge igual con goles que con guitarras. Bruce Springsteen, Laura Pausini y los Rolling Stones han convertido San Siro en una catedral del rock donde el público canta como si fuera una hinchada.",
+    "realFact": "San Siro es oficialmente el Stadio Giuseppe Meazza, pero casi todos lo siguen llamando por el barrio. En Milán, los conciertos aquí se viven con la misma intensidad que un derbi."
+  },
+  "hydrozagadka": {
+    "city": "Varsovia",
+    "country": "Polonia",
+    "venue": "Hydrozagadka",
+    "story": "En el barrio de Praga, al otro lado del Vístula, Hydrozagadka se convirtió en el refugio del indie, el punk y la electrónica alternativa de Varsovia. Su nombre, que significa \"hidroacertijo\", encaja con un lugar donde la música siempre suena más cruda que en el centro de la ciudad.",
+    "realFact": "Hydrozagadka toma su nombre de una canción de la banda polaca Lady Pank. El club se hizo famoso por apoyar a la escena alternativa de Varsovia cuando muchos venues independientes estaban desapareciendo."
+  },
+  "torwar": {
+    "city": "Varsovia",
+    "country": "Polonia",
+    "venue": "Torwar",
+    "story": "Torwar empezó como pista de hielo y sala deportiva, pero con los años se convirtió en uno de los espacios de conciertos más versátiles de Varsovia. Aquí, el público polaco aprendió que un venue deportivo también puede vibrar con rock, pop y electrónica.",
+    "realFact": "Torwar fue inaugurado en 1953 y es uno de los recintos cubiertos más conocidos de Varsovia. Además de conciertos, ha albergado hockey, boxeo y eventos culturales, lo que lo convirtió en parte de la memoria colectiva de la ciudad."
+  },
+  "spodek": {
+    "city": "Katowice",
+    "country": "Polonia",
+    "venue": "Spodek",
+    "story": "Spodek parece una nave espacial aterrizada en el corazón de Silesia. Desde los años 70, esta arena icónica ha recibido a leyendas del rock y del metal, convirtiendo a Katowice en una parada obligatoria para las grandes giras en Polonia.",
+    "realFact": "El nombre \"Spodek\" significa \"platillo\" en polaco, por su forma de ovni. Se inauguró en 1971 y se convirtió en uno de los símbolos arquitectónicos más reconocibles de Polonia."
+  },
+  "tauronArena": {
+    "city": "Cracovia",
+    "country": "Polonia",
+    "venue": "Tauron Arena Kraków",
+    "story": "En Cracovia, la Tauron Arena llevó los grandes espectáculos a una escala moderna. Entre festivales, conciertos masivos y eventos internacionales, el venue demostró que la ciudad histórica de Polonia también sabe hablar el idioma de las grandes producciones.",
+    "realFact": "La Tauron Arena Kraków abrió en 2014 y es una de las arenas cubiertas más grandes de Polonia, con capacidad para más de 20.000 personas en eventos musicales."
+  },
+  "stadionNarodowy": {
+    "city": "Varsovia",
+    "country": "Polonia",
+    "venue": "PGE Narodowy",
+    "story": "El Estadio Nacional de Varsovia es el escenario donde Polonia celebra sus momentos más grandes. Cuando los artistas llenan este estadio, no es solo un concierto: es un evento nacional con el skyline de Varsovia como telón de fondo.",
+    "realFact": "El PGE Narodowy se inauguró en 2012 para la Eurocopa. Su fachada puede iluminarse con colores, y se ha convertido en el principal estadio para conciertos masivos y grandes eventos en Polonia."
   }
 }

@@ -30,7 +30,7 @@ function shuffleArray<T>(array: T[]): T[] {
 
 /**
  * Generates a route by picking and ordering 5 random cities per act.
- * The current city pools yield 7,494,864,659,627,304,960,000 ordered routes.
+ * The current city pools yield 3,169,613,931,076,624,711,680,000 ordered routes.
  * Call once in startGame().
  */
 export function generateRoute(): BoardTile[] {

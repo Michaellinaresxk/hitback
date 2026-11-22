@@ -40,6 +40,7 @@ export default function BackstageModal({
       <View style={styles.overlay}>
         <View style={styles.card}>
           <Text style={styles.kicker}>🎟️ {t('backstage.title')}</Text>
+          <Text style={styles.scenario}>{t('backstage.tourScenario')}</Text>
           <Text style={styles.city}>{cityName || t('backstage.atCity', { city: `#${card.position}` })}</Text>
 
           <View style={styles.sceneBox}>
@@ -87,6 +88,13 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
     textAlign: 'center',
+  },
+  scenario: {
+    color: '#FCD34D',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 4,
   },
   city: {
     color: '#F8FAFC',

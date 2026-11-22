@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { IconSymbol } from '@/components/ui/IconSymbol';
+import { useGameStore } from '@/store/gameStore';
 import { getPhaseStyle } from '@/utils/game/phaseStyler';
 import { formatTime } from '@/utils/timeFormatter';
 
@@ -19,6 +20,7 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
   onCityHistoryPress,
 }) => {
   const { t } = useTranslation();
+  const playMode = useGameStore((s) => s.playMode);
   const phaseStyle = getPhaseStyle(currentPhase);
   const phaseLabel = t(`game.phaseLabels.${currentPhase}`, {
     defaultValue: t('game.phaseLabels.idle'),
@@ -28,8 +30,17 @@ export const GameHeader: React.FC<GameHeaderProps> = ({
     <View style={styles.header}>
       <View style={styles.gameInfo}>
         <Text style={styles.gameTitle}>HITBACK</Text>
-        <View style={[styles.gameModeIndicator, phaseStyle]}>
-          <Text style={styles.gameModeText}>{phaseLabel}</Text>
+        <View style={styles.badgeRow}>
+          <View style={[styles.gameModeIndicator, phaseStyle]}>
+            <Text style={styles.gameModeText}>{phaseLabel}</Text>
+          </View>
+          {playMode && (
+            <View style={styles.playModeBadge}>
+              <Text style={styles.playModeBadgeText}>
+                {playMode === 'digital' ? '📡 Streaming' : '💿 Vinilo'}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -84,6 +95,12 @@ const styles = StyleSheet.create({
     color: '#F8FAFC',
     marginBottom: 8,
   },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
   gameModeIndicator: {
     paddingHorizontal: 12,
     paddingVertical: 4,
@@ -97,6 +114,19 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  playModeBadge: {
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  playModeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FDE68A',
   },
   rightSection: {
     flexDirection: 'row',

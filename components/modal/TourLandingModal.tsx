@@ -155,7 +155,12 @@ export default function TourLandingModal({
                 <Text style={styles.arrivalTitle}>
                   {t('tour.ui.landingTitle', { city: cityName })}
                 </Text>
-                {isBackstage && <Text style={styles.backstageTag}>🎟️ Backstage</Text>}
+                {isBackstage && (
+                  <View style={styles.backstageTagWrap}>
+                    <Text style={styles.backstageTag}>🎟️ {t('backstage.title')}</Text>
+                    <Text style={styles.backstageTagSub}>{t('backstage.tourScenario')}</Text>
+                  </View>
+                )}
                 <Text style={styles.countryName}>{country}</Text>
                 <Text style={styles.venueName}>
                   {t('tour.ui.landingVenue', { venue: venueName })}
@@ -397,11 +402,26 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  backstageTagWrap: {
+    marginTop: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.16)',
+    borderColor: 'rgba(245, 158, 11, 0.35)',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
   backstageTag: {
-    marginTop: 8,
     color: '#FDE68A',
     fontSize: 13,
     fontWeight: '800',
+  },
+  backstageTagSub: {
+    color: '#FCD34D',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
   },
 
   // ── Button ────────────────────────────────────────────────────────────

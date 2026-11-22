@@ -738,6 +738,7 @@
       "STOP_BLAST": "You got radio exclusivity.",
       "CHARITY_SHOW": "You are invited to a charity concert."
     },
-    "selectTarget": "Choose who to apply the card to"
+    "selectTarget": "Choose who to apply the card to",
+    "tourScenario": "Tour scenario · card revealed here"
   }
 }
