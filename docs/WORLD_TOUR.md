@@ -12,7 +12,7 @@ World Tour tiene una ruta aleatoria independiente de 22 posiciones por jugador: 
 | ------------------------------------------- | --------------------------------------------------------------- |
 | `constants/worldTour.ts`                    | Orden de actos, mecánicas de tile, tamaño de ruta y rangos      |
 | `constants/worldTourCities.json`            | Pools, IDs, emoji y tipos de tile por acto                      |
-| `i18n/locales/tour-cities.*.json`           | Contenido localizado de las 58 ciudades en es/en/pl             |
+| `i18n/locales/tour-cities.*.json`           | Contenido localizado de las ciudades del tour en es/en/pl      |
 | `types/worldTour.types.ts`                  | `TileType`, `MechanicTrigger`, `ActId`, `CityData`, `BoardTile` |
 | `utils/worldtourUtils.ts`                   | Generación aleatoria y helpers de posición/progreso             |
 | `store/slices/gameSlice.ts`                 | Genera las rutas antes de crear la sesión; restaura estado      |
@@ -28,15 +28,15 @@ World Tour tiene una ruta aleatoria independiente de 22 posiciones por jugador: 
 | Posición | Acto               | Pool de ciudades | Selección por ruta |
 | -------- | ------------------ | ---------------: | -----------------: |
 | 0        | Start              |                — |           1 salida |
-| 1–5      | `act1_underground` |               15 |                  5 |
-| 6–10     | `act2_theBuzz`     |               14 |                  5 |
-| 11–15    | `act3_goingGlobal` |               14 |                  5 |
-| 16–20    | `act4_headliner`   |               15 |                  5 |
+| 1–5      | `act1_underground` |               18 |                  5 |
+| 6–10     | `act2_theBuzz`     |               17 |                  5 |
+| 11–15    | `act3_goingGlobal` |               18 |                  5 |
+| 16–20    | `act4_headliner`   |               23 |                  5 |
 | 21       | Finish             |                — |          1 llegada |
 
-`generateRoute()` baraja cada pool y toma cinco ciudades; su orden también cambia. Con los pools actuales hay exactamente **7,494,864,659,627,304,960,000 secuencias ordenadas posibles por jugador**. El número depende del contenido de `worldTourCities.json`; no mantener cifras manuales antiguas como 44.100 o “más de 50.000”. Dos jugadores generan rutas independientemente y pueden repetir ciudades.
+`generateRoute()` baraja cada pool y toma cinco ciudades; su orden también cambia. Con los pools actuales hay exactamente **3,169,613,931,076,624,711,680,000 secuencias ordenadas posibles por jugador**. El número depende del contenido de `worldTourCities.json`; no mantener cifras manuales antiguas. Dos jugadores generan rutas independientemente y pueden repetir ciudades.
 
-La forma de la ciudad usada por la ruta es `id`, `emoji`, `tileType`, `country` y `yearFact`. Los pools también conservan campos editoriales históricos, pero la interfaz no los usa. El landing resuelve `city`, `country`, `venue`, `story` y `realFact` desde `i18n/locales/tour-cities.{es,en,pl}.json`, según el idioma activo. Los 58 IDs de los pools deben existir en los tres recursos; la prueba `npm run test:tour-locales` verifica cobertura y paridad de claves.
+La forma de la ciudad usada por la ruta es `id`, `emoji`, `tileType`, `country` y `yearFact`. Los pools también conservan campos editoriales históricos, pero la interfaz no los usa. El landing resuelve `city`, `country`, `venue`, `story` y `realFact` desde `i18n/locales/tour-cities.{es,en,pl}.json`, según el idioma activo. Todos los IDs de los pools deben existir en los tres recursos; la prueba `npm run test:tour-locales` verifica cobertura y paridad de claves.
 
 Para agregar una ciudad, añádela al array del acto en `constants/worldTourCities.json` y usa uno de los `tileType` declarados en `types/worldTour.types.ts`. Mantén IDs únicos.
 

@@ -179,6 +179,42 @@
       "venue": "Sauchiehall Street, Glasgow",
       "story": "Glasgow tiene la escena de música en vivo más vibrante de Reino Unido per cápita. The Garage es donde Franz Ferdinand, Frightened Rabbit y Biffy Clyro tocaron sus primeros shows antes de conquistar el mundo.",
       "realFact": "Glasgow tiene más salas de música por habitante que cualquier otra ciudad de Europa. La ciudad tuvo más locales de indie rock en los 90 que Manchester, Liverpool y Londres juntas."
+    },
+    {
+      "id": "firstAvenue",
+      "emoji": "🟣",
+      "tileType": "concert",
+      "country": "US",
+      "yearFact": 1970,
+      "name": "First Avenue",
+      "location": "Minneapolis, USA",
+      "venue": "First Avenue & 7th St Entry",
+      "story": "La estrella negra en la fachada de First Avenue marca a Prince, pero el club ya era leyenda antes de Purple Rain. Desde los 70, su escenario ha sido el laboratorio del sonido de Minneapolis, donde el punk, el funk y el rock se mezclaron sin pedir permiso.",
+      "realFact": "La fachada del club está cubierta con estrellas plateadas con los nombres de artistas que han tocado allí. La estrella de Prince es dorada, la única de ese color."
+    },
+    {
+      "id": "roundhouse",
+      "emoji": "🎡",
+      "tileType": "festival",
+      "country": "GB",
+      "yearFact": 1964,
+      "name": "The Roundhouse",
+      "location": "London, UK",
+      "venue": "Chalk Farm Road, Camden",
+      "story": "Un antiguo depósito de locomotoras victorianas convertido en templo contracultural. En los 60, Pink Floyd y The Doors tocaron aquí mientras el underground londinense inventaba la psicodelia británica.",
+      "realFact": "The Roundhouse fue construida en 1847 como taller de trenes. Solo funcionó como depósito ferroviario durante una década antes de convertirse en almacén de ginebra y, décadas después, en sala de conciertos."
+    },
+    {
+      "id": "hydrozagadka",
+      "emoji": "🌊",
+      "tileType": "concert",
+      "country": "PL",
+      "yearFact": 2006,
+      "name": "Hydrozagadka",
+      "location": "Warsaw, Poland",
+      "venue": "11 Listopada 22, Praga-Północ",
+      "story": "En el barrio de Praga, al otro lado del Vístula, Hydrozagadka se convirtió en el refugio del indie, el punk y la electrónica alternativa de Varsovia. Su nombre, que significa \"hidroacertijo\", encaja con un lugar donde la música siempre suena más cruda que en el centro de la ciudad.",
+      "realFact": "Hydrozagadka toma su nombre de una canción de la banda polaca Lady Pank. El club se hizo famoso por apoyar a la escena alternativa de Varsovia cuando muchos venues independientes estaban desapareciendo."
     }
   ],
   "act2_theBuzz": [
@@ -349,6 +385,42 @@
       "venue": "Stahnsdorfer Straße, Potsdam",
       "story": "En la Alemania del Este, el Lindenpark era uno de los pocos lugares donde el rock occidental podía sonar — bajo supervisión del gobierno. Las bandas aprendieron a decir cosas prohibidas con metáforas que el Stasi no siempre entendía.",
       "realFact": "Durante la RDA, tocar rock en alemán era visto como subversivo. Las bandas que cantaban en inglés eran más toleradas porque el gobierno asumía que menos gente entendía la letra."
+    },
+    {
+      "id": "nineThirty",
+      "emoji": "🦅",
+      "tileType": "concert",
+      "country": "US",
+      "yearFact": 1980,
+      "name": "9:30 Club",
+      "location": "Washington, D.C., USA",
+      "venue": "815 V Street NW",
+      "story": "El 9:30 Club convirtió a Washington, D.C. en una parada obligatoria para el punk, el hardcore y el rock alternativo. En una ciudad conocida por la política, este club demostró que la música también podía tener poder.",
+      "realFact": "El nombre original venía de su antigua dirección: 930 F Street NW. Cuando se mudó a V Street en 1996, conservó el nombre y se convirtió en una de las salas más respetadas de Estados Unidos."
+    },
+    {
+      "id": "metroChicago",
+      "emoji": "🌆",
+      "tileType": "record_deal",
+      "country": "US",
+      "yearFact": 1982,
+      "name": "Metro Chicago",
+      "location": "Chicago, USA",
+      "venue": "3730 N Clark Street",
+      "story": "En el barrio de Wrigleyville, Metro se convirtió en la sala donde el rock alternativo de Chicago encontró su voz. Nirvana, R.E.M. y Smashing Pumpkins tocaron aquí antes de que el mundo supiera sus nombres.",
+      "realFact": "El edificio fue construido en 1927 como cine. Metro conserva parte de la ornamentación original del teatro, lo que hace que ver un concierto ahí se sienta entre lo clásico y lo salvaje."
+    },
+    {
+      "id": "torwar",
+      "emoji": "🥊",
+      "tileType": "concert",
+      "country": "PL",
+      "yearFact": 1953,
+      "name": "Torwar",
+      "location": "Warsaw, Poland",
+      "venue": "Łazienkowska 6a, Warsaw",
+      "story": "Torwar empezó como pista de hielo y sala deportiva, pero con los años se convirtió en uno de los espacios de conciertos más versátiles de Varsovia. Aquí, el público polaco aprendió que un venue deportivo también puede vibrar con rock, pop y electrónica.",
+      "realFact": "Torwar fue inaugurado en 1953 y es uno de los recintos cubiertos más conocidos de Varsovia. Además de conciertos, ha albergado hockey, boxeo y eventos culturales, lo que lo convirtió en parte de la memoria colectiva de la ciudad."
     }
   ],
   "act3_goingGlobal": [
@@ -519,6 +591,54 @@
       "venue": "Northgate, Johannesburgo",
       "story": "En la ciudad más desigual del mundo, el Dome es donde la Sudáfrica post-apartheid celebra que la música puede unir lo que la política separó. Aquí tocaron los primeros conciertos integrados racialmente de la historia del país en 1994.",
       "realFact": "Durante el apartheid, la ley prohibía que blancos y negros asistieran al mismo concierto. Algunos músicos como Paul Simon con 'Graceland' fueron criticados por tocar con músicos negros sudafricanos — pero esa colaboración ayudó a cambiar el mundo."
+    },
+    {
+      "id": "foroSol",
+      "emoji": "🌮",
+      "tileType": "festival",
+      "country": "MX",
+      "yearFact": 1993,
+      "name": "Foro Sol",
+      "location": "Mexico City, Mexico",
+      "venue": "Autódromo Hermanos Rodríguez",
+      "story": "Dentro del autódromo de Ciudad de México, Foro Sol se convirtió en el escenario masivo donde el rock internacional entendió la escala de la pasión mexicana. Cada concierto aquí suena como si fuera el último de la gira.",
+      "realFact": "Foro Sol fue construido originalmente para conciertos dentro del circuito de Fórmula 1. Su nombre viene de una marca de cerveza, pero para los fans es sinónimo de noches épicas en la capital mexicana."
+    },
+    {
+      "id": "rodLaver",
+      "emoji": "🎾",
+      "tileType": "sold_out",
+      "country": "AU",
+      "yearFact": 1988,
+      "name": "Rod Laver Arena",
+      "location": "Melbourne, Australia",
+      "venue": "Melbourne Park",
+      "story": "En una ciudad obsesionada con el deporte y la música en vivo, Rod Laver Arena es donde las grandes giras aterrizan en Australia. De Pink a Pearl Jam, pasar por Melbourne significa medirse con uno de los públicos más exigentes del mundo.",
+      "realFact": "Aunque hoy es famoso por el Abierto de Australia, el arena fue diseñado desde el inicio como recinto multipropósito. Su techo retráctil permitió que los conciertos no dependieran del clima impredecible de Melbourne."
+    },
+    {
+      "id": "spodek",
+      "emoji": "🛸",
+      "tileType": "sold_out",
+      "country": "PL",
+      "yearFact": 1971,
+      "name": "Spodek",
+      "location": "Katowice, Poland",
+      "venue": "al. Korfantego 35, Katowice",
+      "story": "Spodek parece una nave espacial aterrizada en el corazón de Silesia. Desde los años 70, esta arena icónica ha recibido a leyendas del rock y del metal, convirtiendo a Katowice en una parada obligatoria para las grandes giras en Polonia.",
+      "realFact": "El nombre \"Spodek\" significa \"platillo\" en polaco, por su forma de ovni. Se inauguró en 1971 y se convirtió en uno de los símbolos arquitectónicos más reconocibles de Polonia."
+    },
+    {
+      "id": "tauronArena",
+      "emoji": "🐉",
+      "tileType": "festival",
+      "country": "PL",
+      "yearFact": 2014,
+      "name": "Tauron Arena Kraków",
+      "location": "Krakow, Poland",
+      "venue": "Stanisława Lema 7, Kraków",
+      "story": "En Cracovia, la Tauron Arena llevó los grandes espectáculos a una escala moderna. Entre festivales, conciertos masivos y eventos internacionales, el venue demostró que la ciudad histórica de Polonia también sabe hablar el idioma de las grandes producciones.",
+      "realFact": "La Tauron Arena Kraków abrió en 2014 y es una de las arenas cubiertas más grandes de Polonia, con capacidad para más de 20.000 personas en eventos musicales."
     }
   ],
   "act4_headliner": [
@@ -761,6 +881,42 @@
       "venue": "Namba Hatch",
       "story": "El hermano menor de Blue Note Tokio, inaugurado en 1992, se especializó en jazz fusion y artistas japoneses emergentes. La ciudad de Kansai tiene una escena musical subterránea vibrante.",
       "realFact": "Osaka es la cocina de Japón - el 50% de los ingredientes frescos del país pasan por sus mercados mayoristas."
+    },
+    {
+      "id": "roseBowl",
+      "emoji": "🌹",
+      "tileType": "sold_out",
+      "country": "US",
+      "yearFact": 1922,
+      "name": "Rose Bowl",
+      "location": "Pasadena, USA",
+      "venue": "Rose Bowl Stadium",
+      "story": "El Rose Bowl es más que un estadio: es un monumento al espectáculo estadounidense. Cuando U2, Depeche Mode o Beyoncé tocan aquí, el concierto se convierte en un evento que define una era.",
+      "realFact": "U2 grabó en el Rose Bowl el concierto de 2009 para su película 'U2 360° at the Rose Bowl', transmitido en vivo por YouTube. Fue uno de los primeros grandes conciertos globales en streaming."
+    },
+    {
+      "id": "sanSiro",
+      "emoji": "🏟️",
+      "tileType": "rival_band",
+      "country": "IT",
+      "yearFact": 1926,
+      "name": "San Siro",
+      "location": "Milan, Italy",
+      "venue": "Stadio Giuseppe Meazza",
+      "story": "El estadio de Milán ruge igual con goles que con guitarras. Bruce Springsteen, Laura Pausini y los Rolling Stones han convertido San Siro en una catedral del rock donde el público canta como si fuera una hinchada.",
+      "realFact": "San Siro es oficialmente el Stadio Giuseppe Meazza, pero casi todos lo siguen llamando por el barrio. En Milán, los conciertos aquí se viven con la misma intensidad que un derby."
+    },
+    {
+      "id": "stadionNarodowy",
+      "emoji": "🦅",
+      "tileType": "sold_out",
+      "country": "PL",
+      "yearFact": 2012,
+      "name": "PGE Narodowy",
+      "location": "Warsaw, Poland",
+      "venue": "al. Ks. J. Poniatowskiego 1, Warsaw",
+      "story": "El Estadio Nacional de Varsovia es el escenario donde Polonia celebra sus momentos más grandes. Cuando los artistas llenan este estadio, no es solo un concierto: es un evento nacional con el skyline de Varsovia como telón de fondo.",
+      "realFact": "El PGE Narodowy se inauguró en 2012 para la Eurocopa. Su fachada puede iluminarse con colores, y se ha convertido en el principal estadio para conciertos masivos y grandes eventos en Polonia."
     }
   ]
 }

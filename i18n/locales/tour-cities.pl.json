@@ -215,5 +215,96 @@
     "venue": "Blue Note Osaka",
     "story": "Młodszy brat Blue Note Tokio, uruchomiony w 1992 roku, specjalizował się w jazzie fusion i wschodzących japońskich artystach. Kansai ma wibrantną podziemną scenę muzyczną.",
     "realFact": "Osaka jest kuchią Japonii - 50% świeżych składników kraju przechodzi przez jej targi hurtowe."
+  },
+  "firstAvenue": {
+    "city": "Minneapolis",
+    "country": "Stany Zjednoczone",
+    "venue": "First Avenue & 7th St Entry",
+    "story": "Czarna gwiazda na fasadzie First Avenue wskazuje na Prince’a, ale klub był legendą już przed Purple Rain. Od lat 70. jego scena jest laboratorium brzmienia Minneapolis, gdzie punk, funk i rock mieszały się bez pytania o pozwolenie.",
+    "realFact": "Elewacja klubu pokryta jest srebrnymi gwiazdami z nazwiskami artystów, którzy tam grali. Gwiazda Prince’a jest złota — jedyna w tym kolorze."
+  },
+  "roundhouse": {
+    "city": "Londyn",
+    "country": "Wielka Brytania",
+    "venue": "The Roundhouse",
+    "story": "Dawna wiktoriańska parowozownia zamieniona w świątynię kontrkultury. W latach 60. grali tu Pink Floyd i The Doors, gdy londyński underground wymyślał brytyjską psychodelię.",
+    "realFact": "Roundhouse zbudowano w 1847 roku jako warsztat kolejowy. Przez zaledwie dekadę działał jako parowozownia, potem był magazynem ginu, a wiele lat później salą koncertową."
+  },
+  "nineThirty": {
+    "city": "Waszyngton",
+    "country": "Stany Zjednoczone",
+    "venue": "9:30 Club",
+    "story": "9:30 Club sprawił, że Waszyngton stał się obowiązkowym przystankiem dla punka, hardcore’u i rocka alternatywnego. W mieście znanym z polityki ten klub udowodnił, że muzyka też ma siłę.",
+    "realFact": "Pierwotna nazwa pochodziła ze starego adresu: 930 F Street NW. Gdy klub przeniósł się na V Street w 1996 roku, zachował nazwę i stał się jedną z najbardziej szanowanych sal w Stanach Zjednoczonych."
+  },
+  "metroChicago": {
+    "city": "Chicago",
+    "country": "Stany Zjednoczone",
+    "venue": "Metro",
+    "story": "W dzielnicy Wrigleyville Metro stało się miejscem, w którym chicagowski rock alternatywny odnalazł swój głos. Nirvana, R.E.M. i Smashing Pumpkins grali tu, zanim świat poznał ich nazwiska.",
+    "realFact": "Budynek powstał w 1927 roku jako kino. Metro zachowało część oryginalnych zdobień teatru, dzięki czemu koncert tam wygląda jak spotkanie klasyki z dzikością."
+  },
+  "foroSol": {
+    "city": "Meksyk",
+    "country": "Meksyk",
+    "venue": "Foro Sol",
+    "story": "Na terenie autodromu w mieście Meksyk Foro Sol stało się ogromną sceną, na której międzynarodowy rock zrozumiał skalę meksykańskiej pasji. Każdy koncert brzmi tu tak, jakby był ostatnim w trasie.",
+    "realFact": "Foro Sol pierwotnie zbudowano z myślą o koncertach na terenie toru Formuły 1. Nazwa pochodziła od marki piwa, ale dla fanów jest synonimem epickich nocy w stolicy Meksyku."
+  },
+  "rodLaver": {
+    "city": "Melbourne",
+    "country": "Australia",
+    "venue": "Rod Laver Arena",
+    "story": "W mieście z obsesją na punkcie sportu i muzyki na żywo Rod Laver Arena to miejsce, gdzie wielkie trasy lądują w Australii. Od Pink po Pearl Jam — występ w Melbourne oznacza starcie z jedną z najbardziej wymagających publiczności na świecie.",
+    "realFact": "Choć dziś arena słynie z Australian Open, od początku zaprojektowano ją jako obiekt wielofunkcyjny. Rozsuwany dach sprawił, że koncerty nie zależały od nieprzewidywalnej pogody w Melbourne."
+  },
+  "roseBowl": {
+    "city": "Pasadena",
+    "country": "Stany Zjednoczone",
+    "venue": "Rose Bowl",
+    "story": "Rose Bowl to coś więcej niż stadion: to pomnik amerykańskiego widowiska. Gdy grają tu U2, Depeche Mode czy Beyoncé, koncert staje się wydarzeniem, które definiuje epokę.",
+    "realFact": "U2 nagrało na Rose Bowl koncert z 2009 roku do filmu \"U2 360° at the Rose Bowl\", transmitowanego na żywo w YouTube. To był jeden z pierwszych wielkich globalnych koncertów streamowanych na żywo."
+  },
+  "sanSiro": {
+    "city": "Mediolan",
+    "country": "Włochy",
+    "venue": "San Siro",
+    "story": "Mediolański stadion huczy tak samo przy golach i przy gitarach. Bruce Springsteen, Laura Pausini i The Rolling Stones zamienili San Siro w katedrę rocka, gdzie publiczność śpiewa jak kibicowska trybuna.",
+    "realFact": "San Siro oficjalnie nosi nazwę Stadio Giuseppe Meazza, ale prawie wszyscy nadal używają nazwy dzielnicy. W Mediolanie koncerty tutaj przeżywa się z taką samą intensywnością jak derby."
+  },
+  "hydrozagadka": {
+    "city": "Warszawa",
+    "country": "Polska",
+    "venue": "Hydrozagadka",
+    "story": "Na Pradze, po drugiej stronie Wisły, Hydrozagadka stała się schronieniem dla warszawskiej sceny indie, punku i alternatywnej elektroniki. Nazwa pasuje do miejsca, w którym muzyka zawsze brzmi surowiej niż w centrum miasta.",
+    "realFact": "Hydrozagadka wzięła nazwę od piosenki zespołu Lady Pank. Klub stał się znany ze wspierania warszawskiej sceny alternatywnej w czasie, gdy wiele niezależnych miejsc znikało."
+  },
+  "torwar": {
+    "city": "Warszawa",
+    "country": "Polska",
+    "venue": "Torwar",
+    "story": "Torwar zaczynał jako lodowisko i hala sportowa, ale z czasem stał się jednym z najbardziej wszechstronnych miejsc koncertowych w Warszawie. To tutaj polska publiczność przekonała się, że obiekt sportowy może też tętnić rockiem, popem i elektroniką.",
+    "realFact": "Torwar otwarto w 1953 roku i jest jednym z najbardziej rozpoznawalnych obiektów halowych w Warszawie. Oprócz koncertów gościł hokej, boks i wydarzenia kulturalne, stając się częścią zbiorowej pamięci miasta."
+  },
+  "spodek": {
+    "city": "Katowice",
+    "country": "Polska",
+    "venue": "Spodek",
+    "story": "Spodek wygląda jak statek kosmiczny, który wylądował w sercu Śląska. Od lat 70. ta ikoniczna hala gości legendy rocka i metalu, czyniąc Katowice obowiązkowym punktem wielkich tras koncertowych w Polsce.",
+    "realFact": "Nazwa \"Spodek\" pochodzi od charakterystycznego kształtu obiektu przypominającego latający spodek. Hala otwarto w 1971 roku i stała się jednym z najbardziej rozpoznawalnych symboli architektonicznych Polski."
+  },
+  "tauronArena": {
+    "city": "Kraków",
+    "country": "Polska",
+    "venue": "Tauron Arena Kraków",
+    "story": "W Krakowie Tauron Arena przeniosła wielkie widowiska w nowoczesną skalę. Między festiwalami, ogromnymi koncertami i wydarzeniami międzynarodowymi obiekt udowodnił, że historyczne miasto też potrafi mówić językiem wielkich produkcji.",
+    "realFact": "Tauron Arena Kraków otwarto w 2014 roku i jest jedną z największych hal widowiskowych w Polsce, mogącą pomieścić ponad 20 000 osób podczas wydarzeń muzycznych."
+  },
+  "stadionNarodowy": {
+    "city": "Warszawa",
+    "country": "Polska",
+    "venue": "PGE Narodowy",
+    "story": "Stadion Narodowy w Warszawie to miejsce, w którym Polska świętuje swoje największe chwile. Gdy artyści wypełniają ten stadion, to nie jest zwykły koncert — to wydarzenie narodowe z panoramą Warszawy w tle.",
+    "realFact": "PGE Narodowy otwarto w 2012 roku na Euro. Elewacja stadionu może świecić w różnych kolorach, a obiekt stał się głównym miejscem wielkich koncertów i dużych wydarzeń w Polsce."
   }
 }
