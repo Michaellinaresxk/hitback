@@ -271,6 +271,14 @@
     "combo": "!Combo!",
     "great": "!Genial!"
   },
+  "powerCardReward": {
+    "title": "¡Carta de Poder obtenida!",
+    "awardedTo": "Para {{player}}",
+    "effectTitle": "EFECTO",
+    "immediateEffect": "Efecto inmediato: {{points}} pts",
+    "storedEffect": "Se guarda en tu inventario. Úsala cuando quieras.",
+    "confirm": "Entendido"
+  },
   "bettingModal": {
     "header": {
       "title": "🎲 Sistema de Apuestas"

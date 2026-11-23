@@ -271,6 +271,14 @@
     "combo": "Combo!",
     "great": "!Great!"
   },
+  "powerCardReward": {
+    "title": "Power Card earned!",
+    "awardedTo": "For {{player}}",
+    "effectTitle": "EFFECT",
+    "immediateEffect": "Immediate effect: {{points}} pts",
+    "storedEffect": "Saved to your inventory. Use it when you're ready.",
+    "confirm": "Got it"
+  },
   "bettingModal": {
     "header": {
       "title": "🎲 Betting System"

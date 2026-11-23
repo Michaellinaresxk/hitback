@@ -3,15 +3,27 @@ import { gameSessionService } from '@/services/GameSessionService';
 import { getBackendPlayerId } from '@/utils/game/gameHelpers';
 import type { Player } from '@/store/types/gameStoreTypes';
 
+export interface ComboCardAwarded {
+  id: string;
+  type: string;
+  name: string;
+  description: string;
+  emoji: string;
+  usageLimit: number;
+  effectOnDraw: { scoreChange?: number } | null;
+}
+
 export interface ComboFlowState {
   isActive: boolean;
   showNotification: boolean;
   showScanner: boolean;
+  showReward: boolean;
   playerId: string | null;
   playerName: string;
   comboName: string;
   comboEmoji: string;
   comboDescription: string;
+  cardAwarded: ComboCardAwarded | null;
 }
 
 export interface ComboActivationData {
@@ -20,20 +32,24 @@ export interface ComboActivationData {
   comboName: string;
   comboEmoji: string;
   comboDescription: string;
+  cardAwarded?: ComboCardAwarded | null;
 }
 
 const INITIAL_COMBO_STATE: ComboFlowState = {
   isActive: false,
   showNotification: false,
   showScanner: false,
+  showReward: false,
   playerId: null,
   playerName: '',
   comboName: '',
   comboEmoji: '',
   comboDescription: '',
+  cardAwarded: null,
 };
 
 interface UseComboFlowParams {
+  playMode: 'physical' | 'digital';
   players: Player[];
   playerIdMap: Record<string, string>;
   addPowerCard: (playerId: string, powerCard: any) => void;
@@ -56,6 +72,7 @@ interface UseComboFlowParams {
  * automático que cierre el escáner o avance la ronda.
  */
 export function useComboFlow({
+  playMode,
   players,
   playerIdMap,
   addPowerCard,
@@ -76,26 +93,38 @@ export function useComboFlow({
         isActive: true,
         showNotification: true,
         showScanner: false,
+        showReward: false,
         playerId: data.playerId,
         playerName: data.playerName,
         comboName: data.comboName,
         comboEmoji: data.comboEmoji,
         comboDescription: data.comboDescription,
+        cardAwarded: data.cardAwarded ?? null,
       });
     },
     [resetProcessingRefs],
   );
 
-  /** El jugador cierra la notificación → abre el escáner de carta. */
+  /**
+   * El jugador cierra la notificación:
+   * - Vinilo → abre el escáner QR (flujo histórico).
+   * - Streaming → abre el modal de la carta obtenida (sin cámara).
+   */
   const handleComboNotificationClose = useCallback(() => {
-    console.log('✅ Combo notification closed, opening scanner');
     isPowerCardProcessingRef.current = false;
+    const showReward = playMode === 'digital';
+    console.log(
+      showReward
+        ? '✅ Combo notification closed, opening reward modal'
+        : '✅ Combo notification closed, opening scanner',
+    );
     setComboFlowState((prev) => ({
       ...prev,
       showNotification: false,
-      showScanner: true,
+      showScanner: !showReward,
+      showReward,
     }));
-  }, [isPowerCardProcessingRef]);
+  }, [isPowerCardProcessingRef, playMode]);
 
   /** El jugador escanea el QR de la power card. */
   const handlePowerCardScanned = useCallback(
@@ -190,6 +219,67 @@ export function useComboFlow({
     ],
   );
 
+  /**
+   * Streaming: el jugador confirma el modal de carta obtenida.
+   * El backend ya otorgó la carta en el reveal; aquí solo se refleja en la UI
+   * y se aplica el efecto (label_fee = -1). Después avanza el turno.
+   */
+  const handlePowerCardRewardConfirm = useCallback(async () => {
+    if (isPowerCardProcessingRef.current) return;
+    isPowerCardProcessingRef.current = true;
+
+    const { cardAwarded, playerId: playerIdForReward, playerName: playerNameForReward } =
+      comboFlowState;
+    setComboFlowState(INITIAL_COMBO_STATE);
+
+    if (!cardAwarded || !playerIdForReward) {
+      showError('Error', 'No se encontró la carta obtenida');
+      isPowerCardProcessingRef.current = false;
+      setTimeout(() => advanceToNextTurn(), 300);
+      return;
+    }
+
+    try {
+      const scoreChange = cardAwarded.effectOnDraw?.scoreChange ?? 0;
+      if (scoreChange !== 0) {
+        await applyImmediateCardEffect(playerIdForReward, scoreChange);
+        showError(
+          `${cardAwarded.emoji} ${cardAwarded.name}`,
+          `${playerNameForReward}: ${cardAwarded.description}`,
+        );
+      } else {
+        addPowerCard(playerIdForReward, {
+          id: cardAwarded.id,
+          name: cardAwarded.name,
+          emoji: cardAwarded.emoji,
+          type: cardAwarded.type,
+          description: cardAwarded.description,
+          currentUses: 0,
+          usageLimit: cardAwarded.usageLimit,
+          isActive: false,
+        });
+        showSuccess(
+          '⚡ ¡Carta Obtenida!',
+          `${playerNameForReward} ha obtenido: ${cardAwarded.emoji} ${cardAwarded.name}`,
+        );
+      }
+    } catch (error: any) {
+      console.error('❌ Error applying power card reward:', error);
+      showError('Error', error.message || 'No se pudo aplicar la carta');
+    }
+
+    isPowerCardProcessingRef.current = false;
+    setTimeout(() => advanceToNextTurn(), 300);
+  }, [
+    comboFlowState,
+    addPowerCard,
+    showSuccess,
+    showError,
+    advanceToNextTurn,
+    isPowerCardProcessingRef,
+    applyImmediateCardEffect,
+  ]);
+
   /** El jugador omite el escáner (cierra el modal). */
   const handlePowerCardScanClose = useCallback(() => {
     console.log('⭕ Power card scan skipped');
@@ -204,5 +294,6 @@ export function useComboFlow({
     handleComboNotificationClose,
     handlePowerCardScanned,
     handlePowerCardScanClose,
+    handlePowerCardRewardConfirm,
   };
 }

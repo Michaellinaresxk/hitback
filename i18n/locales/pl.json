@@ -271,6 +271,14 @@
     "combo": "Kombo",
     "great": "Świetnie!"
   },
+  "powerCardReward": {
+    "title": "Zdobyta Karta Mocy!",
+    "awardedTo": "Dla {{player}}",
+    "effectTitle": "EFEKT",
+    "immediateEffect": "Efekt natychmiastowy: {{points}} pkt",
+    "storedEffect": "Zapisana w ekwipunku. Użyj jej, gdy będziesz gotowy.",
+    "confirm": "Rozumiem"
+  },
   "bettingModal": {
     "header": {
       "title": "🎲 System Zakładów"

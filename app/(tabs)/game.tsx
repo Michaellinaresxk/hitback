@@ -9,6 +9,7 @@ import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import BettingModal from '@/components/modal/BettingModal';
 import { ComboNotification } from '@/components/rewards/ComboNotification';
 import { PowerCardScanModal } from '@/components/powercard/PowerCardScanModal';
+import { PowerCardRewardModal } from '@/components/powercard/PowerCardRewardModal';
 import AllianceModal from '@/components/modal/AllianceModal';
 import FeaturingModal from '@/components/modal/FeaturingModal';
 import LossStreakModal from '@/components/modal/LossStreakModal';
@@ -165,7 +166,9 @@ export default function GameScreen() {
     handleComboNotificationClose,
     handlePowerCardScanned,
     handlePowerCardScanClose,
+    handlePowerCardRewardConfirm,
   } = useComboFlow({
+    playMode: playMode ?? 'physical',
     players,
     playerIdMap,
     addPowerCard,
@@ -1054,6 +1057,13 @@ export default function GameScreen() {
         onCardScanned={handlePowerCardScanned}
         playerName={comboFlowState.playerName || ''}
         comboType={comboFlowState.comboName || ''}
+      />
+
+      <PowerCardRewardModal
+        visible={comboFlowState.showReward && !!comboFlowState.cardAwarded}
+        onConfirm={handlePowerCardRewardConfirm}
+        playerName={comboFlowState.playerName || ''}
+        card={comboFlowState.cardAwarded}
       />
 
       <LossStreakModal
