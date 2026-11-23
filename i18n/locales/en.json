@@ -735,6 +735,8 @@
     "useCard": "Use card",
     "discard": "Discard",
     "obtained": "You got {{card}}",
+    "partnerRequiredTitle": "{{card}} needs more players",
+    "partnerRequiredMessage": "This card needs at least 3 players. Cancelling it and moving to the next round.",
     "atCity": "{{city}}",
     "scenes": {
       "FEATURING": "You met an artist who wants to record with you.",

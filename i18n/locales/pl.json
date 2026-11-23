@@ -735,6 +735,8 @@
     "useCard": "Użyj karty",
     "discard": "Odrzuć",
     "obtained": "Otrzymujesz {{card}}",
+    "partnerRequiredTitle": "{{card}} wymaga więcej graczy",
+    "partnerRequiredMessage": "Ta karta wymaga co najmniej 3 graczy. Anulujemy ją i przechodzimy do następnej rundy.",
     "atCity": "{{city}}",
     "scenes": {
       "FEATURING": "Poznałeś artystę, który chce z tobą nagrać.",

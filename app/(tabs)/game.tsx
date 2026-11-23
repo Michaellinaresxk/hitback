@@ -51,6 +51,8 @@ import CityHistoryModal from '@/components/modal/CityHistoryModal';
 import TourLandingModal from '@/components/modal/TourLandingModal';
 import { MechanicTrigger } from '@/types/worldTour.types';
 
+const PARTNER_REQUIRED_CARDS: ReactionCardType[] = ['FEATURING', 'DUEL', 'ALLIANCE'];
+
 export default function GameScreen() {
   const { t } = useTranslation();
   // ── Store ──────────────────────────────────────────────────────────────────
@@ -748,6 +750,31 @@ export default function GameScreen() {
       showError('Error', 'No se pudo identificar el jugador del Backstage');
       return;
     }
+
+    // Con 2 jugadores no hay compañero para FEATURING/DUEL/ALLIANCE.
+    // Cancelar la carta, avisar y avanzar de ronda en lugar de abrir un modal
+    // que dejaría la app bloqueada esperando una selección imposible.
+    if (PARTNER_REQUIRED_CARDS.includes(pendingBackstageCard.cardType) && players.length < 3) {
+      setBackstageBusy(true);
+      try {
+        await gameSessionService.discardBackstageCard(pendingBackstageCard.playerId);
+        useGameStore.getState().setPendingBackstageCard(null);
+        setShowBackstageModal(false);
+        setBackstageTargetType(null);
+        showError(
+          t('backstage.partnerRequiredTitle', { card: pendingBackstageCard.cardType }),
+          t('backstage.partnerRequiredMessage'),
+        );
+        advanceToNextTurn();
+      } catch (error) {
+        console.error('❌ Failed to discard unplayable backstage card:', error);
+        showError('Error', 'No se pudo cancelar la carta del Backstage');
+      } finally {
+        setBackstageBusy(false);
+      }
+      return;
+    }
+
     const needsTarget = ['MUTE', 'BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS'].includes(
       pendingBackstageCard.cardType,
     );
