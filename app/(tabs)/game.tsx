@@ -9,6 +9,7 @@ import PlayerScoreboard from '@/components/game/PlayerScoreboard';
 import BettingModal from '@/components/modal/BettingModal';
 import { ComboNotification } from '@/components/rewards/ComboNotification';
 import { PowerCardScanModal } from '@/components/powercard/PowerCardScanModal';
+import { PowerCardRewardModal } from '@/components/powercard/PowerCardRewardModal';
 import AllianceModal from '@/components/modal/AllianceModal';
 import FeaturingModal from '@/components/modal/FeaturingModal';
 import LossStreakModal from '@/components/modal/LossStreakModal';
@@ -49,6 +50,8 @@ import GameSetupScreen from './setup-game';
 import CityHistoryModal from '@/components/modal/CityHistoryModal';
 import TourLandingModal from '@/components/modal/TourLandingModal';
 import { MechanicTrigger } from '@/types/worldTour.types';
+
+const PARTNER_REQUIRED_CARDS: ReactionCardType[] = ['FEATURING', 'DUEL', 'ALLIANCE'];
 
 export default function GameScreen() {
   const { t } = useTranslation();
@@ -165,7 +168,9 @@ export default function GameScreen() {
     handleComboNotificationClose,
     handlePowerCardScanned,
     handlePowerCardScanClose,
+    handlePowerCardRewardConfirm,
   } = useComboFlow({
+    playMode: playMode ?? 'physical',
     players,
     playerIdMap,
     addPowerCard,
@@ -596,8 +601,18 @@ export default function GameScreen() {
           advanceToNextTurnWithBackstage();
           break;
         case 'duel':
-          if (landingEvent) openDuelModal(landingEvent.playerId);
-          else advanceToNextTurnWithBackstage();
+          // DUEL necesita otro jugador: con 2 no se puede abrir el modal.
+          if (players.length < 3) {
+            showError(
+              t('backstage.partnerRequiredTitle', { card: 'DUEL' }),
+              t('backstage.partnerRequiredMessage'),
+            );
+            advanceToNextTurnWithBackstage();
+          } else if (landingEvent) {
+            openDuelModal(landingEvent.playerId);
+          } else {
+            advanceToNextTurnWithBackstage();
+          }
           break;
         case 'double_points':
           try {
@@ -627,11 +642,22 @@ export default function GameScreen() {
       activateDoublePlatinum,
       openDuelModal,
       showError,
+      players.length,
+      t,
     ],
   );
 
   const handleReactionCard = useCallback(
     async (cardType: ReactionCardType, playerId: string, targetLocalId?: string) => {
+      // FEATURING / DUEL / ALLIANCE requieren otro jugador. Con 2 jugadores
+      // ningún modal de selección debe abrirse (ni backstage, ni picker, ni landing).
+      if (PARTNER_REQUIRED_CARDS.includes(cardType) && players.length < 3) {
+        showError(
+          t('backstage.partnerRequiredTitle', { card: cardType }),
+          t('backstage.partnerRequiredMessage'),
+        );
+        return;
+      }
       try {
         // Selection-first cards: open UI, command sent on confirmation
         if (cardType === 'FEATURING') {
@@ -733,6 +759,7 @@ export default function GameScreen() {
       playMode,
       setPendingBackstageCard,
       advanceToNextTurn,
+      t,
     ],
   );
 
@@ -745,6 +772,31 @@ export default function GameScreen() {
       showError('Error', 'No se pudo identificar el jugador del Backstage');
       return;
     }
+
+    // Con 2 jugadores no hay compañero para FEATURING/DUEL/ALLIANCE.
+    // Cancelar la carta, avisar y avanzar de ronda en lugar de abrir un modal
+    // que dejaría la app bloqueada esperando una selección imposible.
+    if (PARTNER_REQUIRED_CARDS.includes(pendingBackstageCard.cardType) && players.length < 3) {
+      setBackstageBusy(true);
+      try {
+        await gameSessionService.discardBackstageCard(pendingBackstageCard.playerId);
+        useGameStore.getState().setPendingBackstageCard(null);
+        setShowBackstageModal(false);
+        setBackstageTargetType(null);
+        showError(
+          t('backstage.partnerRequiredTitle', { card: pendingBackstageCard.cardType }),
+          t('backstage.partnerRequiredMessage'),
+        );
+        advanceToNextTurn();
+      } catch (error) {
+        console.error('❌ Failed to discard unplayable backstage card:', error);
+        showError('Error', 'No se pudo cancelar la carta del Backstage');
+      } finally {
+        setBackstageBusy(false);
+      }
+      return;
+    }
+
     const needsTarget = ['MUTE', 'BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS'].includes(
       pendingBackstageCard.cardType,
     );
@@ -1054,6 +1106,13 @@ export default function GameScreen() {
         onCardScanned={handlePowerCardScanned}
         playerName={comboFlowState.playerName || ''}
         comboType={comboFlowState.comboName || ''}
+      />
+
+      <PowerCardRewardModal
+        visible={comboFlowState.showReward && !!comboFlowState.cardAwarded}
+        onConfirm={handlePowerCardRewardConfirm}
+        playerName={comboFlowState.playerName || ''}
+        card={comboFlowState.cardAwarded}
       />
 
       <LossStreakModal

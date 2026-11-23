@@ -291,6 +291,7 @@ export function usePointsActions({
               comboName: result.comboStatus.type.replace('_', ' '),
               comboEmoji: '🔥',
               comboDescription: result.comboStatus.message,
+              cardAwarded: result.comboStatus.cardAwarded,
             });
             return;
           }

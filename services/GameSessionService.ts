@@ -181,8 +181,13 @@ export interface RoundResult {
     message: string;
     cardAwarded?: {
       id: string;
+      type: string;
       name: string;
+      description: string;
       emoji: string;
+      usageLimit: number;
+      effectOnDraw: { scoreChange?: number } | null;
+      qrCode?: string;
     };
   };
   tokensLost: Record<string, number>;
