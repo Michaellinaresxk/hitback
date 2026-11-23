@@ -601,8 +601,18 @@ export default function GameScreen() {
           advanceToNextTurnWithBackstage();
           break;
         case 'duel':
-          if (landingEvent) openDuelModal(landingEvent.playerId);
-          else advanceToNextTurnWithBackstage();
+          // DUEL necesita otro jugador: con 2 no se puede abrir el modal.
+          if (players.length < 3) {
+            showError(
+              t('backstage.partnerRequiredTitle', { card: 'DUEL' }),
+              t('backstage.partnerRequiredMessage'),
+            );
+            advanceToNextTurnWithBackstage();
+          } else if (landingEvent) {
+            openDuelModal(landingEvent.playerId);
+          } else {
+            advanceToNextTurnWithBackstage();
+          }
           break;
         case 'double_points':
           try {
@@ -632,11 +642,22 @@ export default function GameScreen() {
       activateDoublePlatinum,
       openDuelModal,
       showError,
+      players.length,
+      t,
     ],
   );
 
   const handleReactionCard = useCallback(
     async (cardType: ReactionCardType, playerId: string, targetLocalId?: string) => {
+      // FEATURING / DUEL / ALLIANCE requieren otro jugador. Con 2 jugadores
+      // ningún modal de selección debe abrirse (ni backstage, ni picker, ni landing).
+      if (PARTNER_REQUIRED_CARDS.includes(cardType) && players.length < 3) {
+        showError(
+          t('backstage.partnerRequiredTitle', { card: cardType }),
+          t('backstage.partnerRequiredMessage'),
+        );
+        return;
+      }
       try {
         // Selection-first cards: open UI, command sent on confirmation
         if (cardType === 'FEATURING') {
@@ -738,6 +759,7 @@ export default function GameScreen() {
       playMode,
       setPendingBackstageCard,
       advanceToNextTurn,
+      t,
     ],
   );
 
