@@ -689,7 +689,8 @@ export default function GameScreen() {
         if (cardType === 'COPYRIGHTS') {
           payload.lastAwardedPoints = lastAwardedPointsRef.current;
         }
-        const needsTarget = ['BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS', 'MUTE'].includes(cardType);
+        // BAD REVIEW va contra quien obtiene la carta: no se elige objetivo.
+        const needsTarget = ['MANAGEMENT_FEE', 'COPYRIGHTS', 'MUTE'].includes(cardType);
 
         const response = await gameSessionService.applyReactionCard({
           sourcePlayerId: sourceBackendId,
@@ -797,7 +798,7 @@ export default function GameScreen() {
       return;
     }
 
-    const needsTarget = ['MUTE', 'BAD_REVIEW', 'MANAGEMENT_FEE', 'COPYRIGHTS'].includes(
+    const needsTarget = ['MUTE', 'MANAGEMENT_FEE', 'COPYRIGHTS'].includes(
       pendingBackstageCard.cardType,
     );
     if (needsTarget) {

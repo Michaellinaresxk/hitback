@@ -745,7 +745,7 @@
       "SOLD_OUT": "You hear you sold out tickets in the next city.",
       "ROYALTIES": "Your manager found out you are owed money.",
       "COPYRIGHTS": "Your lawyer found someone using your song.",
-      "BAD_REVIEW": "A critic asks for ammo against a rival.",
+      "BAD_REVIEW": "A critic published a review about you and you lose 1 fan.",
       "MANAGEMENT_FEE": "You can pass the manager bill to someone else.",
       "MUTE": "A contact can silence another artist.",
       "ARTIST_HOLD": "A contact can hold back the leader.",

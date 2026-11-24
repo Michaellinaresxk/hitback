@@ -34,7 +34,8 @@ const initialState: GameFlow = {
 
 export const useGameFlow = () => {
   const [flowState, setFlowState] = useState<GameFlow>(initialState);
-  const { clearBets, syncPlayersFromBackend, endGame } = useGameStore();
+  const { clearBets, syncPlayersFromBackend, hydrateActiveEffects, endGame } =
+    useGameStore();
 
   // SIGUIENTE RONDA
   const nextRound = useCallback(async (): Promise<boolean> => {
@@ -77,6 +78,15 @@ export const useGameFlow = () => {
       }
 
       clearBets();
+
+      // El backend expira/renueva efectos en cada ronda: volver a hidratar evita
+      // que STOP-BLAST, DUEL y los freeze queden obsoletos en la UI.
+      if (result.activeEffects || result.session?.activeEffects) {
+        hydrateActiveEffects(
+          result.activeEffects ?? result.session?.activeEffects,
+          result.players ?? result.session?.players,
+        );
+      }
 
       const roundNumber = result.round?.number || 0;
       console.log(`✅ Round ${roundNumber} received`);
@@ -133,7 +143,7 @@ export const useGameFlow = () => {
       setFlowState((prev) => ({ ...prev, isLoading: false, phase: 'idle' }));
       return false;
     }
-  }, [clearBets, endGame]);
+  }, [clearBets, endGame, hydrateActiveEffects]);
 
   // MANEJAR FIN DE AUDIO
   const handleAudioFinished = useCallback(() => {

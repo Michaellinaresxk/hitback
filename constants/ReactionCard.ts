@@ -108,7 +108,7 @@ export const REACTION_CARDS: ReactionCardDef[] = [
     type: 'BAD_REVIEW',
     emoji: '💔',
     label: 'BAD REVIEW',
-    description: 'El jugador pierde 1 pt',
+    description: 'Quien obtiene la carta pierde 1 fan',
     color: '#F43F5E',
   },
   {

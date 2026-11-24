@@ -330,27 +330,14 @@ export const createGameSlice = ((set, get, ..._rest) => ({
   nextTurn: () => {
     const { players } = get();
 
-    const updatedPlayers = players.map((player) => {
-      const basePatch = { peekUsed: false as const, currentBet: 0 };
-      if (!player.isFrozen) return { ...player, ...basePatch };
-
-      // Decrement freeze counter for every frozen player each round
-      const roundsLeft = Math.max(0, (player.artistHoldRoundsLeft || 0) - 1);
-      if (roundsLeft > 0) {
-        console.log(
-          `❄️ ${player.name} FROZEN — ${roundsLeft} ronda(s) restante(s)`,
-        );
-      } else {
-        console.log(`▶️ ${player.name} descongelado`);
-      }
-      return {
-        ...player,
-        ...basePatch,
-        artistHoldRoundsLeft: roundsLeft,
-        isFrozen: roundsLeft > 0,
-        frozenForRound: roundsLeft > 0 ? player.frozenForRound : null,
-      };
-    });
+    // Los efectos de ronda (freeze, STOP-BLAST, DUEL) son canónicos en el
+    // backend. No se decrementan ni se limpian aquí: hydrateActiveEffects los
+    // sincroniza con cada respuesta del servidor.
+    const updatedPlayers = players.map((player) => ({
+      ...player,
+      peekUsed: false as const,
+      currentBet: 0,
+    }));
 
     set({
       players: updatedPlayers,
@@ -362,10 +349,43 @@ export const createGameSlice = ((set, get, ..._rest) => ({
     });
 
     get().decrementAllianceRounds();
-    get().clearStopBlast();
-    get().clearDuel();
 
     console.log(`➡️ Round advanced — todos los jugadores pueden responder`);
+  },
+
+  hydrateActiveEffects: (activeEffects = [], backendPlayers = []) => {
+    const live = (Array.isArray(activeEffects) ? activeEffects : []).filter(
+      (effect: any) => effect.status === 'active',
+    );
+    const stopBlast = live.find((effect: any) => effect.type === 'STOP_BLAST');
+    const duel = live.find((effect: any) => effect.type === 'DUEL');
+    const featuring = live.find((effect: any) => effect.type === 'FEATURING');
+
+    const toLocalId = (backendId?: string | null) => {
+      if (!backendId) return null;
+      const backendPlayer = backendPlayers.find((p: any) => p.id === backendId);
+      if (!backendPlayer) return backendId;
+      const local = get().players.find(
+        (p) =>
+          p.name.trim().toLowerCase() ===
+          String(backendPlayer.name).trim().toLowerCase(),
+      );
+      return local?.id ?? backendId;
+    };
+
+    set({
+      stopBlastActive: Boolean(stopBlast),
+      stopBlastHolderId: stopBlast ? toLocalId(stopBlast.sourcePlayerId) : null,
+      duelActive: Boolean(duel),
+      duelPlayer1Id: duel ? toLocalId(duel.targetPlayerIds?.[0]) : null,
+      duelPlayer2Id: duel ? toLocalId(duel.targetPlayerIds?.[1]) : null,
+      featuringPlayerId: featuring ? toLocalId(featuring.sourcePlayerId) : null,
+      featuringTargetId: featuring
+        ? toLocalId(featuring.targetPlayerIds?.[0])
+        : null,
+    });
+
+    if (backendPlayers.length) get().syncPlayersFromBackend(backendPlayers);
   },
 
   startTimer: (duration: number) => {

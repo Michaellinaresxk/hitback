@@ -387,6 +387,14 @@ class GameSessionService {
     gameOver?: boolean;
     winner?: { id: string; name: string; score: number };
     error?: string;
+    session?: GameSession;
+    activeEffects?: {
+      type: string;
+      status?: string;
+      sourcePlayerId?: string;
+      targetPlayerIds?: string[];
+    }[];
+    players?: SessionPlayer[];
   }> {
     const id = sessionId || this.currentSessionId;
 

@@ -164,6 +164,16 @@ export interface GameStore extends GameState {
   setGameActive: (active: boolean) => void;
   endGame: () => Promise<void>;
   nextTurn: () => void;
+  /** Sincroniza efectos de ronda canónicos (STOP-BLAST, DUEL, FEATURING, freeze). */
+  hydrateActiveEffects: (
+    activeEffects?: {
+      type: string;
+      status?: string;
+      sourcePlayerId?: string;
+      targetPlayerIds?: string[];
+    }[],
+    backendPlayers?: Parameters<GameStore['syncPlayersFromBackend']>[0],
+  ) => void;
   setPendingBackstageCard: (card: BackstageCard | null) => void;
   setGameDuration: (minutes: number) => void;
   startTimer: (duration: number) => void;
